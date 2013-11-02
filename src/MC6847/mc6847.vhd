@@ -34,7 +34,9 @@ entity mc6847 is
             artifact_en    : in  std_logic;
             artifact_set   : in  std_logic;
             artifact_phase : in  std_logic;
-            cvbs           : out std_logic_vector(7 downto 0));
+            cvbs           : out std_logic_vector(7 downto 0);
+            black_backgnd  : in  std_logic
+            );
 end mc6847;
 
 architecture SYN of mc6847 is
@@ -71,7 +73,7 @@ architecture SYN of mc6847 is
     constant H_LEFT_BORDER    : integer := H_BACK_PORCH + 32;  -- adjust for hblank de-assert @sys_count=6
     constant H_LEFT_RSTADDR   : integer := H_LEFT_BORDER - 16;
     constant H_VIDEO          : integer := H_LEFT_BORDER + 256;
-    constant H_RIGHT_BORDER   : integer := H_VIDEO + 32;       -- "
+    constant H_RIGHT_BORDER   : integer := H_VIDEO + 31;       -- "
     constant H_TOTAL_PER_LINE : integer := H_RIGHT_BORDER;
 
     constant V2_FRONT_PORCH     : integer := 2;
@@ -178,7 +180,7 @@ architecture SYN of mc6847 is
             b := pal(to_integer(unsigned(chroma)))(2) & "000000";
         else
             -- not quite black in alpha mode
-            if an_g_v = '0' and an_s_v = '0' then
+            if black_backgnd = '0' and an_g_v = '0' and an_s_v = '0' then
                 -- dark green/orange
                 r := '0' & css_v & "000000";
                 g := "01000000";
@@ -249,14 +251,16 @@ begin
                     vga_hsync <= '1';
                 elsif h_count = H_BACK_PORCH then
                     vga_hborder <= '1';
-                elsif h_count = H_LEFT_BORDER then
-                    active_h_count := (others => '0');
                 elsif h_count = H_LEFT_BORDER+1 then
                     vga_hblank <= '0';
-                elsif h_count = H_VIDEO then
+                elsif h_count = H_VIDEO+1 then
                     vga_hblank <= '1';
                 elsif h_count = H_RIGHT_BORDER then
                     vga_hborder <= '0';
+                end if;
+
+                if h_count = H_LEFT_BORDER then
+                    active_h_count := (others => '1');
                 else
                     active_h_count := std_logic_vector(unsigned(active_h_count) + 1);
                 end if;
@@ -398,23 +402,32 @@ begin
                 videoaddr          <= "000" & active_v_count(8 downto 4) & lookup(4 downto 0);
             else
                 case gm is              --lookupaddr
-                    when "000" => lookup(3 downto 0) <= active_h_count(7 downto 4) + 1;
-                                  videoaddr <= "0" & tripletaddr(7 downto 0) & lookup(3 downto 0);
-                    when "001" => lookup(3 downto 0) <= active_h_count(7 downto 4) + 1;
-                                  videoaddr <= "0" & tripletaddr(7 downto 0) & lookup(3 downto 0);
-                    when "010" => lookup(4 downto 0) <= active_h_count(7 downto 3) + 1;
-                                  videoaddr <= tripletaddr(7 downto 0) & lookup(4 downto 0);
-                    when "011" => lookup(3 downto 0) <= active_h_count(7 downto 4) + 1;
-                                  videoaddr <= "00" &active_v_count(7 downto 1) & lookup(3 downto 0);
-                    when "100" => lookup(4 downto 0) <= active_h_count(7 downto 3) + 1;
-                                  videoaddr <= "0" & active_v_count(7 downto 1) & lookup(4 downto 0);
-                    when "101" => lookup(3 downto 0) <= active_h_count(7 downto 4) + 1;
-                                  videoaddr <= "0" &active_v_count(7 downto 0) & lookup(3 downto 0);
-                    when "110" => lookup(4 downto 0) <= active_h_count(7 downto 3) + 1;
-                                  videoaddr <= active_v_count(7 downto 0) & lookup(4 downto 0);
-                    when "111" => lookup(4 downto 0) <= active_h_count(7 downto 3) + 1;
-                                  videoaddr <= active_v_count(7 downto 0) & lookup(4 downto 0);
-                    when others => null;
+                    when "000" =>
+                        lookup(3 downto 0) <= active_h_count(7 downto 4) + 1;
+                        videoaddr          <= "0" & tripletaddr(7 downto 0) & lookup(3 downto 0);
+                    when "001" =>
+                        lookup(3 downto 0) <= active_h_count(7 downto 4) + 1;
+                        videoaddr          <= "0" & tripletaddr(7 downto 0) & lookup(3 downto 0);
+                    when "010" =>
+                        lookup(4 downto 0) <= active_h_count(7 downto 3) + 1;
+                        videoaddr          <= tripletaddr(7 downto 0) & lookup(4 downto 0);
+                    when "011" =>
+                        lookup(3 downto 0) <= active_h_count(7 downto 4) + 1;
+                        videoaddr          <= "00" &active_v_count(7 downto 1) & lookup(3 downto 0);
+                    when "100" =>
+                        lookup(4 downto 0) <= active_h_count(7 downto 3) + 1;
+                        videoaddr          <= "0" & active_v_count(7 downto 1) & lookup(4 downto 0);
+                    when "101" =>
+                        lookup(3 downto 0) <= active_h_count(7 downto 4) + 1;
+                        videoaddr          <= "0" &active_v_count(7 downto 0) & lookup(3 downto 0);
+                    when "110" =>
+                        lookup(4 downto 0) <= active_h_count(7 downto 3) + 1;
+                        videoaddr          <= active_v_count(7 downto 0) & lookup(4 downto 0);
+                    when "111" =>
+                        lookup(4 downto 0) <= active_h_count(7 downto 3) + 1;
+                        videoaddr          <= active_v_count(7 downto 0) & lookup(4 downto 0);
+                    when others =>
+                        null;
                 end case;
             end if;
         end if;  -- cvbs_clk_ena
@@ -645,6 +658,7 @@ begin
             red <= r; green <= g; blue <= b;
         end if;  -- rising_edge(clk)
 
+
         if CVBS_NOT_VGA then
             hsync  <= cvbs_hsync;
             vsync  <= cvbs_vsync;
@@ -656,6 +670,7 @@ begin
             hblank <= not vga_hborder;
             vblank <= not cvbs_vborder;
         end if;
+
     end process PROC_OUTPUT;
 
 -- line buffer for scan doubler gives us vga monitor compatible output
