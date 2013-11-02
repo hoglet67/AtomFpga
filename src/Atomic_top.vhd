@@ -57,6 +57,13 @@ architecture BEHAVIORAL of Atomic_top is
               CLK2X_OUT : out std_logic); 
     end component;
 
+    component dcm3
+        port (CLKIN_IN  : in  std_logic;
+              CLK0_OUT  : out std_logic;
+              CLK0_OUT1 : out std_logic;
+              CLK2X_OUT : out std_logic); 
+    end component;
+    
     component t65
         port (Res_n  : in  std_logic;
               Enable : in  std_logic;
@@ -207,10 +214,31 @@ architecture BEHAVIORAL of Atomic_top is
             );
     end component;
 
+    component sid6581
+        port(
+            clk_1MHz : in std_logic;
+            clk32 : in std_logic;
+            clk_DAC : in std_logic;
+            reset : in std_logic;
+            cs : in std_logic;
+            we : in std_logic;
+            addr : in std_logic_vector(4 downto 0);
+            di : in std_logic_vector(7 downto 0);    
+            pot_x : in std_logic;
+            pot_y : in std_logic;      
+            do : out std_logic_vector(7 downto 0);
+            audio_out : out std_logic;
+            audio_data : out std_logic_vector(17 downto 0)
+            );
+    end component;
+
 -------------------------------------------------
 -- clock manager names
 -------------------------------------------------
     signal clk_14M38         : std_logic;
+    signal clock1            : std_logic;
+    signal clock32           : std_logic;
+    signal div32             : std_logic_vector (4 downto 0);
 -------------------------------------------------
 -- cpu signals names
 -------------------------------------------------
@@ -316,6 +344,11 @@ architecture BEHAVIORAL of Atomic_top is
     signal key_turbo   : std_logic;
 
     signal dcm14m38 : std_logic;
+    
+    signal sid_enable : std_logic;
+    signal sid_data   : std_logic_vector (7 downto 0);
+    signal sid_audio  : std_logic;
+
 --------------------------------------------------------------------
 --                   here it begin :)
 --------------------------------------------------------------------
@@ -336,6 +369,15 @@ begin
         CLK0_OUT  => cpu_Clk,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
+--------------------------------------------------------------------
+-- generate 16 MMHz with this dcm
+--------------------------------------------------------------------                            
+    pll3 : dcm3 port map (
+            CLKIN_IN  => cpu_Clk,
+            CLK0_OUT  => clock32,
+            CLK0_OUT1 => open,
+            CLK2X_OUT => open
+            );
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------
@@ -482,6 +524,36 @@ begin
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------
+    -- Pipelined version of address/data/write signals
+    process (clock32)
+    begin
+        if rising_edge(clock32) then
+            div32 <= div32 + 1;
+        end if;
+    end process;
+
+    -- Clock1 is derived by dividing clock32 down by 32
+    clock1 <= div32(4);
+
+    Inst_sid6581: sid6581
+        port map (
+            clk_1MHz => clock1,
+            clk32 => clock32,
+            clk_DAC => clock32,
+            reset => not RSTn,
+            cs => sid_enable,
+            we => not_cpu_R_W_n,
+            addr => cpu_addr(4 downto 0),
+            di => cpu_dout(7 downto 0),
+            do => sid_data,
+            pot_x => '0',
+            pot_y => '0',
+            audio_out => sid_audio,
+            audio_data => open 
+        );
+---------------------------------------------------------------------
+--
+---------------------------------------------------------------------
     mc6522_ss_pb5_o   <= mc6522_portb(5);
     mc6522_clk_pb6_o  <= mc6522_portb(6);
     mc6522_mosi_pb7_o <= mc6522_portb(7);
@@ -503,11 +575,12 @@ begin
     vdg_intn_ext  <= vdg_dd(6);
     vdg_inv       <= vdg_dd(7);
     vdg_css       <= i8255_pc_data(3);
-    audiol        <= i8255_pc_data(2);
+    audiol        <= sid_audio;
     audioR        <= i8255_pc_data(2);
 
     i8255_pc_idata <= vdg_fs_n & key_repeat & "11" & i8255_pc_data (3 downto 0);
     i8255_pb_idata <= key_shift & key_ctrl & ps2dataout;
+    
 
     red(2 downto 0)   <= vdg_red(7) & vdg_red(7) & vdg_red(7);  -- downto 5);
     green(2 downto 0) <= vdg_green(7) & vdg_green(7) & vdg_green(7);  -- downto 5);
@@ -528,7 +601,8 @@ begin
         i8255_enable      <= '0';
         ram_0x0000_enable <= '0';
         ram_0x8000_enable <= '0';
-        econet_enable     <= '0';
+        econet_enable     <= '0';    
+        sid_enable        <= '0'; 
 
         case cpu_addr(15 downto 12) is
             when x"0" => ram_0x0000_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
@@ -549,6 +623,8 @@ begin
                     mc6522_enable <= '1';
                 elsif cpu_addr(11 downto 8) = "0100" then
                     econet_enable <= '1';  -- 0xb400 econet?? (optional)
+                elsif cpu_addr(11 downto 5) = "1101110" then
+                    sid_enable <= '1';  -- 0xbdc0-0xbddf SID
                 end if;
                 
             when x"C"   => basic_rom_enable  <= '1';
@@ -566,6 +642,7 @@ begin
         sddos_data      when sddos_rom_enable = '1'  else
         i8255_data      when i8255_enable = '1'      else
         mc6522_data     when mc6522_enable = '1'     else
+        sid_data        when sid_enable = '1'        else
         basic_data      when basic_rom_enable = '1'  else
         float_data      when float_rom_enable = '1'  else
         kernal_data     when kernal_rom_enable = '1' else
