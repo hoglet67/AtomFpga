@@ -87,7 +87,7 @@ entity M6522_V2 is
         O_PB      : out std_logic_vector(7 downto 0);
         O_PB_OE_L : out std_logic_vector(7 downto 0);
 
-        I_P2_H  : in std_logic;  -- high for phase 2 clock  ____----__
+        I_P2_H  : in std_logic_vector(1 downto 0);
         RESET_L : in std_logic;
         ENA_4   : in std_logic;         -- clk enable
         CLK     : in std_logic
@@ -191,27 +191,43 @@ architecture RTL of M6522_V2 is
 
     signal final_irq : std_logic;
 begin
+
     p_phase : process
     begin
-        -- internal clock phase
         wait until rising_edge(CLK);
-        if (ENA_4 = '1') then
-            p2_h_t1 <= I_P2_H;
-            if (p2_h_t1 = '0') and (I_P2_H = '1') then
-                phase <= "11";
-            else
-                phase <= phase + "1";
-            end if;
-        end if;
+        phase <= I_P2_H;
     end process;
 
     p_cs : process(I_CS1, I_CS2_L, I_P2_H)
     begin
         cs <= '0';
-        if (I_CS1 = '1') and (I_CS2_L = '0') and (I_P2_H = '1') then
+        if (I_CS1 = '1') and (I_CS2_L = '0') then
             cs <= '1';
         end if;
     end process;
+
+    
+--    p_phase : process
+--    begin
+--        -- internal clock phase
+--        wait until rising_edge(CLK);
+--        if (ENA_4 = '1') then
+--            p2_h_t1 <= I_P2_H;
+--            if (p2_h_t1 = '0') and (I_P2_H = '1') then
+--                phase <= "11";
+--            else
+--                phase <= phase + "1";
+--            end if;
+--        end if;
+--    end process;
+--
+--    p_cs : process(I_CS1, I_CS2_L, I_P2_H)
+--    begin
+--        cs <= '0';
+--        if (I_CS1 = '1') and (I_CS2_L = '0') and (I_P2_H = '1') then
+--            cs <= '1';
+--        end if;
+--    end process;
 
     -- peripheral control reg (pcr)
     -- 0      ca1 interrupt control (0 +ve edge, 1 -ve edge)

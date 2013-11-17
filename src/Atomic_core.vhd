@@ -170,7 +170,7 @@ architecture BEHAVIORAL of Atomic_core is
             TURBO      : out std_logic);
     end component;
 
-    component M6522
+    component M6522_V2
         port (
             I_RS    : in  std_logic_vector(3 downto 0);
             I_DATA  : in  std_logic_vector(7 downto 0);
@@ -455,7 +455,7 @@ begin
 ---------------------------------------------------------------------
 --  
 ---------------------------------------------------------------------
-    via : M6522 port map(
+    via : M6522_V2 port map(
         I_RS    => cpu_addr(3 downto 0),
         I_DATA  => cpu_dout(7 downto 0),
         O_DATA  => mc6522_data(7 downto 0),
