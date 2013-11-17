@@ -23,9 +23,9 @@ begin
     
     DCM_INST : DCM
         generic map(CLK_FEEDBACK          => "NONE",
-                    CLKDV_DIVIDE          => 4.0,
-                    CLKFX_DIVIDE          => 10,
-                    CLKFX_MULTIPLY        => 5,
+                    CLKDV_DIVIDE          => 4.0,    -- 16.000 = 16MHz * 10 / 5
+                    CLKFX_DIVIDE          => 5,
+                    CLKFX_MULTIPLY        => 10,
                     CLKIN_DIVIDE_BY_2     => false,
                     CLKIN_PERIOD          => 62.5,
                     CLKOUT_PHASE_SHIFT    => "NONE",

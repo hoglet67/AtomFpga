@@ -25,11 +25,11 @@ begin
     DCM_INST : DCM
         -- DCM_SP_INST : DCM_SP
         generic map(CLK_FEEDBACK          => "NONE",
-                    CLKDV_DIVIDE          => 4.0,  -- 14.315 = 16MHz *17/19
+                    CLKDV_DIVIDE          => 4.0,  -- 16.000 = 25MHz * 16 / 25
                     CLKFX_DIVIDE          => 25,
                     CLKFX_MULTIPLY        => 16,
                     CLKIN_DIVIDE_BY_2     => false,
-                    CLKIN_PERIOD          => 37.500,
+                    CLKIN_PERIOD          => 40.000,
                     CLKOUT_PHASE_SHIFT    => "NONE",
                     DESKEW_ADJUST         => "SYSTEM_SYNCHRONOUS",
                     DFS_FREQUENCY_MODE    => "LOW",
