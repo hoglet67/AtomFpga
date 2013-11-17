@@ -1,3 +1,67 @@
+-- ****
+-- T65(b) core. In an effort to merge and maintain bug fixes ....
+--
+--
+-- Ver 302 minor timing fixes
+-- Ver 301 Jump timing fixed
+-- Ver 300 Bugfixes by ehenciak added
+-- MikeJ March 2005
+-- Latest version from www.fpgaarcade.com (original www.opencores.org)
+--
+-- ****
+--
+-- 65xx compatible microprocessor core
+--
+-- Version : 0246 + fix
+--
+-- Copyright (c) 2002 Daniel Wallner (jesus@opencores.org)
+--
+-- All rights reserved
+--
+-- Redistribution and use in source and synthezised forms, with or without
+-- modification, are permitted provided that the following conditions are met:
+--
+-- Redistributions of source code must retain the above copyright notice,
+-- this list of conditions and the following disclaimer.
+--
+-- Redistributions in synthesized form must reproduce the above copyright
+-- notice, this list of conditions and the following disclaimer in the
+-- documentation and/or other materials provided with the distribution.
+--
+-- Neither the name of the author nor the names of other contributors may
+-- be used to endorse or promote products derived from this software without
+-- specific prior written permission.
+--
+-- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+-- AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+-- THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+-- PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE
+-- LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+-- CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+-- SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+-- INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+-- CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+-- ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+-- POSSIBILITY OF SUCH DAMAGE.
+--
+-- Please report bugs to the author, but before you do so, please
+-- make sure that this is not a derivative work and that
+-- you have the latest version of this file.
+--
+-- The latest version of this file can be found at:
+--      http://www.opencores.org/cvsweb.shtml/t65/
+--
+-- Limitations :
+--
+-- 65C02
+-- supported : inc, dec, phx, plx, phy, ply
+-- missing : bra, ora, lda, cmp, sbc, tsb*2, trb*2, stz*2, bit*2, wai, stp, jmp, bbr*8, bbs*8
+--
+-- File history :
+--
+--      0246 : First release
+--
+
 library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
@@ -5,7 +69,7 @@ use work.T65_Pack.all;
 
 entity T65_MCode is
     port(
-        --Mode                    : in  std_logic_vector(1 downto 0);      -- "00" => 6502, "01" => 65C02, "10" => 65816
+        Mode        : in  std_logic_vector(1 downto 0);  -- "00" => 6502, "01" => 65C02, "10" => 65816
         IR          : in  std_logic_vector(7 downto 0);
         MCycle      : in  std_logic_vector(2 downto 0);
         P           : in  std_logic_vector(7 downto 0);
@@ -40,8 +104,7 @@ end T65_MCode;
 architecture rtl of T65_MCode is
 
     signal Branch : std_logic;
-    signal Mode   : std_logic_vector(1 downto 0) := "00";  -- "00" => 6502, "01" => 65C02, "10" => 65816
-    
+
 begin
 
     with IR(7 downto 5) select
@@ -588,7 +651,7 @@ begin
                 -- Absolute
                 if IR(7 downto 6) /= "10" and IR(1 downto 0) = "10" then
                     -- Read-Modify-Write
-                    LCycle <= "101";              -- ADaly
+                    LCycle <= "101";
                     case to_integer(unsigned(MCycle)) is
                         when 1 =>
                             Jump  <= "01";
@@ -663,11 +726,11 @@ begin
                     when 1 =>
 
                         Jump <= "01";  -- Increments the PC by one (PC will now be PC+2)
-                        -- from microcycle T0.
+                                       -- from microcycle T0.
 
                         LDDI <= '1';  -- Tells logic in top level (T65.vhd) to route
-                        -- the Din bus to the memory data latch (DL)
-                        -- so that the branch offset is fetched.
+                                      -- the Din bus to the memory data latch (DL)
+                                      -- so that the branch offset is fetched.
 
                                         -- In microcycle T2, tell the logic in the top level to
                                         -- add the offset.  If the most significant byte of the
@@ -679,8 +742,8 @@ begin
                         Jump <= "11";  -- Tell the PC Jump logic to use relative mode.
 
                         PCAdd <= '1';  -- This tells the PC adder to update itself with
-                        -- the current offset recently fetched from
-                        -- memory.
+                                       -- the current offset recently fetched from
+                                       -- memory.
 
                                         -- The following is microcycle T3 :
                                         -- The program counter should be completely updated
@@ -752,7 +815,7 @@ begin
                             SaveP       <= '1';
                             Write       <= '1';
                             Set_Addr_To <= "10";  -- AD
-                        when 5      =>  --SaveP <= '0';  -- Adaly
+                        when 5      =>
                         when others =>
                     end case;
                 else
@@ -843,7 +906,7 @@ begin
                             SaveP       <= '1';
                             Write       <= '1';
                             Set_Addr_To <= "11";       -- BA
-                        when 6      =>  --SaveP <= '0';  -- Adaly
+                        when 6      =>
                         when others =>
                     end case;
                 else

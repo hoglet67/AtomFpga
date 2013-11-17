@@ -45,21 +45,31 @@ entity Atomic_core is
 end Atomic_core;
 
 architecture BEHAVIORAL of Atomic_core is
-
-    
-    component t65
-        port (Res_n  : in  std_logic;
-              Enable : in  std_logic;
-              Clk    : in  std_logic;
-              Rdy    : in  std_logic;
-              IRQ_n  : in  std_logic;
-              NMI_n  : in  std_logic;
-              R_W_n  : out std_logic;
-              Sync   : out std_logic;
-              A      : out std_logic_vector (15 downto 0);
-              DI     : in  std_logic_vector (7 downto 0);
-              DO     : out std_logic_vector (7 downto 0));
-    end component;
+ 
+    component T65
+        port(
+            Mode    : in  std_logic_vector(1 downto 0);
+            Res_n   : in  std_logic;
+            Enable  : in  std_logic;
+            Clk     : in  std_logic;
+            Rdy     : in  std_logic;
+            Abort_n : in  std_logic;
+            IRQ_n   : in  std_logic;
+            NMI_n   : in  std_logic;
+            SO_n    : in  std_logic;
+            DI      : in  std_logic_vector(7 downto 0);          
+            R_W_n   : out std_logic;
+            Sync    : out std_logic;
+            EF      : out std_logic;
+            MF      : out std_logic;
+            XF      : out std_logic;
+            ML_n    : out std_logic;
+            VP_n    : out std_logic;
+            VDA     : out std_logic;
+            VPA     : out std_logic;
+            A       : out std_logic_vector(23 downto 0);
+            DO      : out std_logic_vector(7 downto 0));
+	end component;
 
     component mc6847
         generic
@@ -338,6 +348,9 @@ begin
 --
 ---------------------------------------------------------------------
     cpu : T65 port map (
+   		Mode           => "00",
+		Abort_n        => '1',
+		SO_n           => '1',
         Res_n          => RSTn,
         Enable         => clk_16M00en,
         Clk            => clk_16M00,
@@ -346,6 +359,7 @@ begin
         NMI_n          => '1',
         R_W_n          => cpu_R_W_n,
         Sync           => open,
+        A(23 downto 16) => open,
         A(15 downto 0) => cpu_addr(15 downto 0),
         DI(7 downto 0) => cpu_din(7 downto 0),
         DO(7 downto 0) => cpu_dout(7 downto 0));
@@ -638,7 +652,7 @@ begin
     cpu_phase  <= clken_counter(3) & clken_counter(2);
     via4_clken <= not (clken_counter(0) or clken_counter(1));
     via_clk    <= clk_16M00;
-    
+ 
 end BEHAVIORAL;
 
 
