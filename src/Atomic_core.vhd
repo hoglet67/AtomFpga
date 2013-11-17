@@ -241,7 +241,7 @@ architecture BEHAVIORAL of Atomic_core is
 --cpu clock and enales
     signal clken_counter     : std_logic_vector (3 downto 0);
     signal cpu_cycle         : std_logic;
-    signal clk_16M00en         : std_logic;
+    signal cpu_clken         : std_logic;
     signal not_cpu_R_W_n     : std_logic;
 ---------------------------------------------------
 -- VDG signals names
@@ -352,7 +352,7 @@ begin
 		Abort_n        => '1',
 		SO_n           => '1',
         Res_n          => RSTn,
-        Enable         => clk_16M00en,
+        Enable         => cpu_clken,
         Clk            => clk_16M00,
         Rdy            => '1',
         IRQ_n          => cpu_IRQ_n,
@@ -447,7 +447,7 @@ begin
         I_PC   => i8255_pc_idata(7 downto 4),
         O_PC   => i8255_pc_data(3 downto 0),
         RESET  => RSTn,
-        ENA    => clk_16M00en,
+        ENA    => cpu_clken,
         CLK    => clk_16M00);
 ---------------------------------------------------------------------
 --
@@ -455,7 +455,7 @@ begin
     input : keyboard port map(
         CLOCK      => clk_16M00,
         nRESET     => ERSTn,
-        CLKEN_1MHZ => clk_16M00en,
+        CLKEN_1MHZ => cpu_clken,
         PS2_CLK    => inpurps2clk,
         PS2_DATA   => inpurps2dat,
         KEYOUT     => ps2dataout,
@@ -643,9 +643,9 @@ begin
     process(key_turbo)
     begin
         if key_turbo = '0'then
-            clk_16M00en <= not (clken_counter(0) or clken_counter(1) or clken_counter(2) or clken_counter(3));  -- on cycle 0
+            cpu_clken <= not (clken_counter(0) or clken_counter(1) or clken_counter(2) or clken_counter(3));  -- on cycle 0
         else
-            clk_16M00en <= not (clken_counter(0));  -- or clken_counter(1) or clken_counter(2) or clken_counter(3)); -- on cycle 0
+            cpu_clken <= not (clken_counter(0));  -- or clken_counter(1) or clken_counter(2) or clken_counter(3)); -- on cycle 0
         end if;
     end process;
 
