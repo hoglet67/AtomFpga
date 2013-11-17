@@ -39,15 +39,17 @@
 --
 -- Revision list
 --
--- Arnim Laeuger, 12-Jan-2009:
---   Ported to numeric_std and simulation fix for signal initializations
 -- version 002 fix from Mark McDougall, untested
 -- version 001 initial release
 -- not very sure about the shift register, documentation is a bit light.
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
+
+--library UNISIM;
+--  use UNISIM.Vcomponents.all;
 
 entity M6522_V2 is
     port (
@@ -107,10 +109,10 @@ architecture RTL of M6522_V2 is
     signal r_orb  : std_logic_vector(7 downto 0);
     signal r_irb  : std_logic_vector(7 downto 0);
 
-    signal r_t1l_l : std_logic_vector(7 downto 0) := (others => '0');
-    signal r_t1l_h : std_logic_vector(7 downto 0) := (others => '0');
-    signal r_t2l_l : std_logic_vector(7 downto 0) := (others => '0');
-    signal r_t2l_h : std_logic_vector(7 downto 0) := (others => '0');  -- not in real chip
+    signal r_t1l_l : std_logic_vector(7 downto 0);
+    signal r_t1l_h : std_logic_vector(7 downto 0);
+    signal r_t2l_l : std_logic_vector(7 downto 0);
+    signal r_t2l_h : std_logic_vector(7 downto 0);  -- not in real chip
     signal r_sr    : std_logic_vector(7 downto 0);
     signal r_acr   : std_logic_vector(7 downto 0);
     signal r_pcr   : std_logic_vector(7 downto 0);
@@ -125,7 +127,7 @@ architecture RTL of M6522_V2 is
     signal load_data     : std_logic_vector(7 downto 0);
 
     -- timer 1
-    signal t1c               : std_logic_vector(15 downto 0) := (others => '0');
+    signal t1c               : std_logic_vector(15 downto 0);
     signal t1c_active        : boolean;
     signal t1c_done          : boolean;
     signal t1_w_reset_int    : boolean;
@@ -133,10 +135,10 @@ architecture RTL of M6522_V2 is
     signal t1_load_counter   : boolean;
     signal t1_reload_counter : boolean;
     signal t1_toggle         : std_logic;
-    signal t1_irq            : std_logic                     := '0';
+    signal t1_irq            : std_logic := '0';
 
     -- timer 2
-    signal t2c               : std_logic_vector(15 downto 0) := (others => '0');
+    signal t2c               : std_logic_vector(15 downto 0);
     signal t2c_active        : boolean;
     signal t2c_done          : boolean;
     signal t2_pb6            : std_logic;
@@ -145,7 +147,7 @@ architecture RTL of M6522_V2 is
     signal t2_r_reset_int    : boolean;
     signal t2_load_counter   : boolean;
     signal t2_reload_counter : boolean;
-    signal t2_irq            : std_logic                     := '0';
+    signal t2_irq            : std_logic := '0';
     signal t2_sr_ena         : boolean;
 
     -- shift reg
@@ -189,7 +191,6 @@ architecture RTL of M6522_V2 is
 
     signal final_irq : std_logic;
 begin
-
     p_phase : process
     begin
         -- internal clock phase
@@ -199,7 +200,7 @@ begin
             if (p2_h_t1 = '0') and (I_P2_H = '1') then
                 phase <= "11";
             else
-                phase <= std_logic_vector(unsigned(phase) + 1);
+                phase <= phase + "1";
             end if;
         end if;
     end process;
@@ -327,38 +328,40 @@ begin
         end if;
     end process;
 
-    p_read : process(cs, I_RW_L, I_RS, r_irb, r_ira, r_ddrb, r_ddra, t1c, r_t1l_l,
-                     r_t1l_h, t2c, r_sr, r_acr, r_pcr, r_ifr, r_ier, r_orb)
+    p_read : process
     begin
-        t1_r_reset_int <= false;
-        t2_r_reset_int <= false;
-        sr_read_ena    <= false;
-        r_irb_hs       <= '0';
-        r_ira_hs       <= '0';
-        O_DATA         <= x"00";        -- default
-        if (cs = '1') and (I_RW_L = '1') then
-            case I_RS is
-                --when x"0" => O_DATA <= r_irb; r_irb_hs <= '1';
-                -- fix from Mark McDougall, untested
-                when x"0"   => O_DATA <= (r_irb and not r_ddrb) or (r_orb and r_ddrb); r_irb_hs <= '1';
-                             --when x"1" => O_DATA <= r_ira; r_ira_hs <= '1';
-                when x"1"   => O_DATA <= (r_ira and not r_ddra) or (r_ora and r_ddra); r_ira_hs <= '1';
-                when x"2"   => O_DATA <= r_ddrb;
-                when x"3"   => O_DATA <= r_ddra;
-                when x"4"   => O_DATA <= t1c(7 downto 0); t1_r_reset_int <= true;
-                when x"5"   => O_DATA <= t1c(15 downto 8);
-                when x"6"   => O_DATA <= r_t1l_l;
-                when x"7"   => O_DATA <= r_t1l_h;
-                when x"8"   => O_DATA <= t2c(7 downto 0); t2_r_reset_int <= true;
-                when x"9"   => O_DATA <= t2c(15 downto 8);
-                when x"A"   => O_DATA <= r_sr; sr_read_ena <= true;
-                when x"B"   => O_DATA <= r_acr;
-                when x"C"   => O_DATA <= r_pcr;
-                when x"D"   => O_DATA <= r_ifr;
-                when x"E"   => O_DATA <= ('0' & r_ier);
-                when x"F"   => O_DATA <= r_ira;
-                when others => null;
-            end case;
+        wait until rising_edge(CLK);
+
+        if ENA_4 = '1' then
+            t1_r_reset_int <= false;
+            t2_r_reset_int <= false;
+            sr_read_ena    <= false;
+            r_irb_hs       <= '0';
+            r_ira_hs       <= '0';
+
+            if (cs = '1') and (I_RW_L = '1') then
+                case I_RS is
+                    --when x"0" => O_DATA <= r_irb; r_irb_hs <= '1';
+                    -- fix from Mark McDougall, untested
+                    when x"0"   => O_DATA <= (r_irb and not r_ddrb) or (r_orb and r_ddrb); r_irb_hs <= '1';
+                    when x"1"   => O_DATA <= r_ira; r_ira_hs <= '1';
+                    when x"2"   => O_DATA <= r_ddrb;
+                    when x"3"   => O_DATA <= r_ddra;
+                    when x"4"   => O_DATA <= t1c(7 downto 0); t1_r_reset_int <= true;
+                    when x"5"   => O_DATA <= t1c(15 downto 8);
+                    when x"6"   => O_DATA <= r_t1l_l;
+                    when x"7"   => O_DATA <= r_t1l_h;
+                    when x"8"   => O_DATA <= t2c(7 downto 0); t2_r_reset_int <= true;
+                    when x"9"   => O_DATA <= t2c(15 downto 8);
+                    when x"A"   => O_DATA <= r_sr; sr_read_ena <= true;
+                    when x"B"   => O_DATA <= r_acr;
+                    when x"C"   => O_DATA <= r_pcr;
+                    when x"D"   => O_DATA <= r_ifr;
+                    when x"E"   => O_DATA <= ('0' & r_ier);
+                    when x"F"   => O_DATA <= r_ira;
+                    when others => null;
+                end case;
+            end if;
         end if;
 
     end process;
@@ -594,17 +597,14 @@ begin
     --
     -- Timer 1
     --
-    p_timer1_done : process
+    p_timer1_done : process(t1c, phase, r_acr)
         variable done : boolean;
     begin
-        wait until rising_edge(CLK);
-        if (ENA_4 = '1') then
-            done     := (t1c = x"0000");
-            t1c_done <= done and (phase = "11");
-            if (phase = "11") then
-                t1_reload_counter <= done and (r_acr(6) = '1');
-            end if;
-        end if;
+        done              := (t1c = x"0000");
+        t1c_done          <= done and (phase = "11");
+        --if (phase = "11") then
+        t1_reload_counter <= done and (r_acr(6) = '1');
+        --end if;
     end process;
 
     p_timer1 : process
@@ -615,7 +615,7 @@ begin
                 t1c(7 downto 0)  <= r_t1l_l;
                 t1c(15 downto 8) <= r_t1l_h;
             elsif (phase = "11") then
-                t1c <= std_logic_vector(unsigned(t1c) - 1);
+                t1c <= t1c - "1"; 
             end if;
 
             if t1_load_counter or t1_reload_counter then
@@ -623,12 +623,15 @@ begin
             elsif t1c_done then
                 t1c_active <= false;
             end if;
+            if RESET_L = '0' then
+                t1c_active <= false;
+            end if;
 
             t1_toggle <= '0';
             if t1c_active and t1c_done then
                 t1_toggle <= '1';
                 t1_irq    <= '1';
-            elsif t1_w_reset_int or t1_r_reset_int or (clear_irq(6) = '1') then
+            elsif RESET_L = '0' or t1_w_reset_int or t1_r_reset_int or (clear_irq(6) = '1') then
                 t1_irq <= '0';
             end if;
         end if;
@@ -647,17 +650,14 @@ begin
         end if;
     end process;
 
-    p_timer2_done : process
+    p_timer2_done : process(t2c, phase)
         variable done : boolean;
     begin
-        wait until rising_edge(CLK);
-        if (ENA_4 = '1') then
-            done     := (t2c = x"0000");
-            t2c_done <= done and (phase = "11");
-            if (phase = "11") then
-                t2_reload_counter <= done;
-            end if;
-        end if;
+        done              := (t2c = x"0000");
+        t2c_done          <= done and (phase = "11");
+        --if (phase = "11") then
+        t2_reload_counter <= done;
+        --end if;
     end process;
 
     p_timer2 : process
@@ -679,7 +679,7 @@ begin
                 t2c(15 downto 8) <= r_t2l_h;
             else
                 if (phase = "11") and ena then  -- or count mode
-                    t2c <= std_logic_vector(unsigned(t2c) - 1);
+                    t2c <= t2c - "1"; 
                 end if;
             end if;
 
@@ -690,11 +690,13 @@ begin
             elsif t2c_done then
                 t2c_active <= false;
             end if;
-
+            if RESET_L = '0' then
+                t2c_active <= false;
+            end if;
 
             if t2c_active and t2c_done then
                 t2_irq <= '1';
-            elsif t2_w_reset_int or t2_r_reset_int or (clear_irq(5) = '1') then
+            elsif RESET_L = '0' or t2_w_reset_int or t2_r_reset_int or (clear_irq(5) = '1') then
                 t2_irq <= '0';
             end if;
         end if;
@@ -731,31 +733,30 @@ begin
                 free_run := '0';
 
                 case r_acr(4 downto 2) is
-                    when "000"  => ena := '0';
+                    when "000"  => ena := '0'; cb1_ip := '1';
                     when "001"  => ena := '1'; cb1_op := '1'; use_t2 := '1';
                     when "010"  => ena := '1'; cb1_op := '1';
                     when "011"  => ena := '1'; cb1_ip := '1';
                     when "100"  => ena := '1'; use_t2 := '1'; free_run := '1';
                     when "101"  => ena := '1'; cb1_op := '1'; use_t2 := '1';
-                    when "110"  => ena := '1'; free_run := '1';  -- hack
+                    when "110"  => ena := '1';
                     when "111"  => ena := '1'; cb1_ip := '1';
                     when others => null;
                 end case;
 
                 -- clock select
-                if (ena = '0') then
-                    sr_strobe <= '1';
+                -- SR still runs even in disabled mode (on rising edge of CB1).  It
+                -- just doesn't generate any interrupts.
+                -- Ref BBC micro advanced user guide p409
+                if (cb1_ip = '1') then
+                    sr_strobe <= I_CB1;
                 else
-                    if (cb1_ip = '1') then
-                        sr_strobe <= I_CB1;
+                    if (sr_cnt(3) = '0') and (free_run = '0') then
+                        sr_strobe <= '1';
                     else
-                        if (sr_cnt(3) = '0') and (free_run = '0') then
-                            sr_strobe <= '1';
-                        else
-                            if ((use_t2 = '1') and t2_sr_ena) or
-                                ((use_t2 = '0') and (phase = "00")) then
-                                sr_strobe <= not sr_strobe;
-                            end if;
+                        if ((use_t2 = '1') and t2_sr_ena) or
+                            ((use_t2 = '0') and (phase = "00")) then
+                            sr_strobe <= not sr_strobe;
                         end if;
                     end if;
                 end if;
@@ -763,15 +764,12 @@ begin
                 -- latch on rising edge, shift on falling edge
                 if sr_write_ena then
                     r_sr <= load_data;
-                elsif (ena = '1') then  -- use shift reg
-
+                else
                     if (dir_out = '0') then
                         -- input
                         if (sr_cnt(3) = '1') or (cb1_ip = '1') then
                             if sr_strobe_rising then
-                                r_sr(0) <= I_CB2;
-                            elsif sr_strobe_falling then
-                                r_sr(7 downto 1) <= r_sr(6 downto 0);
+                                r_sr <= r_sr(6 downto 0) & I_CB2;
                             end if;
                         end if;
                         sr_out <= '1';
@@ -795,7 +793,7 @@ begin
                     -- some documentation says sr bit in IFR must be set as well ?
                     sr_cnt <= "1000";
                 elsif sr_count_ena and (sr_cnt(3) = '1') then
-                    sr_cnt <= std_logic_vector(unsigned(sr_cnt) + 1);
+                    sr_cnt <= sr_cnt + "1";
                 end if;
 
                 if (phase = "00") then
