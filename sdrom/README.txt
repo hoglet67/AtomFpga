@@ -52,3 +52,15 @@ Version: SDDOS V2.3E
 Fixed another initialization bug that only affected AtomFPGA
 
 See http://www.stardot.org.uk/forums/viewtopic.php?f=44&t=6313&start=90#p73525
+
+2.3d (Dave)
+
+Version: SDDOS V2.3E
+
+Fixed a bug that caused all drives to be seen as not initialized if a disk number greater
+than 326 was accessed.
+(This affected Atom Software Archive as this uses 1016-1022 to hold menu chapters)
+
+See http://www.stardot.org.uk/forums/viewtopic.php?f=44&t=8154
+
+

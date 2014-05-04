@@ -1844,7 +1844,7 @@ ddisks1         LDA drivenr                    ; Print drivenr
                 JMP ddisks3
 
 ddisks2         JSR prttxt
-                .db '    -'                    ; Print '-' = NODISK
+                .db '   -'                     ; Print '-' = NODISK
                 NOP
                 JSR newline
        
@@ -2419,6 +2419,7 @@ calc_stat1      STY sector+1
                 LDA #0                          ; Reset Pointer
                 STA pointer
                 STA pointer+1
+                STA sector+2                    ; DMB 2/5/14 - Clear MS byte
 
                 LDX #4                          ; Multiply with 16
 calc_stat2      LSR sector+1
