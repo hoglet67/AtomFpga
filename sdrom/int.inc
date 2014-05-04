@@ -1268,6 +1268,7 @@ exec_file1      LDA cur_drive          ; Save drive + qual
                 STA qual
                 LDA #0
                 STA cur_drive
+		sta $9e
 
                 JSR load1              ; Load file
 
