@@ -1,5 +1,5 @@
 
-              .org $A000
+              .org $E000
 ;              .org $A000-22
 
 ;****************************************
@@ -17,8 +17,8 @@ start_asm
 
 end_asm
 
-.IFTRUE end_asm<$B000
-             .org $AFFF
+.IFTRUE end_asm<$F000
+             .org $EFFF
              RTS
 .ENDIF
 eind_asm

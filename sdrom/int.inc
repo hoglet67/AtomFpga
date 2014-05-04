@@ -4,6 +4,7 @@
 ; v02.00 !!!!!!!!!!! FINAL VERSION FOR SDROM v2 !!!!!!!!!!!!!!!!!!
 ; v02.10 !!!!!!!!!!! FINAL VERSION FOR SDROM v2.1 !!!!!!!!!!!!!!!!
 ; v02.20 !!!!!!!!!!! FINAL VERSION FOR SDROM v2.2 !!!!!!!!!!!!!!!! 
+; v02.30 !!!!!!!!!!! #Exxx VERSION FOR SDROM v2.3 !!!!!!!!!!!!!!!! 
 ;=================================================================
 
 ;=================================================================
@@ -45,6 +46,7 @@ catbuf          equ $2000
 sectbuf         equ $2300
 
 next_param      equ $C231              ; OS calls
+no_com_found    equ $C546
 no_com          equ $C558
 prtdec          equ $C589
 read_param      equ $C8BC
@@ -62,47 +64,85 @@ wait_key        equ $FE94
 prtchr          equ $FFF4
 newline         equ $FFED
 
+FKIDX		equ $3CA
+
 ;=================================================================
-; ROM IDENTIFIER
+; BOOT ROUTINE
 ;=================================================================
 
-romid          .db $40,$BF
+   ; test ctrl - if pressed, don't initialise
+   ;
+   bit $b001
+   bvs initialise
+
+   ; don't initialise the firmware
+   ; the E000 build 
+   jmp   $c2b2             ; set #2900 text space and enter command handler
+
+initialise:
+   tya
+   pha
+   txa
+   pha
+
+   ldx   #0
+   stx   FKIDX            ; fake key index for OSRDCH patch, just piggybacking
+
+   lda   #43              ;'+'
+   sta   $800b
+
+shorttitle:
+   lda   version,x
+   and   #$bf
+   sta   $800d,x
+   inx
+   cmp   #$20
+   bne   shorttitle
+
+   jsr   sddos
+
+   pla
+   tax
+   pla
+   tay
+
+   jmp   $c2b2             ; set #2900 text space and enter command handler
 
 ;=================================================================
 ; COMMAND INTERPRETER
 ;=================================================================
 
-comint          LDX #$FF               ; Set up pointers
-comint1         LDY $5E
-                DEY
-comint2         INX
-                INY
-
-comint3         LDA com_tab,X          ; Lookup command
-                BMI comint5
-                CMP ($05),Y
-                BEQ comint2
-comint4         INX
-                LDA com_tab-1,X
-                BPL comint4
-                LDA  ($05),Y
-                CMP #'.'
-                BNE comint1
-                INY
-                DEX
-                BCS comint3
-
-comint5         STY $3                 ; Store addresspointer
-                STA $53
-                LDA com_tab+1,X
-                STA $52
-                LDX #0
-                STX $4
-                JSR comint6            ; Execute command
-                LDX #0
-                STX $4
-                JMP no_com
-
+;comint          LDX #$FF               ; Set up pointers
+;comint1         LDY $5E
+;                DEY
+;comint2         INX
+;                INY
+;
+;comint3         LDA com_tab,X          ; Lookup command
+;                BMI comint5
+;                CMP ($05),Y
+;                BEQ comint2
+;comint4         INX
+;                LDA com_tab-1,X
+;                BPL comint4
+;                LDA  ($05),Y
+;                CMP #'.'
+;                BNE comint1
+;                INY
+;                DEX
+;                BCS comint3
+;
+;comint5         STY $3                 ; Store addresspointer
+;                STA $53
+;                LDA com_tab+1,X
+;                STA $52
+;                LDX #0
+;                STX $4
+;                JSR comint6            ; Execute command
+;                LDX #0
+;                STX $4
+;                JMP no_com
+;
 comint6         JMP ($0052)
 
 ;=================================================================
@@ -171,7 +211,7 @@ star_com5       STY $9A
 
 com_tab         .db 'SDDOS'
                 .db >sddos,<sddos
-                .db >no_com,<no_com    ; End of command table
+                .db >no_com_found,<no_com_found    ; End of command table
 
 ; *DOS commands
                 .db 'CAT'
@@ -238,7 +278,6 @@ sddos_tab       .db 'COS'
                 .db >dhelp,<dhelp
 
                 .db >exec_file,<exec_file ; Check for file
-;                .db >no_com,<no_com    ; End of *command table
 
 ;=================================================================
 ; DOS COMMANDS
@@ -718,9 +757,11 @@ nomon           LDX #$FF               ; Monitorflag=false
 ;  Zeropage usage: -
 ;-----------------------------------------------------------------
 
-run             JSR read_filename      ; Copy filename into $140
+run:            JSR load
+                LDY $3
+;                JSR read_filename      ; Copy filename into $140
                 JSR copy_parm          ; Copy param to $100
-                JSR load1              ; Load file
+;                JSR load1              ; Load file, no loadaddress given
                 JMP ($009E)            ; Jump to executionaddress
 
 ;-----------------------------------------------------------------
@@ -2086,7 +2127,8 @@ dhelp
            JSR chk_end_command
                 JSR newline
                 JSR prttxt                      ; Print header
-                .db 'SDDOS V2.2(C)KC'
+version
+                .db 'SDDOS V2.3E (C)KC'
                 NOP
                 JSR newline
                 JSR newline
