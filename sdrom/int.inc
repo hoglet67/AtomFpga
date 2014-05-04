@@ -64,6 +64,7 @@ wait_key        equ $FE94
 prtchr          equ $FFF4
 newline         equ $FFED
 
+RDCVEC          equ $20a
 FKIDX		equ $3CA
 
 ;=================================================================
@@ -101,12 +102,65 @@ shorttitle:
 
    jsr   sddos
 
+   bit $b001
+   bmi unpatched
+
+patchosrdch:		; Shift key pressed, start *MENU
+   lda   #<osrdchcode
+   sta   RDCVEC
+   lda   #>osrdchcode
+   sta   RDCVEC+1
+
+unpatched:
    pla
    tax
    pla
    tay
 
    jmp   $c2b2             ; set #2900 text space and enter command handler
+
+; patched os input function
+;
+; streams fake keypresses to the system
+; re-registers the bios' function when
+; a> fake keys have all been sent or
+; b> when no shift-key is detected
+;
+osrdchcode:
+   php
+   cld
+   stx   $e4
+   sty   $e5
+	
+   ldx   FKIDX
+   lda   fakekeys,x
+   cmp	#$0d
+   beq   unpatch
+
+   inx
+   stx   FKIDX
+
+   ldx   $e4
+   ldy   $e5
+   plp
+   rts
+
+unpatch:
+   ; restore OSRDCH, continue on to read a char
+
+osrdchcode_unhook:
+   lda   #$94
+   sta   RDCVEC
+   lda   #$fe
+   sta   RDCVEC+1
+   
+   lda 	#$0d
+   pha
+   jmp 	$fe5c
+
+fakekeys:
+   .byte "*MENU"
+   .byte $0d,0
 
 ;=================================================================
 ; COMMAND INTERPRETER
@@ -149,7 +203,7 @@ comint6         JMP ($0052)
 ; STAR-COMMAND INTERPRETER
 ;=================================================================
 
-star_com        LDX #8                 ; Set up pointers
+star_com        LDX #$FF                ; Set up pointers
                 CLD
 star_com1       LDY #0
                 JSR skip_space
@@ -209,9 +263,10 @@ star_com5       STY $9A
 ; COMMAND TABLE
 ;=================================================================
 
-com_tab         .db 'SDDOS'
-                .db >sddos,<sddos
-                .db >no_com_found,<no_com_found    ; End of command table
+com_tab
+;                .db 'SDDOS'
+;                .db >sddos,<sddos
+;                .db >no_com_found,<no_com_found    ; End of command table
 
 ; *DOS commands
                 .db 'CAT'
@@ -248,10 +303,11 @@ com_tab         .db 'SDDOS'
                 .db >use,<use
 
 ; *SDDOS commands
-sddos_tab       .db 'COS'
-                .db >cos,<cos
-                .db 'DOS'
-                .db >dos,<dos
+sddos_tab
+;                .db 'COS'
+;                .db >cos,<cos
+;                .db 'DOS'
+;                .db >dos,<dos
                 .db 'DIN'
                 .db >din,<din
                 .db 'DCAT'
@@ -1242,7 +1298,7 @@ copy_parm1      LDA $100,Y
                 STA $100,X
                 INX
                 INY
-                CMP #0D                ; Copy until #0D
+                CMP #$0D                ; Copy until #0D
                 BNE copy_parm1
                 RTS
 
@@ -1582,27 +1638,27 @@ vectors         .db <LODVEC,>LODVEC,<SAVVEC,>SAVVEC
 ;
 ;   Init Cassette Operating System
 ;-----------------------------------------------------------------
-
-cos             JSR chk_end_command
-                LDX #$F
-cos1            LDA $FFA2,X
-                STA $20C,X
-                DEX
-                BPL cos1
-                LDA $FF9C
-                STA $206
-                LDA $FF9D
-                STA $207
-                RTS
+;
+;cos             JSR chk_end_command
+;                LDX #$F
+;cos1            LDA $FFA2,X
+;                STA $20C,X
+;                DEX
+;                BPL cos1
+;                LDA $FF9C
+;                STA $206
+;                LDA $FF9D
+;                STA $207
+;                RTS
 
 ;-----------------------------------------------------------------
 ; DOS
 ;
 ;   Init Disk Operating System
 ;-----------------------------------------------------------------
-
-dos             JSR chk_end_command
-                JMP dos_init
+;
+;dos             JSR chk_end_command
+;                JMP dos_init
 
 ;-----------------------------------------------------------------
 ; DIN <drv>,<dno>
@@ -2128,7 +2184,7 @@ dhelp
                 JSR newline
                 JSR prttxt                      ; Print header
 version
-                .db 'SDDOS V2.3E (C)KC'
+                .db 'SDDOS V2.3E'
                 NOP
                 JSR newline
                 JSR newline
