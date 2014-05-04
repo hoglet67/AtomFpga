@@ -2417,9 +2417,9 @@ calc_statsector INX                             ; Increment disknr
 calc_stat1      STY sector+1
 
                 LDA #0                          ; Reset Pointer
+                STA sector+2                    ; DMB 2/5/14 - Clear MS byte
                 STA pointer
                 STA pointer+1
-                STA sector+2                    ; DMB 2/5/14 - Clear MS byte
 
                 LDX #4                          ; Multiply with 16
 calc_stat2      LSR sector+1
