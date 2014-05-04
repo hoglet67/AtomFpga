@@ -307,7 +307,8 @@ xb_xferbit:
 ;  fails with ERROR, succeeds quietly
 ;
 init_card:
-           ldx 4
+           ldx #1
+           stx 4
            lda #0
            sta $16,x
            sta $25,x

@@ -7,12 +7,16 @@ Version: SDDOS V2.2(C)KC
 
 Original version, 18th March 2010
 
+See http://www.stardot.org.uk/forums/viewtopic.php?f=44&t=6313&start=30#p73029
+
 2.3 (Kees)
 
 Version: SDDOS V2.3E (C)KC
 
 Addressed at #E000 and to boot like AtomMMC does, using patched Kernel
 (earlier versions were #A000 Utility ROMS)
+
+See http://www.stardot.org.uk/forums/viewtopic.php?f=44&t=6313&start=60#p73211
 
 2.3a (Kees)
 
@@ -29,6 +33,8 @@ Implemented Shift-BREAK
 
 Fixed a bug in *RUN and *<filename> which could cause a hang
 (copy_params, $0D instead of #$0D beging checked as terminator)
+
+See http://www.stardot.org.uk/forums/viewtopic.php?f=44&t=6313&start=60#p73326 
  
 2.3b (Dave)
 
@@ -38,3 +44,11 @@ Fixed a bug with *MENU not working after a cold boot
 (due to $9E not being initialized, only affected AtomFPGA because RAM as a different init value)
 
 See http://www.stardot.org.uk/forums/viewtopic.php?f=44&t=6313&start=60#p73347
+
+2.3c (Dave)
+
+Version: SDDOS V2.3E
+
+Fixed another initialization bug that only affected AtomFPGA
+
+See http://www.stardot.org.uk/forums/viewtopic.php?f=44&t=6313&start=90#p73525
