@@ -18,7 +18,6 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
-
 entity Atomic_core is
     port (clk_12M58 : in    std_logic;
           clk_16M00 : in    std_logic;
@@ -225,6 +224,22 @@ architecture BEHAVIORAL of Atomic_core is
             );
     end component;
 
+    component SPI_Port
+        port (
+            nRST    : in  std_logic;
+            clk     : in  std_logic;
+            enable  : in  std_logic;
+            nwe     : in  std_logic;
+            address : in  std_logic_vector (2 downto 0);
+            datain  : in  std_logic_vector (7 downto 0);
+            dataout : out std_logic_vector (7 downto 0);
+            MISO    : in  std_logic;
+            MOSI    : out std_logic;
+            NSS     : out std_logic;
+            SPICLK  : out std_logic
+            );
+    end component;
+
 -------------------------------------------------
 -- divide external 32 MHz sid clock by 32
 -------------------------------------------------
@@ -278,7 +293,6 @@ architecture BEHAVIORAL of Atomic_core is
     signal mc6847_enable     : std_logic;
     signal mc6522_enable     : std_logic;
     signal i8255_enable      : std_logic;
-    signal econet_enable     : std_logic;
     signal ram_0x0000_enable : std_logic;
     signal ram_0x8000_enable : std_logic;
 ----------------------------------------------------
@@ -293,13 +307,6 @@ architecture BEHAVIORAL of Atomic_core is
 ----------------------------------------------------
     signal ram_0x0000_data   : std_logic_vector(7 downto 0);
     signal ram_0x8000_data   : std_logic_vector(7 downto 0);
-----------------------------------------------------
---
-----------------------------------------------------
-    signal mc6522_ss_pb5_o   : std_logic;
-    signal mc6522_clk_pb6_o  : std_logic;
-    signal mc6522_mosi_pb7_o : std_logic;
-    signal mc6522_miso_pb0_i : std_logic_vector(7 downto 0);
 ----------------------------------------------------
 --
 ----------------------------------------------------
@@ -338,6 +345,9 @@ architecture BEHAVIORAL of Atomic_core is
     signal sid_enable : std_logic;
     signal sid_data   : std_logic_vector (7 downto 0);
     signal sid_audio  : std_logic;
+
+    signal spi_enable : std_logic;
+    signal spi_data   : std_logic_vector (7 downto 0);
  
 --------------------------------------------------------------------
 --                   here it begin :)
@@ -486,7 +496,7 @@ begin
         O_CB1   => mc6522_cb1,
         I_CB2   => mc6522_cb2,
         O_CB2   => mc6522_cb2,
-        I_PB    => mc6522_miso_pb0_i(7 downto 0),
+        I_PB    => mc6522_portb(7 downto 0),
         O_PB    => mc6522_portb(7 downto 0),
         RESET_L => ERSTn,                --RSTn,
         I_P2_H  => cpu_phase,
@@ -523,17 +533,24 @@ begin
             audio_data => open 
         );
 
+    Inst_spi: SPI_PORT
+        port map (
+            nRST    => RSTn,
+            clk     => clk_16M00,
+            enable  => spi_enable,
+            nwe     => cpu_R_W_n,
+            address => cpu_addr(2 downto 0),
+            datain  => cpu_dout(7 downto 0),
+            dataout => spi_data,
+            MISO    => SDMISO,
+            MOSI    => SDMOSI,
+            NSS     => SDSS,
+            SPICLK  => SDCLK
+        );
 
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------
-    mc6522_ss_pb5_o   <= mc6522_portb(5);
-    mc6522_clk_pb6_o  <= mc6522_portb(6);
-    mc6522_mosi_pb7_o <= mc6522_portb(7);
-    mc6522_miso_pb0_i <= mc6522_portb(7 downto 1) & SDMISO;
-    SDSS              <= mc6522_ss_pb5_o;
-    SDCLK             <= mc6522_clk_pb6_o;
-    SDMOSI            <= mc6522_mosi_pb7_o;
 
     RSTn          <= ERSTn and key_break;
     mc6522_ca1    <= '1';
@@ -574,8 +591,8 @@ begin
         i8255_enable      <= '0';
         ram_0x0000_enable <= '0';
         ram_0x8000_enable <= '0';
-        econet_enable     <= '0';    
         sid_enable        <= '0'; 
+        spi_enable        <= '0'; 
 
         case cpu_addr(15 downto 12) is
             when x"0" => ram_0x0000_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
@@ -595,7 +612,7 @@ begin
                 elsif cpu_addr(11 downto 8) = "1000" then  -- 0xb800 6522 VIA (optional)
                     mc6522_enable <= '1';
                 elsif cpu_addr(11 downto 8) = "0100" then
-                    econet_enable <= '1';  -- 0xb400 econet?? (optional)
+                    spi_enable <= '1';  -- 0xb400 SPI
                 elsif cpu_addr(11 downto 5) = "1101110" then
                     sid_enable <= '1';  -- 0xbdc0-0xbddf SID
                 end if;
@@ -619,7 +636,7 @@ begin
         basic_data      when basic_rom_enable = '1'  else
         float_data      when float_rom_enable = '1'  else
         kernal_data     when kernal_rom_enable = '1' else
-        x"00"           when econet_enable = '1'     else
+        spi_data        when spi_enable = '1'        else
         x"f1";                          -- un-decoded locations
         
     RamWE           <= not_cpu_R_W_n;
