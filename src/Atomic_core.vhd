@@ -533,7 +533,7 @@ begin
             audio_data => open 
         );
 
-    Inst_spi: SPI_PORT
+    Inst_spi: SPI_Port
         port map (
             nRST    => RSTn,
             clk     => clk_16M00,
