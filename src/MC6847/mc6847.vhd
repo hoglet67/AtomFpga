@@ -117,6 +117,7 @@ architecture SYN of mc6847 is
     signal active_h_start : std_logic := '0';
     signal an_s_r         : std_logic;
     signal inv_r          : std_logic;
+    signal intn_ext_r     : std_logic;
     signal dd_r           : std_logic_vector(7 downto 0);
     signal pixel_char_d_o : std_logic_vector(7 downto 0);
     signal cvbs_char_d_o  : std_logic_vector(7 downto 0);  -- CVBS char_d_o out
@@ -449,6 +450,7 @@ begin
                     -- handle alpha-semi latching
                     an_s_r <= an_s_s;
                     inv_r  <= inv_s;
+                    intn_ext_r  <= intn_ext_s;
                     if an_s_s = '0' then
                         dd_r <= char_d_o;                  -- alpha mode
                     else
@@ -539,7 +541,7 @@ begin
                 luma := dd_r(dd_r'left);
                 if an_s_r = '0' then
                     -- alphanumeric
-                    if intn_ext_s = '0' then
+                    if intn_ext_r = '0' then
                         -- internal rom
                         chroma := (others => css_s);
                         if inv_r = '1' then
