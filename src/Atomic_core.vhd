@@ -19,28 +19,37 @@ use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 entity Atomic_core is
+    generic (
+       CImplAtomMMC : boolean;
+       CImplSDDOS : boolean;
+       CImplSID : boolean
+    );
     port (clk_12M58 : in    std_logic;
-          clk_16M00 : in    std_logic;
-          clk_32M00 : in    std_logic;
-          ps2_clk   : in    std_logic;
-          ps2_data  : in    std_logic;
-          ERSTn     : in    std_logic;
-          red       : out   std_logic_vector (2 downto 0);
-          green     : out   std_logic_vector (2 downto 0);
-          blue      : out   std_logic_vector (2 downto 0);
-          vsync     : out   std_logic;
-          hsync     : out   std_logic;
-          RamCE     : out   std_logic;
-          RamWE     : out   std_logic;
-          RamA      : out   std_logic_vector (14 downto 0);
-          RamDin    : out   std_logic_vector (7 downto 0);
-          RamDout   : in    std_logic_vector (7 downto 0);
-          audiol    : out   std_logic;
-          audioR    : out   std_logic;
-          SDMISO    : in    std_logic;
-          SDSS      : out   std_logic;
-          SDCLK     : out   std_logic;
-          SDMOSI    : out   std_logic);
+        clk_16M00 : in    std_logic;
+        clk_32M00 : in    std_logic;
+        ps2_clk   : in    std_logic;
+        ps2_data  : in    std_logic;
+        ERSTn     : in    std_logic;
+        red       : out   std_logic_vector (2 downto 0);
+        green     : out   std_logic_vector (2 downto 0);
+        blue      : out   std_logic_vector (2 downto 0);
+        vsync     : out   std_logic;
+        hsync     : out   std_logic;
+        RamCE     : out   std_logic;
+        RomCE     : out   std_logic;
+        ExternWE  : out   std_logic;
+        ExternA   : out   std_logic_vector (16 downto 0);
+        ExternDin : out   std_logic_vector (7 downto 0);
+        ExternDout: in    std_logic_vector (7 downto 0);
+        audiol    : out   std_logic;
+        audioR    : out   std_logic;
+        SDMISO    : in    std_logic;
+        SDSS      : out   std_logic;
+        SDCLK     : out   std_logic;
+        SDMOSI    : out   std_logic;
+        RxD       : in    std_logic;
+        TxD       : out   std_logic
+        );
 end Atomic_core;
 
 architecture BEHAVIORAL of Atomic_core is
@@ -103,35 +112,7 @@ architecture BEHAVIORAL of Atomic_core is
                 artifact_phase : in  std_logic;
                 cvbs           : out std_logic_vector(7 downto 0));
     end component;
-
-    component SDROM is
-        port (
-            CLK  : in  std_logic;
-            ADDR : in  std_logic_vector(11 downto 0);
-            DATA : out std_logic_vector(7 downto 0));
-    end component;
-
-    component atombasic
-        port (
-            CLK  : in  std_logic;
-            ADDR : in  std_logic_vector(11 downto 0);
-            DATA : out std_logic_vector(7 downto 0));
-    end component;
-
-    component atomfloat
-        port (
-            CLK  : in  std_logic;
-            ADDR : in  std_logic_vector(11 downto 0);
-            DATA : out std_logic_vector(7 downto 0));
-    end component;
-
-    component atomkernal
-        port (
-            CLK  : in  std_logic;
-            ADDR : in  std_logic_vector(11 downto 0);
-            DATA : out std_logic_vector(7 downto 0));
-    end component;
-
+    
     component SRAM0x8000
         port (
             clk      : in  std_logic;
@@ -286,27 +267,17 @@ architecture BEHAVIORAL of Atomic_core is
 ----------------------------------------------------
 -- enables
 ----------------------------------------------------
-    signal basic_rom_enable  : std_logic;
-    signal kernal_rom_enable : std_logic;
-    signal float_rom_enable  : std_logic;
-    signal sddos_rom_enable  : std_logic;
     signal mc6847_enable     : std_logic;
     signal mc6522_enable     : std_logic;
     signal i8255_enable      : std_logic;
-    signal ram_0x0000_enable : std_logic;
-    signal ram_0x8000_enable : std_logic;
+    signal extern_rom_enable : std_logic;
+    signal extern_ram_enable : std_logic;
+    signal video_ram_enable  : std_logic;
 ----------------------------------------------------
--- roms
+-- ram/roms
 ----------------------------------------------------
-    signal kernal_data       : std_logic_vector(7 downto 0);
-    signal basic_data        : std_logic_vector(7 downto 0);
-    signal float_data        : std_logic_vector(7 downto 0);
-    signal sddos_data        : std_logic_vector(7 downto 0);
-----------------------------------------------------
--- rams
-----------------------------------------------------
-    signal ram_0x0000_data   : std_logic_vector(7 downto 0);
-    signal ram_0x8000_data   : std_logic_vector(7 downto 0);
+    signal extern_data       : std_logic_vector(7 downto 0);
+    signal video_ram_data    : std_logic_vector(7 downto 0);
 ----------------------------------------------------
 --
 ----------------------------------------------------
@@ -402,47 +373,21 @@ begin
         artifact_set   => '0',
         artifact_phase => '0',
         cvbs           => open);                        
+        
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------
-    rome000 : SDROM port map(
-        CLK  => clk_16M00,
-        ADDR => cpu_addr(11 downto 0),
-        DATA => sddos_data);
----------------------------------------------------------------------
---
----------------------------------------------------------------------
-    romc000 : atombasic port map(
-        CLK  => clk_16M00,
-        ADDR => cpu_addr(11 downto 0),
-        DATA => basic_data);
----------------------------------------------------------------------
---
----------------------------------------------------------------------
-    romd000 : atomfloat port map(
-        CLK  => clk_16M00,
-        ADDR => cpu_addr(11 downto 0),
-        DATA => float_data);
----------------------------------------------------------------------
---
----------------------------------------------------------------------
-    romf000 : atomkernal port map(
-        CLK  => clk_16M00,
-        ADDR => cpu_addr(11 downto 0),
-        DATA => kernal_data);
----------------------------------------------------------------------
---
----------------------------------------------------------------------                   
+
     ram8000 : SRAM0x8000 port map(
         clk      => clk_16M00,
         rd_vid   => '1',
         addr_vid => video_address(12 downto 0),
         Q_vid    => vdg_dd,
         we_uP    => not_cpu_R_W_n,
-        ce       => ram_0x8000_enable,
+        ce       => video_ram_enable,
         addr_uP  => cpu_addr(12 downto 0),
         D_uP     => cpu_dout(7 downto 0),
-        Q_uP     => ram_0x8000_data);
+        Q_uP     => video_ram_data);
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------                   
@@ -516,37 +461,41 @@ begin
     -- clk_1M00 is derived by dividing clk_32M00 down by 32
     clk_1M00 <= div32(4);
 
-    Inst_sid6581: sid6581
-        port map (
-            clk_1MHz => clk_1M00,
-            clk32 => clk_32M00,
-            clk_DAC => clk_32M00,
-            reset => not RSTn,
-            cs => sid_enable,
-            we => not_cpu_R_W_n,
-            addr => cpu_addr(4 downto 0),
-            di => cpu_dout(7 downto 0),
-            do => sid_data,
-            pot_x => '0',
-            pot_y => '0',
-            audio_out => sid_audio,
-            audio_data => open 
-        );
+    Inst_sid6581: if CImplSID generate
+        Inst_sid6581_comp : component sid6581
+            port map (
+                clk_1MHz => clk_1M00,
+                clk32 => clk_32M00,
+                clk_DAC => clk_32M00,
+                reset => not RSTn,
+                cs => sid_enable,
+                we => not_cpu_R_W_n,
+                addr => cpu_addr(4 downto 0),
+                di => cpu_dout(7 downto 0),
+                do => sid_data,
+                pot_x => '0',
+                pot_y => '0',
+                audio_out => sid_audio,
+                audio_data => open 
+            );
+     end generate;
 
-    Inst_spi: SPI_Port
-        port map (
-            nRST    => RSTn,
-            clk     => clk_16M00,
-            enable  => spi_enable,
-            nwe     => cpu_R_W_n,
-            address => cpu_addr(2 downto 0),
-            datain  => cpu_dout(7 downto 0),
-            dataout => spi_data,
-            MISO    => SDMISO,
-            MOSI    => SDMOSI,
-            NSS     => SDSS,
-            SPICLK  => SDCLK
-        );
+    Inst_spi: if (CImplSDDOS) generate
+        Inst_spi_comp : component SPI_Port
+            port map (
+                nRST    => RSTn,
+                clk     => clk_16M00,
+                enable  => spi_enable,
+                nwe     => cpu_R_W_n,
+                address => cpu_addr(2 downto 0),
+                datain  => cpu_dout(7 downto 0),
+                dataout => spi_data,
+                MISO    => SDMISO,
+                MOSI    => SDMOSI,
+                NSS     => SDSS,
+                SPICLK  => SDCLK
+            );
+    end generate;
 
 ---------------------------------------------------------------------
 --
@@ -582,29 +531,26 @@ begin
     process(cpu_addr)
     begin
         -- All regions normally de-selected
-        sddos_rom_enable  <= '0';
-        basic_rom_enable  <= '0';
-        kernal_rom_enable <= '0';
-        float_rom_enable  <= '0';
         mc6847_enable     <= '0';
         mc6522_enable     <= '0';
         i8255_enable      <= '0';
-        ram_0x0000_enable <= '0';
-        ram_0x8000_enable <= '0';
+        extern_ram_enable <= '0';
+        extern_rom_enable <= '0';
+        video_ram_enable  <= '0';
         sid_enable        <= '0'; 
         spi_enable        <= '0'; 
 
         case cpu_addr(15 downto 12) is
-            when x"0" => ram_0x0000_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
-            when x"1" => ram_0x0000_enable <= '1';
-            when x"2" => ram_0x0000_enable <= '1';
-            when x"3" => ram_0x0000_enable <= '1';
-            when x"4" => ram_0x0000_enable <= '1';
-            when x"5" => ram_0x0000_enable <= '1';
-            when x"6" => ram_0x0000_enable <= '1';
-            when x"7" => ram_0x0000_enable <= '1';
-            when x"8" => ram_0x8000_enable <= '1';  -- 0x8000 -- 0x9fff is RAM
-            when x"9" => ram_0x8000_enable <= '1';
+            when x"0" => extern_ram_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
+            when x"1" => extern_ram_enable <= '1';
+            when x"2" => extern_ram_enable <= '1';
+            when x"3" => extern_ram_enable <= '1';
+            when x"4" => extern_ram_enable <= '1';
+            when x"5" => extern_ram_enable <= '1';
+            when x"6" => extern_ram_enable <= '1';
+            when x"7" => extern_ram_enable <= '1';
+            when x"8" => video_ram_enable  <= '1';  -- 0x8000 -- 0x9fff is RAM
+            when x"9" => video_ram_enable  <= '1';
             when x"A" =>
             when x"B" =>
                 if cpu_addr(11 downto 8) = "0000" then     -- 0xb000 8255 PIA  
@@ -617,33 +563,31 @@ begin
                     sid_enable <= '1';  -- 0xbdc0-0xbddf SID
                 end if;
                 
-            when x"C"   => basic_rom_enable  <= '1';
-            when x"D"   => float_rom_enable  <= '1';
-            when x"E"   => sddos_rom_enable  <= '1';
-            when x"F"   => kernal_rom_enable <= '1';  -- page 0xfxxx
+            when x"C"   => extern_rom_enable <= '1';
+            when x"D"   => extern_rom_enable <= '1';
+            when x"E"   => extern_rom_enable <= '1';
+            when x"F"   => extern_rom_enable <= '1';
             when others => null;
         end case;
 
     end process;
 
     cpu_din <=
-        ram_0x0000_data when ram_0x0000_enable = '1' else
-        ram_0x8000_data when ram_0x8000_enable = '1' else
-        sddos_data      when sddos_rom_enable = '1'  else
+        extern_data     when extern_ram_enable = '1' else
+        video_ram_data  when video_ram_enable = '1'  else
         i8255_data      when i8255_enable = '1'      else
         mc6522_data     when mc6522_enable = '1'     else
         sid_data        when sid_enable = '1'        else
-        basic_data      when basic_rom_enable = '1'  else
-        float_data      when float_rom_enable = '1'  else
-        kernal_data     when kernal_rom_enable = '1' else
         spi_data        when spi_enable = '1'        else
-        x"f1";                          -- un-decoded locations
+        extern_data     when extern_rom_enable = '1' else
+        x"f1";          -- un-decoded locations
         
-    RamWE           <= not_cpu_R_W_n;
-    RamCE           <= ram_0x0000_enable;			
-    RamA            <= cpu_addr(14 downto 0);
-    RamDin          <= cpu_dout(7 downto 0);
-    ram_0x0000_data <= RamDout;
+    ExternWE        <= not_cpu_R_W_n;
+    RamCE           <= extern_ram_enable;			
+    RomCE           <= extern_rom_enable;			
+    ExternA         <= '0' & cpu_addr(15 downto 0);
+    ExternDin       <= cpu_dout(7 downto 0);
+    extern_data     <= ExternDout;
     
 --------------------------------------------------------
 -- clock enable generator

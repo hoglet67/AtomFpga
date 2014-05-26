@@ -70,6 +70,11 @@ architecture behavioral of Atomic_top is
     end component;
     
     component Atomic_core
+        generic  (
+            CImplSID      : boolean;
+            CImplSDDOS    : boolean;
+            CImplAtomMMC  : boolean
+        );
         port (
             clk_12M58 : in  std_logic;
             clk_16M00 : in  std_logic;
@@ -84,15 +89,18 @@ architecture behavioral of Atomic_top is
             vsync     : out std_logic;
             hsync     : out std_logic;
             RamCE     : out std_logic;
-            RamWE     : out std_logic;
-            RamA      : out std_logic_vector (14 downto 0);
-            RamDin    : out std_logic_vector (7 downto 0);
-            RamDout   : in  std_logic_vector (7 downto 0);
+            RomCE     : out std_logic;
+            ExternWE  : out std_logic;
+            ExternA   : out std_logic_vector (16 downto 0);
+            ExternDin : out std_logic_vector (7 downto 0);
+            ExternDout: in  std_logic_vector (7 downto 0);
             audiol    : out std_logic;
             audioR    : out std_logic;
             SDSS      : out std_logic;
             SDCLK     : out std_logic;
-            SDMOSI    : out std_logic
+            SDMOSI    : out std_logic;
+            RxD       : in  std_logic;
+            TxD       : out  std_logic
         );
 	end component;
     
@@ -100,12 +108,11 @@ architecture behavioral of Atomic_top is
     signal clk_16M00 : std_logic;
     signal clk_32M00 : std_logic;
 
-    signal RamCE     : std_logic;
-    signal RamWE     : std_logic;
-    signal RamDin    : std_logic_vector (7 downto 0);
-    signal RamDout   : std_logic_vector (7 downto 0);
-    signal RamDout1  : std_logic_vector (7 downto 0);
-    signal RamDout2  : std_logic_vector (7 downto 0);
+    signal RamCE        : std_logic;
+    signal ExternA      : std_logic_vector (16 downto 0);
+    signal ExternWE     : std_logic;
+    signal ExternDin    : std_logic_vector (7 downto 0);
+    signal ExternDout   : std_logic_vector (7 downto 0);
 
 begin
 
@@ -127,7 +134,13 @@ begin
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
     
-	inst_Atomic_core : Atomic_core port map(
+	inst_Atomic_core : Atomic_core
+    generic map (
+        CImplSID => true,
+        CImplSDDOS => true,
+        CImplAtomMMC => false
+    )
+    port map(
 		clk_12M58 => clk_12M58,
 		clk_16M00 => clk_16M00,
 		clk_32M00 => clk_32M00,
@@ -139,25 +152,27 @@ begin
 		blue => blue,
 		vsync => vsync,
 		hsync => hsync,
-		RAMWE => RAMWE,
+		ExternWE => ExternWE,
 		RAMCE => RAMCE,
-		RamA => RamA (14 downto 0),
-		RamDin => RamDin,
-		RamDout => RamDout,
+		ExternA => ExternA,
+		ExternDin => ExternDin,
+		ExternDout => ExternDout,
 		audiol => audiol,
 		audioR => audioR,
 		SDMISO => SDMISO,
 		SDSS => SDSS,
 		SDCLK => SDCLK,
-		SDMOSI => SDMOSI 
+		SDMOSI => SDMOSI,
+        RxD => '0',
+        TxD => open        
 	);
  
-    CE1       <= not RAMCE;
-    RAMWRn    <= not RAMWE;
-    RAMOEn    <= not RAMCE;
-    RamD      <= RamDin & RamDin when RAMWE = '1' else "ZZZZZZZZZZZZZZZZ";
-    RamDout   <= RamD(7 downto 0);
-    RamA(15)  <= '0';
+    CE1        <= not RAMCE;
+    RAMWRn     <= not ExternWE;
+    RAMOEn     <= not RAMCE;
+    RamD       <= ExternDin & ExternDin when ExternWE = '1' else "ZZZZZZZZZZZZZZZZ";
+    ExternDout <= RamD(7 downto 0);
+    RamA       <= '0' & ExternA(14 downto 0);
         
 end behavioral;
 
