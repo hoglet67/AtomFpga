@@ -6,6 +6,11 @@
 --************************************************************************************************
 
 --************************************************************************************************
+-- Adapted for AtomFPGA
+-- input clock is now 16MHz
+--************************************************************************************************
+
+--************************************************************************************************
 --Adapted for the Papilio FPGA development board. To learn more visit http://papilio.cc
 --Gadget Factory Note: This project is currently configured for the Papilio One board Version 2.03 or greater. It assumes a 32Mhz oscillator and a ucf with a period of 31.25.
 --*************************************************************************************************
@@ -32,9 +37,9 @@ use WORK.spi_slv_sel_comp_pack.all;
 use WORK.MemAccessCtrlPack.all;
 use WORK.MemAccessCompPack.all;
 
-entity Papilio_AVR8 is port(
+entity AVR8 is port(
 	 nrst   : in    std_logic;						--Uncomment this to connect reset to an external pushbutton. Must be defined in ucf.
-	 clk    : in    std_logic;
+	 clk16M : in    std_logic;
 	 porta  : inout std_logic_vector(7 downto 0);
 	 portb  : inout std_logic_vector(7 downto 0);
 	 portc  : inout std_logic_vector(7 downto 0);
@@ -54,26 +59,21 @@ entity Papilio_AVR8 is port(
 
 	);
 
-end Papilio_AVR8;
+end AVR8;
 
-architecture Struct of Papilio_AVR8 is
+architecture Struct of AVR8 is
 
 -- Use these setting to control which peripherals you want to include with your custom AVR8 implementation.
 constant CImplPORTA			            : boolean := TRUE; -- set to false here for portA and portB, or DDRAreg and DDRBreg
-constant CImplPORTB			            : boolean := FALSE;
-constant CImplPORTC							: boolean := TRUE;
-constant CImplPORTD    			         : boolean := TRUE;
-constant CImplPORTE      			      : boolean := TRUE;
-constant CImplPORTF           			: boolean := TRUE;
+constant CImplPORTB			            : boolean := TRUE;
+constant CImplPORTC							: boolean := FALSE;
+constant CImplPORTD    			         : boolean := FALSE;
+constant CImplPORTE      			      : boolean := FALSE;
+constant CImplPORTF           			: boolean := FALSE;
 constant CImplUART      			      : boolean := TRUE;	--AVR8 UART peripheral
 constant CImplSPI            				: boolean := TRUE;   -- adding SPI master
-constant CImplTmrCnt     					: boolean := TRUE;	--AVR8 Timer
-constant CImpldiode_timer    : boolean := FALSE;	--An example User Core, use this template to make your own custom peripherals.
---constant CImpldiode_timer should be set to TRUE, while CImplPORTA and CImplPORTB should be set to FALSE
---alternatively, scroll to Example core9 below and uncomment DDRAreg and DDRBreg statements!
+constant CImplTmrCnt     					: boolean := FALSE;	--AVR8 Timer
 
--- to figure out how to implement custom core, search for core9!
--- key code for the custom core go into diode_timer_COMP module
 
 COMPONENT swap_pins
 PORT(
@@ -118,40 +118,9 @@ component XPM8Kx16 port(
 					  );
 end component;
 
-COMPONENT DCM32to16
-PORT(
-	CLKIN_IN : IN std_logic;          
-	CLKFX_OUT : OUT std_logic;
-	CLKIN_IBUFG_OUT : OUT std_logic;
-	CLK0_OUT : OUT std_logic
-	);
-END COMPONENT;
 
 -- ############################## Define Components for User Cores ##################################################
 
--- Example Core - core9 
-COMPONENT diode_timer
-PORT(
-			-- begin Signals required by AVR8 for this core, do not modify.
-			nReset 		: in  STD_LOGIC;
-			clk 			: in  STD_LOGIC;
-			adr 			: in  STD_LOGIC_VECTOR (15 downto 0);
-			dbus_in 		: in  STD_LOGIC_VECTOR (7 downto 0);
-			dbus_out 	: out  STD_LOGIC_VECTOR (7 downto 0);
-			iore 			: in  STD_LOGIC;
-			iowe 			: in  STD_LOGIC;
-			out_en		: out STD_LOGIC;
-			-- end Signals required by AVR8 for this core, do not modify.
-
-			--Define signals that you want to go in or out of the peripheral. These are usually going to be connected to external pins of the Papilio board.
-			--Two Output Signals
-			output_sig	: out std_logic_vector (1 downto 0);
-			
-			--Two Input Signals
-			input_sig		: in std_logic_vector (1 downto 0);
-			diode_sig		: in std_logic
-	);
-END COMPONENT;
 
 -- ###############################################################################################################
 
@@ -311,8 +280,6 @@ signal mem_ramre        : std_logic;
 -- RAM
 signal ram_ramwe         : std_logic;
 
--- Clock generation/distribution
-signal clk16M             : std_logic; 
 
 -- nrst
 --signal nrst             : std_logic;  		--Comment this to connect reset to an external pushbutton.
@@ -336,16 +303,16 @@ signal OC2_PWM2_LocR		: integer := 3;	--Default Pin location
 
 --signal SPEbit				: std_logic;	--Used to tell if SPI is enabled
 signal mosi_Sig		: std_logic;
-signal mosi_LocR		: integer := 4;	--Default Pin location
+signal mosi_LocR		: integer := 15;	--Default Pin location
 
 signal miso_Sig		: std_logic;
-signal miso_LocR		: integer := 5;	--Default Pin location
+signal miso_LocR		: integer := 12;	--Default Pin location
 
 signal sck_Sig		: std_logic;
-signal sck_LocR		: integer := 6;	--Default Pin location
+signal sck_LocR		: integer := 14;	--Default Pin location
 
 --signal spi_cs_n_Sig		: std_logic;
-signal spi_cs_n_LocR		: integer := 7;	--Default Pin location
+signal spi_cs_n_LocR		: integer := 13;	--Default Pin location
 
 
 -- ############################## Signals connected directly to the I/O registers ################################
@@ -406,8 +373,6 @@ signal spi_slv_sel_n     : std_logic_vector(c_spi_slvs_num-1 downto 0);
 -- ############################## Define Signals for User Cores ##################################################
 -- Example Core - - core9
 --signal core9_input_sig : std_logic_vector(1 downto 0);		--Define a signal for the inputs.
-signal core9_dbusout  : std_logic_vector (7 downto 0);
-signal core9_out_en   : std_logic;
 
 -- ###############################################################################################################
 
@@ -420,50 +385,12 @@ vcc  <= '1';
 
 --nrst <= '1';										--Comment this to connect reset to an external pushbutton.
 
-	Inst_DCM32to16: DCM32to16 PORT MAP(
-		CLKIN_IN => clk,
-		CLKFX_OUT => clk16M,
-		CLKIN_IBUFG_OUT => open,
-		CLK0_OUT => open
-	);
-
 core_inst <= pm_dout;
 
 --Signals to connect peripherals controlled from Generics to the physical ports
 
 
 -- ******************  User Cores - Instantiate User Cores Here **************************
-
--- Example Core - core9 - This is an example of implenting a custom User core.
-Inst_diode_timer:if CImpldiode_timer generate
-diode_timer_COMP:component diode_timer 
-PORT MAP(
-	nReset => nrst,
-	clk => clk16M,
-	adr => core_adr,
-	dbus_in => core_dbusout,
-	dbus_out => core9_dbusout,
-	out_en => core9_out_en,
-	iore => core_iore,
-	iowe => core_iowe,
-	output_sig => porta(1 downto 0), -- this needs to match whatever number of bits we use in the custom core
-	input_sig => portb(1 downto 0),  -- in diode_timer; for full width of 8 it becomes just porta,portb - 
-												-- input_sig(0) is used as ENABLE signal, and input_sig(1) is used to reset counters/tickers
-	diode_sig => portb(3)  -- this is the diode signal, i.e. is equal to 1 when diode signal is on
-);	
-
--- Example Core - core9 connection to the external multiplexer
-io_port_out(10) <= core9_dbusout;
-io_port_out_en(10) <= core9_out_en;
-
---In order to avoid a conflict of the GPIO core and Example core both trying to drive outputs either disable PortA and PortB or uncomment the lines below that set the DDR Registers to make the pins inputs.
---DDRAReg(0)<='0';
---DDRAReg(1)<='0';
---DDRBReg(0)<='0';
---DDRBReg(1)<='0';
--- these DDRBreg and DDRAReg should be uncommented in the case user core is TRUE
-end generate;
-
 
 -- ******************  END User Cores - Instantiate User Cores Here **************************
 
@@ -538,61 +465,62 @@ EXT_MUX:component external_mux port map(
 		  ind_irq_ack		 =>	ind_irq_ack		  -- Individual interrupt acknolege for the peripheral
                                             );
 
+	spi_misoi <= portb(4);
 
-		spi_misoi <= 
-						 porta(0) when miso_LocR = 0 and spi_spe = '1' else
-						 porta(1) when miso_LocR = 1 and spi_spe = '1' else
-						 porta(2) when miso_LocR = 2 and spi_spe = '1' else
-						 porta(3) when miso_LocR = 3 and spi_spe = '1' else
-						 porta(4) when miso_LocR = 4 and spi_spe = '1' else
-						 porta(5) when miso_LocR = 5 and spi_spe = '1' else
-						 porta(6) when miso_LocR = 6 and spi_spe = '1' else	
-						 porta(7) when miso_LocR = 7 and spi_spe = '1' else		
-		
-						 portb(0) when miso_LocR - 8 = 0 and spi_spe = '1' else
-						 portb(1) when miso_LocR - 8 = 1 and spi_spe = '1' else
-						 portb(2) when miso_LocR - 8 = 2 and spi_spe = '1' else
-						 portb(3) when miso_LocR - 8 = 3 and spi_spe = '1' else
-						 portb(4) when miso_LocR - 8 = 4 and spi_spe = '1' else
-						 portb(5) when miso_LocR - 8 = 5 and spi_spe = '1' else
-						 portb(6) when miso_LocR - 8 = 6 and spi_spe = '1' else	
-						 portb(7) when miso_LocR - 8 = 7 and spi_spe = '1' else
-
-						 portc(0) when miso_LocR - 16 = 0 and spi_spe = '1' else
-						 portc(1) when miso_LocR - 16 = 1 and spi_spe = '1' else
-						 portc(2) when miso_LocR - 16 = 2 and spi_spe = '1' else
-						 portc(3) when miso_LocR - 16 = 3 and spi_spe = '1' else
-						 portc(4) when miso_LocR - 16 = 4 and spi_spe = '1' else
-						 portc(5) when miso_LocR - 16 = 5 and spi_spe = '1' else
-						 portc(6) when miso_LocR - 16 = 6 and spi_spe = '1' else	
-						 portc(7) when miso_LocR - 16 = 7 and spi_spe = '1' else
-						 
-						 portd(0) when miso_LocR - 24 = 0 and spi_spe = '1' else
-						 portd(1) when miso_LocR - 24 = 1 and spi_spe = '1' else
-						 portd(2) when miso_LocR - 24 = 2 and spi_spe = '1' else
-						 portd(3) when miso_LocR - 24 = 3 and spi_spe = '1' else
-						 portd(4) when miso_LocR - 24 = 4 and spi_spe = '1' else
-						 portd(5) when miso_LocR - 24 = 5 and spi_spe = '1' else
-						 portd(6) when miso_LocR - 24 = 6 and spi_spe = '1' else	
-						 portd(7) when miso_LocR - 24 = 7 and spi_spe = '1' else
-
-						 porte(0) when miso_LocR - 32 = 0 and spi_spe = '1' else
-						 porte(1) when miso_LocR - 32 = 1 and spi_spe = '1' else
-						 porte(2) when miso_LocR - 32 = 2 and spi_spe = '1' else
-						 porte(3) when miso_LocR - 32 = 3 and spi_spe = '1' else
-						 porte(4) when miso_LocR - 32 = 4 and spi_spe = '1' else
-						 porte(5) when miso_LocR - 32 = 5 and spi_spe = '1' else
-						 porte(6) when miso_LocR - 32 = 6 and spi_spe = '1' else	
-						 porte(7) when miso_LocR - 32 = 7 and spi_spe = '1' else
-						 
-						 portf(0) when miso_LocR - 40 = 0 and spi_spe = '1' else
-						 portf(1) when miso_LocR - 40 = 1 and spi_spe = '1' else
-						 portf(2) when miso_LocR - 40 = 2 and spi_spe = '1' else
-						 portf(3) when miso_LocR - 40 = 3 and spi_spe = '1' else
-						 portf(4) when miso_LocR - 40 = 4 and spi_spe = '1' else
-						 portf(5) when miso_LocR - 40 = 5 and spi_spe = '1' else
-						 portf(6) when miso_LocR - 40 = 6 and spi_spe = '1' else						 
-						 portf(7) when miso_LocR - 40 = 7 and spi_spe = '1';
+--		spi_misoi <= 
+--						 porta(0) when miso_LocR = 0 and spi_spe = '1' else
+--						 porta(1) when miso_LocR = 1 and spi_spe = '1' else
+--						 porta(2) when miso_LocR = 2 and spi_spe = '1' else
+--						 porta(3) when miso_LocR = 3 and spi_spe = '1' else
+--						 porta(4) when miso_LocR = 4 and spi_spe = '1' else
+--						 porta(5) when miso_LocR = 5 and spi_spe = '1' else
+--						 porta(6) when miso_LocR = 6 and spi_spe = '1' else	
+--						 porta(7) when miso_LocR = 7 and spi_spe = '1' else		
+--		
+--						 portb(0) when miso_LocR - 8 = 0 and spi_spe = '1' else
+--						 portb(1) when miso_LocR - 8 = 1 and spi_spe = '1' else
+--						 portb(2) when miso_LocR - 8 = 2 and spi_spe = '1' else
+--						 portb(3) when miso_LocR - 8 = 3 and spi_spe = '1' else
+--						 portb(4) when miso_LocR - 8 = 4 and spi_spe = '1' else
+--						 portb(5) when miso_LocR - 8 = 5 and spi_spe = '1' else
+--						 portb(6) when miso_LocR - 8 = 6 and spi_spe = '1' else	
+--						 portb(7) when miso_LocR - 8 = 7 and spi_spe = '1' else
+--
+--						 portc(0) when miso_LocR - 16 = 0 and spi_spe = '1' else
+--						 portc(1) when miso_LocR - 16 = 1 and spi_spe = '1' else
+--						 portc(2) when miso_LocR - 16 = 2 and spi_spe = '1' else
+--						 portc(3) when miso_LocR - 16 = 3 and spi_spe = '1' else
+--						 portc(4) when miso_LocR - 16 = 4 and spi_spe = '1' else
+--						 portc(5) when miso_LocR - 16 = 5 and spi_spe = '1' else
+--						 portc(6) when miso_LocR - 16 = 6 and spi_spe = '1' else	
+--						 portc(7) when miso_LocR - 16 = 7 and spi_spe = '1' else
+--						 
+--						 portd(0) when miso_LocR - 24 = 0 and spi_spe = '1' else
+--						 portd(1) when miso_LocR - 24 = 1 and spi_spe = '1' else
+--						 portd(2) when miso_LocR - 24 = 2 and spi_spe = '1' else
+--						 portd(3) when miso_LocR - 24 = 3 and spi_spe = '1' else
+--						 portd(4) when miso_LocR - 24 = 4 and spi_spe = '1' else
+--						 portd(5) when miso_LocR - 24 = 5 and spi_spe = '1' else
+--						 portd(6) when miso_LocR - 24 = 6 and spi_spe = '1' else	
+--						 portd(7) when miso_LocR - 24 = 7 and spi_spe = '1' else
+--
+--						 porte(0) when miso_LocR - 32 = 0 and spi_spe = '1' else
+--						 porte(1) when miso_LocR - 32 = 1 and spi_spe = '1' else
+--						 porte(2) when miso_LocR - 32 = 2 and spi_spe = '1' else
+--						 porte(3) when miso_LocR - 32 = 3 and spi_spe = '1' else
+--						 porte(4) when miso_LocR - 32 = 4 and spi_spe = '1' else
+--						 porte(5) when miso_LocR - 32 = 5 and spi_spe = '1' else
+--						 porte(6) when miso_LocR - 32 = 6 and spi_spe = '1' else	
+--						 porte(7) when miso_LocR - 32 = 7 and spi_spe = '1' else
+--						 
+--						 portf(0) when miso_LocR - 40 = 0 and spi_spe = '1' else
+--						 portf(1) when miso_LocR - 40 = 1 and spi_spe = '1' else
+--						 portf(2) when miso_LocR - 40 = 2 and spi_spe = '1' else
+--						 portf(3) when miso_LocR - 40 = 3 and spi_spe = '1' else
+--						 portf(4) when miso_LocR - 40 = 4 and spi_spe = '1' else
+--						 portf(5) when miso_LocR - 40 = 5 and spi_spe = '1' else
+--						 portf(6) when miso_LocR - 40 = 6 and spi_spe = '1' else						 
+--						 portf(7) when miso_LocR - 40 = 7 and spi_spe = '1';
 
 -- ******************  PORTA **************************				
 PORTA_Impl:if CImplPORTA generate

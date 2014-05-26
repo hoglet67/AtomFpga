@@ -103,6 +103,23 @@ architecture behavioral of Atomic_top_hoglet is
         );
 	end component;
    
+   
+   
+	COMPONENT AVR8
+	PORT(
+		nrst : IN std_logic;
+		clk16M : IN std_logic;
+		rxd : IN std_logic;    
+		porta : INOUT std_logic_vector(7 downto 0);
+		portb : INOUT std_logic_vector(7 downto 0);
+		portc : INOUT std_logic_vector(7 downto 0);
+		portd : INOUT std_logic_vector(7 downto 0);
+		porte : INOUT std_logic_vector(7 downto 0);
+		portf : INOUT std_logic_vector(7 downto 0);      
+		txd : OUT std_logic
+		);
+	END COMPONENT;
+
     signal clk_12M58 : std_logic;
     signal clk_16M00 : std_logic;
 
@@ -114,6 +131,17 @@ architecture behavioral of Atomic_top_hoglet is
     signal ExternDin : std_logic_vector (7 downto 0);
     signal ExternDout: std_logic_vector (7 downto 0);
     
+    signal nARD     : std_logic;
+    signal nAWR     : std_logic;
+    signal AVRA0    : std_logic;
+    signal AVRInt   : std_logic;
+    signal AVRData  : std_logic_vector (7 downto 0);
+
+    signal intSDMISO   : std_logic;
+    signal intSDSS     : std_logic;
+    signal intSDCLK    : std_logic;
+    signal intSDMOSI   : std_logic;
+
 begin
 
     inst_dcm4 : dcm4 port map(
@@ -159,25 +187,52 @@ begin
         ExternDout=> ExternDout,        
         audiol    => audiol,
         audioR    => audioR,
-        SDMISO    => SDMISO,
-        SDSS      => SDSS,
-        SDCLK     => SDCLK,
-        SDMOSI    => SDMOSI,
-        RxD       => RxD,
-        TxD       => TxD
+        SDMISO    => '0',
+        SDSS      => open,
+        SDCLK     => open,
+        SDMOSI    => open,
+        RxD       => '0',
+        TxD       => open
         );  
 
-        RAMCEn     <= not RamCE;
-        RAMWRn     <= not ExternWE;
-        RAMOEn     <= not RamCE;
+	Inst_AVR8: AVR8 PORT MAP(
+		nrst => ERSTn,
+		clk16M => clk_16M00,
+   		porta      => AVRData,
+		portb(0)   => nARD,
+		portb(1)   => nAWR,
+		portb(2)   => AVRInt,
+		portb(3)   => AVRA0,
+        portb(4)   => intSDMISO,
+        portb(5)   => intSDSS,
+        portb(6)   => intSDCLK,
+        portb(7)   => intSDMOSI,
+--		portc      => (others => '0'),
+--		portd      => (others => '0'),
+--		porte      => (others => '0'),
+--		portf      => (others => '0'),
+		rxd => RxD,
+		txd => TxD 
+	);
 
-        ROMCEn     <= not RomCE;
-        ROMWRn     <= not ExternWE;
-        ROMOEn     <= not RomCE;
-    
-        ExternD    <= ExternDin when ExternWE = '1' else "ZZZZZZZZ";
-        ExternDout <= ExternD(7 downto 0);
+    AVRDATA <= nARD & nAWR & AVRInt & AVRA0 & intSDMISO & intSDSS & intSDCLK & intSDMOSI;
+
+    intSDMISO <= '0' when SDMISO = '0' else 'Z';
+    SDSS      <= intSDSS;
+    SDCLK     <= intSDCLK;
+    SDMOSI    <= intSDMOSI;
         
+    RAMCEn     <= not RamCE;
+    RAMWRn     <= not ExternWE;
+    RAMOEn     <= not RamCE;
+
+    ROMCEn     <= not RomCE;
+    ROMWRn     <= not ExternWE;
+    ROMOEn     <= not RomCE;
+
+    ExternD    <= ExternDin when ExternWE = '1' else "ZZZZZZZZ";
+    ExternDout <= ExternD(7 downto 0);
+    
 end behavioral;
 
 
