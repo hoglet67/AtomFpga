@@ -20,7 +20,6 @@ use ieee.numeric_std.all;
 
 entity Atomic_core is
     generic (
-       CImplAtomMMC : boolean;
        CImplSDDOS : boolean;
        CImplSID : boolean
     );
@@ -46,9 +45,7 @@ entity Atomic_core is
         SDMISO    : in    std_logic;
         SDSS      : out   std_logic;
         SDCLK     : out   std_logic;
-        SDMOSI    : out   std_logic;
-        RxD       : in    std_logic;
-        TxD       : out   std_logic
+        SDMOSI    : out   std_logic
         );
 end Atomic_core;
 

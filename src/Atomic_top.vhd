@@ -69,11 +69,18 @@ architecture behavioral of Atomic_top is
          ); 
     end component;
     
+    component InternalROM
+        port (
+            CLK  : in  std_logic;
+            ADDR : in  std_logic_vector(16 downto 0);
+            DATA : out std_logic_vector(7 downto 0)
+        );
+    end component; 
+
     component Atomic_core
         generic  (
             CImplSID      : boolean;
-            CImplSDDOS    : boolean;
-            CImplAtomMMC  : boolean
+            CImplSDDOS    : boolean
         );
         port (
             clk_12M58 : in  std_logic;
@@ -98,9 +105,7 @@ architecture behavioral of Atomic_top is
             audioR    : out std_logic;
             SDSS      : out std_logic;
             SDCLK     : out std_logic;
-            SDMOSI    : out std_logic;
-            RxD       : in  std_logic;
-            TxD       : out  std_logic
+            SDMOSI    : out std_logic
         );
 	end component;
     
@@ -108,7 +113,9 @@ architecture behavioral of Atomic_top is
     signal clk_16M00 : std_logic;
     signal clk_32M00 : std_logic;
 
+    signal RomDout      : std_logic_vector (7 downto 0);
     signal RamCE        : std_logic;
+    signal RomCE        : std_logic;
     signal ExternA      : std_logic_vector (16 downto 0);
     signal ExternWE     : std_logic;
     signal ExternDin    : std_logic_vector (7 downto 0);
@@ -133,12 +140,17 @@ begin
         CLK0_OUT  => clk_32M00,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
+
+    rom_c000_ffff : InternalROM port map(
+        CLK     => clk_16M00,
+        ADDR    => ExternA,
+        DATA    => RomDout
+        );
     
 	inst_Atomic_core : Atomic_core
     generic map (
         CImplSID => true,
-        CImplSDDOS => true,
-        CImplAtomMMC => false
+        CImplSDDOS => true
     )
     port map(
 		clk_12M58 => clk_12M58,
@@ -162,16 +174,18 @@ begin
 		SDMISO => SDMISO,
 		SDSS => SDSS,
 		SDCLK => SDCLK,
-		SDMOSI => SDMOSI,
-        RxD => '0',
-        TxD => open        
+		SDMOSI => SDMOSI
 	);
  
     CE1        <= not RAMCE;
     RAMWRn     <= not ExternWE;
     RAMOEn     <= not RAMCE;
     RamD       <= ExternDin & ExternDin when ExternWE = '1' else "ZZZZZZZZZZZZZZZZ";
-    ExternDout <= RamD(7 downto 0);
+
+    ExternDout <= RamD(7 downto 0) when RamCE = '1' else
+                  RomDout  when RomCE = '1' else
+                  "11110001";                
+
     RamA       <= '0' & ExternA(14 downto 0);
         
 end behavioral;

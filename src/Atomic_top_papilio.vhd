@@ -34,9 +34,7 @@ entity Atomic_top_papilio is
            SDMISO   : in  std_logic;
            SDSS     : out std_logic;
            SDCLK    : out std_logic;
-           SDMOSI   : out std_logic;
-           TxD      : out std_logic;
-           RxD      : in  std_logic
+           SDMOSI   : out std_logic
           );
 end Atomic_top_papilio;
 
@@ -93,8 +91,7 @@ architecture behavioral of Atomic_top_papilio is
     component Atomic_core
         generic  (
             CImplSID      : boolean;
-            CImplSDDOS    : boolean;
-            CImplAtomMMC  : boolean
+            CImplSDDOS    : boolean
         );
         port (
             clk_12M58 : in  std_logic;
@@ -119,9 +116,7 @@ architecture behavioral of Atomic_top_papilio is
             audioR    : out std_logic;
             SDSS      : out std_logic;
             SDCLK     : out std_logic;
-            SDMOSI    : out std_logic;
-            RxD       : in  std_logic;
-            TxD       : out  std_logic
+            SDMOSI    : out std_logic
         );
 	end component;
    
@@ -193,8 +188,7 @@ begin
     inst_Atomic_core : Atomic_core
     generic map (
         CImplSID => true,
-        CImplSDDOS => true,
-        CImplAtomMMC => false
+        CImplSDDOS => true
     )
     port map(
         clk_12M58 => clk_12M58,
@@ -219,9 +213,7 @@ begin
         SDMISO    => SDMISO,
         SDSS      => SDSS,
         SDCLK     => SDCLK,
-        SDMOSI    => SDMOSI,
-        RxD       => RxD,
-        TxD       => TxD
+        SDMOSI    => SDMOSI
         );  
 
 end behavioral;

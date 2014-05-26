@@ -43,8 +43,8 @@ entity Atomic_top_hoglet is
            SDSS     : out std_logic;
            SDCLK    : out std_logic;
            SDMOSI   : out std_logic;
-           TxD      : out std_logic;
-           RxD      : in std_logic
+           RxD      : in  std_logic;
+           TxD      : out std_logic
            );
 end Atomic_top_hoglet;
 
@@ -71,8 +71,7 @@ architecture behavioral of Atomic_top_hoglet is
     component Atomic_core
         generic  (
             CImplSID      : boolean;
-            CImplSDDOS    : boolean;
-            CImplAtomMMC  : boolean
+            CImplSDDOS    : boolean
         );
         port (
             clk_12M58 : in  std_logic;
@@ -97,28 +96,24 @@ architecture behavioral of Atomic_top_hoglet is
             audioR    : out std_logic;
             SDSS      : out std_logic;
             SDCLK     : out std_logic;
-            SDMOSI    : out std_logic;
-            RxD       : in  std_logic;
-            TxD       : out  std_logic
+            SDMOSI    : out std_logic
         );
 	end component;
    
-   
-   
-	COMPONENT AVR8
-	PORT(
-		nrst : IN std_logic;
+	component AVR8
+	port(
 		clk16M : IN std_logic;
-		rxd : IN std_logic;    
+		nrst : IN std_logic;
 		porta : INOUT std_logic_vector(7 downto 0);
 		portb : INOUT std_logic_vector(7 downto 0);
 		portc : INOUT std_logic_vector(7 downto 0);
 		portd : INOUT std_logic_vector(7 downto 0);
 		porte : INOUT std_logic_vector(7 downto 0);
 		portf : INOUT std_logic_vector(7 downto 0);      
+		rxd : IN std_logic;    
 		txd : OUT std_logic
 		);
-	END COMPONENT;
+	end component;
 
     signal clk_12M58 : std_logic;
     signal clk_16M00 : std_logic;
@@ -160,9 +155,8 @@ begin
 
     inst_Atomic_core : Atomic_core
     generic map (
-        CImplSID => false,
-        CImplSDDOS => false,
-        CImplAtomMMC => false
+        CImplSID => true,
+        CImplSDDOS => false
     )
     port map(
         clk_12M58 => clk_12M58,
@@ -190,14 +184,12 @@ begin
         SDMISO    => '0',
         SDSS      => open,
         SDCLK     => open,
-        SDMOSI    => open,
-        RxD       => '0',
-        TxD       => open
+        SDMOSI    => open
         );  
 
 	Inst_AVR8: AVR8 PORT MAP(
-		nrst => ERSTn,
 		clk16M => clk_16M00,
+		nrst => ERSTn,
    		porta      => AVRData,
 		portb(0)   => nARD,
 		portb(1)   => nAWR,
@@ -207,10 +199,6 @@ begin
         portb(5)   => intSDSS,
         portb(6)   => intSDCLK,
         portb(7)   => intSDMOSI,
---		portc      => (others => '0'),
---		portd      => (others => '0'),
---		porte      => (others => '0'),
---		portf      => (others => '0'),
 		rxd => RxD,
 		txd => TxD 
 	);
