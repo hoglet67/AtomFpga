@@ -100,6 +100,23 @@ architecture behavioral of Atomic_top_hoglet is
         );
 	end component;
    
+	COMPONENT AtomPL8
+	PORT(
+		clk : IN std_logic;
+		enable : IN std_logic;
+		nRST : IN std_logic;
+		PHI2 : IN std_logic;
+		RW : IN std_logic;
+		DataIn : IN std_logic_vector(7 downto 0);
+		nARD : IN std_logic;
+		nAWR : IN std_logic;
+		AVRA0 : IN std_logic;    
+		AVRData : INOUT std_logic_vector(7 downto 0);      
+		DataOut : OUT std_logic_vector(7 downto 0);
+		AVRINTOut : OUT std_logic
+		);
+	END COMPONENT;
+
 	component AVR8
 	port(
 		clk16M : IN std_logic;
@@ -130,12 +147,17 @@ architecture behavioral of Atomic_top_hoglet is
     signal nAWR     : std_logic;
     signal AVRA0    : std_logic;
     signal AVRInt   : std_logic;
+    signal AVRIntTS : std_logic;
     signal AVRData  : std_logic_vector (7 downto 0);
 
     signal intSDMISO   : std_logic;
     signal intSDSS     : std_logic;
     signal intSDCLK    : std_logic;
     signal intSDMOSI   : std_logic;
+
+    signal Addr  : std_logic_vector (16 downto 0);
+    signal PL8Data  : std_logic_vector (7 downto 0);
+    signal PL8Enable: std_logic;
 
 begin
 
@@ -176,7 +198,7 @@ begin
         RamCE     => RamCE,
         RomCE     => RomCE,
         ExternWE  => ExternWE,
-        ExternA   => ExternA,
+        ExternA   => Addr,
         ExternDin => ExternDin,
         ExternDout=> ExternDout,        
         audiol    => audiol,
@@ -202,9 +224,24 @@ begin
 		rxd => RxD,
 		txd => TxD 
 	);
-
-    AVRDATA <= nARD & nAWR & AVRInt & AVRA0 & intSDMISO & intSDSS & intSDCLK & intSDMOSI;
-
+    
+    Inst_AtomPL8: AtomPL8 port map(
+		clk => clk_16M00,
+		enable => PL8Enable,
+		nRST => ERSTn,
+		PHI2 => '1',
+		RW => ExternWE,
+		DataIn => ExternDin,
+		DataOut => PL8Data,
+		AVRData => AVRDATA,
+		nARD => nARD,
+		nAWR => nAWR,
+		AVRA0 => AVRA0,
+		AVRINTOut => AVRIntTS
+	);   
+   
+    AVRIntTS <= '0' when AVRInt = '0' else 'Z';
+   
     intSDMISO <= '0' when SDMISO = '0' else 'Z';
     SDSS      <= intSDSS;
     SDCLK     <= intSDCLK;
@@ -219,7 +256,12 @@ begin
     ROMOEn     <= not RomCE;
 
     ExternD    <= ExternDin when ExternWE = '1' else "ZZZZZZZZ";
-    ExternDout <= ExternD(7 downto 0);
+    
+    PL8Enable  <= '1' when Addr(15 downto 7) = "10110100" else '0';
+    
+    ExternDout <= PL8Data when PL8Enable = '1' else ExternD;
+    
+    ExternA    <= Addr;
     
 end behavioral;
 
