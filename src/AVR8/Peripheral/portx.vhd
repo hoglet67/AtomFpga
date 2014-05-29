@@ -33,7 +33,8 @@ entity pport is generic(PPortNum : natural);
 --							spi_misoi  : out std_logic;							
 			            portx      : out std_logic_vector(7 downto 0);
 			            ddrx       : out std_logic_vector(7 downto 0);
-			            pinx       : in  std_logic_vector(7 downto 0));
+			            pinx       : in  std_logic_vector(7 downto 0);
+                        irqlines   : out std_logic_vector(7 downto 0));
 end pport;
 
 architecture RTL of pport is
@@ -111,6 +112,7 @@ end process;
 
 DBusOutMux:for i in pinx'range generate
 dbus_out(i) <= (PORTx_Int(i) and PORTx_Sel)or(DDRx_Int(i) and DDRx_Sel)or(PINx_Resync(i) and PINx_Sel);
+irqlines(i) <= PINx_Resync(i);
 --spi_misoi <= pinx(i) when miso_Loc = i and spi_spe = '1';
 end generate;	
 

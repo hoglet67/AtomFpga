@@ -25,7 +25,8 @@ component pport is generic(PPortNum : natural);
 			            -- External connection
 			   portx      : out std_logic_vector(7 downto 0);
 			   ddrx       : out std_logic_vector(7 downto 0);
-			   pinx       : in  std_logic_vector(7 downto 0));
+			   pinx       : in  std_logic_vector(7 downto 0);
+               irqlines   : out std_logic_vector(7 downto 0));
 end component;
 
 
@@ -100,6 +101,25 @@ component Timer_Counter is port(
 end component;
 
 
+COMPONENT ExtIRQ_Controller
+PORT(
+			-- begin Signals required by AVR8 for this core, do not modify.
+			nReset 		: in  STD_LOGIC;
+			clk 			: in  STD_LOGIC;
+			adr 			: in  STD_LOGIC_VECTOR (15 downto 0);
+			dbus_in 		: in  STD_LOGIC_VECTOR (7 downto 0);
+			dbus_out 	: out STD_LOGIC_VECTOR (7 downto 0);
+			iore 			: in  STD_LOGIC;
+			iowe 			: in  STD_LOGIC;
+			out_en		: out STD_LOGIC;
+			-- end Signals required by AVR8 for this core, do not modify.
+
+			clken			: in  STD_LOGIC;
+			irq_clken	: in	STD_LOGIC;
+			extpins		: in  STD_LOGIC_VECTOR(7 downto 0);
+			INTx			: out STD_LOGIC_VECTOR(7 downto 0)
+	);
+END COMPONENT;
 ----*************** UART ***************************
 --component uart is port(
 --	                   -- AVR Control

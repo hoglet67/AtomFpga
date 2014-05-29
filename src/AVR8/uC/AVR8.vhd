@@ -66,14 +66,14 @@ architecture Struct of AVR8 is
 -- Use these setting to control which peripherals you want to include with your custom AVR8 implementation.
 constant CImplPORTA			            : boolean := TRUE; -- set to false here for portA and portB, or DDRAreg and DDRBreg
 constant CImplPORTB			            : boolean := TRUE;
-constant CImplPORTC							: boolean := FALSE;
+constant CImplPORTC							: boolean := TRUE;
 constant CImplPORTD    			         : boolean := FALSE;
 constant CImplPORTE      			      : boolean := FALSE;
 constant CImplPORTF           			: boolean := FALSE;
 constant CImplUART      			      : boolean := TRUE;	--AVR8 UART peripheral
 constant CImplSPI            				: boolean := TRUE;   -- adding SPI master
 constant CImplTmrCnt     					: boolean := FALSE;	--AVR8 Timer
-
+constant CImplExtIRQ				: boolean := TRUE;	--AVR8 Interrupt Unit
 
 COMPONENT swap_pins
 PORT(
@@ -303,16 +303,16 @@ signal OC2_PWM2_LocR		: integer := 3;	--Default Pin location
 
 --signal SPEbit				: std_logic;	--Used to tell if SPI is enabled
 signal mosi_Sig		: std_logic;
-signal mosi_LocR		: integer := 15;	--Default Pin location
+signal mosi_LocR		: integer := 23;	--Default Pin location
 
 signal miso_Sig		: std_logic;
-signal miso_LocR		: integer := 12;	--Default Pin location
+signal miso_LocR		: integer := 20;	--Default Pin location
 
 signal sck_Sig		: std_logic;
-signal sck_LocR		: integer := 14;	--Default Pin location
+signal sck_LocR		: integer := 22;	--Default Pin location
 
 --signal spi_cs_n_Sig		: std_logic;
-signal spi_cs_n_LocR		: integer := 13;	--Default Pin location
+signal spi_cs_n_LocR		: integer := 21;	--Default Pin location
 
 
 -- ############################## Signals connected directly to the I/O registers ################################
@@ -344,6 +344,11 @@ signal portf_out_en  : std_logic;
 -- Timer/Counter
 signal tc_dbusout    : std_logic_vector (7 downto 0);
 signal tc_out_en     : std_logic;
+
+-- Ext IRQ Controller
+signal extirq_dbusout    : std_logic_vector (7 downto 0);
+signal extirq_out_en     : std_logic;
+signal ext_irqlines	 : std_logic_vector(7 downto 0);
 
 -- UART
 signal uart_dbusout  : std_logic_vector (7 downto 0);
@@ -396,8 +401,8 @@ core_inst <= pm_dout;
 
 
 -- Unused IRQ lines
-core_irqlines(7 downto 4) <= ( others => '0');
-core_irqlines(3 downto 0) <= ( others => '0');
+--core_irqlines(7 downto 4) <= ( others => '0');
+--core_irqlines(3 downto 0) <= ( others => '0');
 core_irqlines(13 downto 10) <= ( others => '0');
 --core_irqlines(16) <= '0'; --now used by SPI
 core_irqlines(22 downto 20) <= ( others => '0');
@@ -465,7 +470,7 @@ EXT_MUX:component external_mux port map(
 		  ind_irq_ack		 =>	ind_irq_ack		  -- Individual interrupt acknolege for the peripheral
                                             );
 
-	spi_misoi <= portb(4);
+	spi_misoi <= portc(4);
 
 --		spi_misoi <= 
 --						 porta(0) when miso_LocR = 0 and spi_spe = '1' else
@@ -540,7 +545,8 @@ PORTA_COMP:component pport
 --				spi_misoi  => spi_misoi,							
 			   portx      => PortAReg,
 			   ddrx       => DDRAReg,
-			   pinx       => porta);
+			   pinx       => porta,
+               irqlines   => open);
 
 -- PORTA connection to the external multiplexer
 io_port_out(0) <= porta_dbusout;
@@ -594,7 +600,8 @@ PORTB_COMP:component pport
 --				spi_misoi  => spi_misoi,							
 			   portx      => PortBReg,
 			   ddrx       => DDRBReg,
-			   pinx       => portb);
+			   pinx       => portb,
+               irqlines   => ext_irqlines);
 
 -- PORTB connection to the external multiplexer
 io_port_out(1) <= portb_dbusout;
@@ -651,7 +658,8 @@ PORTC_COMP:component pport
 --				spi_misoi  => spi_misoi,
 			   portx      => PortCReg,
 			   ddrx       => DDRCReg,
-			   pinx       => portc);
+			   pinx       => portc,
+               irqlines   => open);
 
 -- PORTC connection to the external multiplexer
 io_port_out(5) <= portc_dbusout;
@@ -705,7 +713,8 @@ PORTD_COMP:component pport
 --				spi_misoi  => spi_misoi,							
 			   portx      => PortDReg,
 			   ddrx       => DDRDReg,
-			   pinx       => portd);
+			   pinx       => portd,
+               irqlines   => open);
 
 -- PORTD connection to the external multiplexer
 io_port_out(6) <= portd_dbusout;
@@ -761,7 +770,8 @@ PORTE_COMP:component pport
 			            -- External connection					
 			   portx      => PortEReg,
 			   ddrx       => DDREReg,
-			   pinx       => porte);
+			   pinx       => porte,
+               irqlines   => open);
 
 -- PORTE connection to the external multiplexer
 io_port_out(7) <= porte_dbusout;
@@ -813,7 +823,8 @@ PORTF_COMP:component pport
 			            -- External connection
 			   portx      => PortFReg,
 			   ddrx       => DDRFReg,
-			   pinx       => portf);
+			   pinx       => portf,
+               irqlines   => open);
 
 -- PORTF connection to the external multiplexer
 io_port_out(8) <= portf_dbusout;
@@ -870,7 +881,28 @@ swap_pins_Inst:component swap_pins port map(
                     spi_cs_n_Loc      => spi_cs_n_LocR
 		            );
 
+--****************** External IRQ Controller**************************
+ExtIRQ_Impl:if CImplExtIRQ generate
+ExtIRQ_Inst:component ExtIRQ_Controller port map(
+                    -- AVR Control
+                    nReset     => core_ireset,
+                    clk	  => clk16M, -- clk,
+                    clken	  => vcc,
+                    irq_clken  => vcc,
+                    adr        => core_adr,
+                    dbus_in    => core_dbusout, 
+                    dbus_out   => extirq_dbusout, 
+                    iore       => core_iore,
+                    iowe       => core_iowe,
+                    out_en     => extirq_out_en,
+                    ------------------------------------------------
+                    extpins	  => ext_irqlines,			
+                    INTx      => core_irqlines(7 downto 0));			   
 
+-- ExtIRQ connection to the external multiplexer							  
+io_port_out(10)    <= extirq_dbusout;
+io_port_out_en(10) <= extirq_out_en; 
+end generate;
 
 --****************** Timer/Counter **************************
 TmrCnt_Impl:if CImplTmrCnt generate
