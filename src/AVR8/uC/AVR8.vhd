@@ -40,18 +40,20 @@ use WORK.MemAccessCompPack.all;
 entity AVR8 is port(
 	 nrst   : in    std_logic;						--Uncomment this to connect reset to an external pushbutton. Must be defined in ucf.
 	 clk16M : in    std_logic;
-	 porta  : inout std_logic_vector(7 downto 0);
-	 portb  : inout std_logic_vector(7 downto 0);
+	 portaout  : out std_logic_vector(7 downto 0);
+	 portain  : in std_logic_vector(7 downto 0);
+	 portbout  : out std_logic_vector(7 downto 0);
+	 portbin  : in std_logic_vector(7 downto 0);
 	 portc  : inout std_logic_vector(7 downto 0);
-	 portd  : inout std_logic_vector(7 downto 0);
+	 portdin  : in std_logic_vector(7 downto 0);
+	 portdout  : out std_logic_vector(7 downto 0);
 	 porte  : inout std_logic_vector(7 downto 0);
 	 portf  : inout std_logic_vector(7 downto 0);
-	 										 --here
---										 spi_mosio : out std_logic;
---										 spi_scko : out std_logic;
---										 spi_misoi : in std_logic;
---										 spi_cs_n : out std_logic;
-											--here
+
+	 spi_mosio : out std_logic;
+	 spi_scko : out std_logic;
+	 spi_cs_n : out std_logic;
+	 spi_misoi : in std_logic;
 
 	-- UART 
 	rxd    : in    std_logic;
@@ -66,37 +68,14 @@ architecture Struct of AVR8 is
 -- Use these setting to control which peripherals you want to include with your custom AVR8 implementation.
 constant CImplPORTA			            : boolean := TRUE; -- set to false here for portA and portB, or DDRAreg and DDRBreg
 constant CImplPORTB			            : boolean := TRUE;
-constant CImplPORTC							: boolean := TRUE;
-constant CImplPORTD    			         : boolean := FALSE;
+constant CImplPORTC							: boolean := FALSE;
+constant CImplPORTD    			         : boolean := TRUE;
 constant CImplPORTE      			      : boolean := FALSE;
 constant CImplPORTF           			: boolean := FALSE;
 constant CImplUART      			      : boolean := TRUE;	--AVR8 UART peripheral
 constant CImplSPI            				: boolean := TRUE;   -- adding SPI master
 constant CImplTmrCnt     					: boolean := FALSE;	--AVR8 Timer
 constant CImplExtIRQ				: boolean := TRUE;	--AVR8 Interrupt Unit
-
-COMPONENT swap_pins
-PORT(
-	                -- AVR Control
-                    ireset     : in  std_logic;
-                    cp2	       : in  std_logic;
-                    adr        : in  std_logic_vector(15 downto 0);
-                    dbus_in    : in  std_logic_vector(7 downto 0);
-
-                    iore       : in  std_logic;
-                    iowe       : in  std_logic;
-
-                    -- External connection
-						OC0_PWM0_Loc : out integer;
-						OC1A_PWM1A_Loc : out integer;
-						OC1B_PWM1B_Loc : out integer;
-						OC2_PWM2_Loc : out integer;
-						mosi_Loc : out integer;
-						miso_Loc : out integer;
-						sck_Loc : out integer;
-						spi_cs_n_Loc : out integer
-						);
-END COMPONENT;
 
 component XDM4Kx8	port(
 	                cp2       : in  std_logic;
@@ -170,17 +149,17 @@ signal core_ireset        : std_logic;
 -- ##############################################################################################
 
 -- Port signals
-signal PortAReg : std_logic_vector(porta'range);
-signal DDRAReg  : std_logic_vector(porta'range);
+signal PortAReg : std_logic_vector(portain'range);
+signal DDRAReg  : std_logic_vector(portain'range);
 
-signal PortBReg : std_logic_vector(portb'range);
-signal DDRBReg  : std_logic_vector(portb'range);
+signal PortBReg : std_logic_vector(portbin'range);
+signal DDRBReg  : std_logic_vector(portbin'range);
 
 signal PortCReg : std_logic_vector(portc'range);
 signal DDRCReg  : std_logic_vector(portc'range);
 
-signal PortDReg : std_logic_vector(portd'range);
-signal DDRDReg  : std_logic_vector(portd'range);
+signal PortDReg : std_logic_vector(portdin'range);
+signal DDRDReg  : std_logic_vector(portdin'range);
 
 signal PortEReg : std_logic_vector(porte'range);
 signal DDREReg  : std_logic_vector(porte'range);
@@ -284,36 +263,6 @@ signal ram_ramwe         : std_logic;
 -- nrst
 --signal nrst             : std_logic;  		--Comment this to connect reset to an external pushbutton.
 
-signal OC0_PWM0_Sig		: std_logic;
-signal PWM0bit				: std_logic;
-signal OC0_PWM0_LocR		: integer := 0;	--Default Pin location
-
-signal OC1A_PWM1A_Sig		: std_logic;
-signal OC1B_PWM1B_Sig		: std_logic;
-signal PWM10bit				: std_logic;
-signal PWM11bit				: std_logic;
-signal OC1A_PWM1A_LocR		: integer := 1;	--Default Pin location
-signal OC1B_PWM1B_LocR		: integer := 2;	--Default Pin location
-
-
-signal OC2_PWM2_Sig		: std_logic;
-signal PWM2bit				: std_logic;
-signal OC2_PWM2_LocR		: integer := 3;	--Default Pin location
-
-
---signal SPEbit				: std_logic;	--Used to tell if SPI is enabled
-signal mosi_Sig		: std_logic;
-signal mosi_LocR		: integer := 23;	--Default Pin location
-
-signal miso_Sig		: std_logic;
-signal miso_LocR		: integer := 20;	--Default Pin location
-
-signal sck_Sig		: std_logic;
-signal sck_LocR		: integer := 22;	--Default Pin location
-
---signal spi_cs_n_Sig		: std_logic;
-signal spi_cs_n_LocR		: integer := 21;	--Default Pin location
-
 
 -- ############################## Signals connected directly to the I/O registers ################################
 -- PortA
@@ -356,13 +305,13 @@ signal uart_out_en   : std_logic;
 
 -- SPI
 constant c_spi_slvs_num  : integer := 1;
-signal spi_misoi         : std_logic;     
+--signal spi_misoi         : std_logic;     
 signal spi_mosii         : std_logic; 	
 signal spi_scki          : std_logic; 	 
 signal spi_ss_b          : std_logic;      
 signal spi_misoo         : std_logic;     
-signal spi_mosio         : std_logic;     
-signal spi_scko          : std_logic;      
+--signal spi_mosio         : std_logic;     
+--signal spi_scko          : std_logic;      
 signal spi_spe           : std_logic;       
 signal spi_spimaster     : std_logic; 
 signal spi_dbusout		 : std_logic_vector (7 downto 0);
@@ -371,8 +320,7 @@ signal spi_out_en   : std_logic;
 -- Slave selects
 signal spi_slv_sel_n     : std_logic_vector(c_spi_slvs_num-1 downto 0);
 -- SPI
-
-
+               
 -- ###############################################################################################################
 
 -- ############################## Define Signals for User Cores ##################################################
@@ -470,62 +418,6 @@ EXT_MUX:component external_mux port map(
 		  ind_irq_ack		 =>	ind_irq_ack		  -- Individual interrupt acknolege for the peripheral
                                             );
 
-	spi_misoi <= portc(4);
-
---		spi_misoi <= 
---						 porta(0) when miso_LocR = 0 and spi_spe = '1' else
---						 porta(1) when miso_LocR = 1 and spi_spe = '1' else
---						 porta(2) when miso_LocR = 2 and spi_spe = '1' else
---						 porta(3) when miso_LocR = 3 and spi_spe = '1' else
---						 porta(4) when miso_LocR = 4 and spi_spe = '1' else
---						 porta(5) when miso_LocR = 5 and spi_spe = '1' else
---						 porta(6) when miso_LocR = 6 and spi_spe = '1' else	
---						 porta(7) when miso_LocR = 7 and spi_spe = '1' else		
---		
---						 portb(0) when miso_LocR - 8 = 0 and spi_spe = '1' else
---						 portb(1) when miso_LocR - 8 = 1 and spi_spe = '1' else
---						 portb(2) when miso_LocR - 8 = 2 and spi_spe = '1' else
---						 portb(3) when miso_LocR - 8 = 3 and spi_spe = '1' else
---						 portb(4) when miso_LocR - 8 = 4 and spi_spe = '1' else
---						 portb(5) when miso_LocR - 8 = 5 and spi_spe = '1' else
---						 portb(6) when miso_LocR - 8 = 6 and spi_spe = '1' else	
---						 portb(7) when miso_LocR - 8 = 7 and spi_spe = '1' else
---
---						 portc(0) when miso_LocR - 16 = 0 and spi_spe = '1' else
---						 portc(1) when miso_LocR - 16 = 1 and spi_spe = '1' else
---						 portc(2) when miso_LocR - 16 = 2 and spi_spe = '1' else
---						 portc(3) when miso_LocR - 16 = 3 and spi_spe = '1' else
---						 portc(4) when miso_LocR - 16 = 4 and spi_spe = '1' else
---						 portc(5) when miso_LocR - 16 = 5 and spi_spe = '1' else
---						 portc(6) when miso_LocR - 16 = 6 and spi_spe = '1' else	
---						 portc(7) when miso_LocR - 16 = 7 and spi_spe = '1' else
---						 
---						 portd(0) when miso_LocR - 24 = 0 and spi_spe = '1' else
---						 portd(1) when miso_LocR - 24 = 1 and spi_spe = '1' else
---						 portd(2) when miso_LocR - 24 = 2 and spi_spe = '1' else
---						 portd(3) when miso_LocR - 24 = 3 and spi_spe = '1' else
---						 portd(4) when miso_LocR - 24 = 4 and spi_spe = '1' else
---						 portd(5) when miso_LocR - 24 = 5 and spi_spe = '1' else
---						 portd(6) when miso_LocR - 24 = 6 and spi_spe = '1' else	
---						 portd(7) when miso_LocR - 24 = 7 and spi_spe = '1' else
---
---						 porte(0) when miso_LocR - 32 = 0 and spi_spe = '1' else
---						 porte(1) when miso_LocR - 32 = 1 and spi_spe = '1' else
---						 porte(2) when miso_LocR - 32 = 2 and spi_spe = '1' else
---						 porte(3) when miso_LocR - 32 = 3 and spi_spe = '1' else
---						 porte(4) when miso_LocR - 32 = 4 and spi_spe = '1' else
---						 porte(5) when miso_LocR - 32 = 5 and spi_spe = '1' else
---						 porte(6) when miso_LocR - 32 = 6 and spi_spe = '1' else	
---						 porte(7) when miso_LocR - 32 = 7 and spi_spe = '1' else
---						 
---						 portf(0) when miso_LocR - 40 = 0 and spi_spe = '1' else
---						 portf(1) when miso_LocR - 40 = 1 and spi_spe = '1' else
---						 portf(2) when miso_LocR - 40 = 2 and spi_spe = '1' else
---						 portf(3) when miso_LocR - 40 = 3 and spi_spe = '1' else
---						 portf(4) when miso_LocR - 40 = 4 and spi_spe = '1' else
---						 portf(5) when miso_LocR - 40 = 5 and spi_spe = '1' else
---						 portf(6) when miso_LocR - 40 = 6 and spi_spe = '1' else						 
---						 portf(7) when miso_LocR - 40 = 7 and spi_spe = '1';
 
 -- ******************  PORTA **************************				
 PORTA_Impl:if CImplPORTA generate
@@ -542,10 +434,9 @@ PORTA_COMP:component pport
                iowe       => core_iowe,
                out_en     => porta_out_en,
 			            -- External connection
---				spi_misoi  => spi_misoi,							
 			   portx      => PortAReg,
 			   ddrx       => DDRAReg,
-			   pinx       => porta,
+			   pinx       => portain,
                irqlines   => open);
 
 -- PORTA connection to the external multiplexer
@@ -558,28 +449,16 @@ io_port_out_en(0) <= porta_out_en;
 --end generate;
 
 -- Tri-state control for PORTA
-PortAZCtrl:for i in porta'range generate
-porta(i) <= OC0_PWM0_SIG when OC0_PWM0_LocR = i and PWM0bit = '1' else
-				OC1A_PWM1A_SIG when OC1A_PWM1A_LocR = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC1B_PWM1B_SIG when OC1B_PWM1B_LocR = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC2_PWM2_SIG when OC2_PWM2_LocR = i and PWM2bit = '1' else
-				spi_mosio when mosi_LocR = i and spi_spe = '1' else
---				spi_misoo when miso_LocR = i and spi_spe = '1' else
-				spi_scko when sck_LocR = i and spi_spe = '1' else
---				spi_cs_n_SIG when spi_cs_n_LocR = i and spi_spe = '1' else
---				slave_outputs_array(0).pins_out_reg(i) when slave_outputs_array(0).pins_dir_reg(i) = '0' and slave_outputs_array(0).wing_slot = porta_Slot else
---				slave_outputs_array(1).pins_out_reg(i) when slave_outputs_array(1).pins_dir_reg(i) = '0' and slave_outputs_array(1).wing_slot = porta_Slot else				
-				PortAReg(i) when DDRAReg(i)='1' else 'Z'; 
-				
---				spi_misoi <= porta(i) when miso_LocR = i and spi_spe = '1' else 'Z';
-				
+PortAZCtrl:for i in portaout'range generate
+portaout(i) <= PortAReg(i) when DDRAReg(i)='1' else '0'; 
+								
 end generate;
 
 
 end generate;
 
 PORTA_Not_Impl:if not CImplPORTA generate
- porta <= (others => 'Z');	
+ portaout <= (others => '0');	
 end generate; 
 
 -- ******************  PORTB **************************		
@@ -597,10 +476,9 @@ PORTB_COMP:component pport
                iowe       => core_iowe,
                out_en     => portb_out_en,
 			            -- External connection
---				spi_misoi  => spi_misoi,							
 			   portx      => PortBReg,
 			   ddrx       => DDRBReg,
-			   pinx       => portb,
+			   pinx       => portbin,
                irqlines   => ext_irqlines);
 
 -- PORTB connection to the external multiplexer
@@ -613,21 +491,9 @@ io_port_out_en(1) <= portb_out_en;
 --end generate;
 
 -- Tri-state control for PORTB
-PortBZCtrl:for i in portb'range generate
+PortBZCtrl:for i in portbout'range generate
 --portb(i) <= PortBReg(i) when DDRBReg(i)='1' else 'Z'; 
-portb(i) <= OC0_PWM0_SIG when OC0_PWM0_LocR - 8 = i and PWM0bit = '1' else
-				OC1A_PWM1A_SIG when OC1A_PWM1A_LocR - 8 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC1B_PWM1B_SIG when OC1B_PWM1B_LocR - 8 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC2_PWM2_SIG when OC2_PWM2_LocR - 8 = i and PWM2bit = '1' else
-				spi_mosio when mosi_LocR - 8 = i and spi_spe = '1' else
---				spi_misoo when miso_LocR = i and spi_spe = '1' else
-				spi_scko when sck_LocR - 8 = i and spi_spe = '1' else
---				spi_cs_n_SIG when spi_cs_n_LocR = i and spi_spe = '1' else	
---				slave_outputs_array(0).pins_out_reg(i) when slave_outputs_array(0).pins_dir_reg(i) = '0' and slave_outputs_array(0).wing_slot = portb_Slot else
---				slave_outputs_array(1).pins_out_reg(i) when slave_outputs_array(1).pins_dir_reg(i) = '0' and slave_outputs_array(1).wing_slot = portb_Slot else
-				PortBReg(i) when DDRBReg(i)='1' else 'Z'; 	
-				
---				spi_misoi <= portb(i) when miso_LocR = i - 8 and spi_spe = '1' else 'Z';				
+portbout(i) <= PortBReg(i) when DDRBReg(i)='1' else '0'; 	
 				
 end generate;
 
@@ -635,7 +501,7 @@ end generate;
 end generate;
 
 PORTB_Not_Impl:if not CImplPORTB generate
- portb <= (others => 'Z');	
+ portbout <= (others => '0');	
 end generate; 
 	
 -- ************************************************
@@ -655,7 +521,6 @@ PORTC_COMP:component pport
                iowe       => core_iowe,
                out_en     => portc_out_en,
 			            -- External connection
---				spi_misoi  => spi_misoi,
 			   portx      => PortCReg,
 			   ddrx       => DDRCReg,
 			   pinx       => portc,
@@ -671,20 +536,7 @@ io_port_out_en(5) <= portc_out_en;
 --end generate;
 -- Tri-state control for PORTC
 PortCZCtrl:for i in portc'range generate
-portc(i) <= PortCReg(i) when DDRCReg(i)='1' else 'Z'; 	
-portc(i) <= OC0_PWM0_SIG when OC0_PWM0_LocR - 16 = i and PWM0bit = '1' else
-				OC1A_PWM1A_SIG when OC1A_PWM1A_LocR - 16 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC1B_PWM1B_SIG when OC1B_PWM1B_LocR - 16 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC2_PWM2_SIG when OC2_PWM2_LocR - 16 = i and PWM2bit = '1' else
-				spi_mosio when mosi_LocR - 16 = i and spi_spe = '1' else
---				spi_misoo when miso_LocR = i and spi_spe = '1' else
-				spi_scko when sck_LocR - 16 = i and spi_spe = '1' else
---				spi_cs_n_SIG when spi_cs_n_LocR = i and spi_spe = '1' else
---				slave_outputs_array(0).pins_out_reg(i) when slave_outputs_array(0).pins_dir_reg(i) = '0' and slave_outputs_array(0).wing_slot = portc_Slot else
---				slave_outputs_array(1).pins_out_reg(i) when slave_outputs_array(1).pins_dir_reg(i) = '0' and slave_outputs_array(1).wing_slot = portc_Slot else				
-				PortCReg(i) when DDRCReg(i)='1' else 'Z';
-								
---				spi_misoi <= portc(i) when miso_LocR = i - 16 and spi_spe = '1' else 'Z';				
+portc(i) <= PortCReg(i) when DDRCReg(i)='1' else 'Z';
 				
 end generate;
 
@@ -710,10 +562,9 @@ PORTD_COMP:component pport
                iowe       => core_iowe,
                out_en     => portd_out_en,
 			            -- External connection
---				spi_misoi  => spi_misoi,							
 			   portx      => PortDReg,
 			   ddrx       => DDRDReg,
-			   pinx       => portd,
+			   pinx       => portdin,
                irqlines   => open);
 
 -- PORTD connection to the external multiplexer
@@ -726,29 +577,14 @@ io_port_out_en(6) <= portd_out_en;
 --end generate;
 
 -- Tri-state control for PORTD
-PortDZCtrl:for i in portd'range generate
---portd(i) <= PortDReg(i) when DDRDReg(i)='1' else 'Z'; 	
-portd(i) <= OC0_PWM0_SIG when OC0_PWM0_LocR - 24 = i and PWM0bit = '1' else
-				OC1A_PWM1A_SIG when OC1A_PWM1A_LocR - 24 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC1B_PWM1B_SIG when OC1B_PWM1B_LocR - 24 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC2_PWM2_SIG when OC2_PWM2_LocR - 24 = i and PWM2bit = '1' else
-				spi_mosio when mosi_LocR - 24 = i and spi_spe = '1' else
---				spi_misoo when miso_LocR = i and spi_spe = '1' else
-				spi_scko when sck_LocR - 24 = i and spi_spe = '1' else
---				spi_cs_n_SIG when spi_cs_n_LocR = i and spi_spe = '1' else	
---				slave_outputs_array(0).pins_out_reg(i) when slave_outputs_array(0).pins_dir_reg(i) = '0' and slave_outputs_array(0).wing_slot = portd_Slot else
---				slave_outputs_array(1).pins_out_reg(i) when slave_outputs_array(1).pins_dir_reg(i) = '0' and slave_outputs_array(1).wing_slot = portd_Slot else				
-				PortDReg(i) when DDRDReg(i)='1' else 'Z';
-								
---				spi_misoi <= portd(i) when miso_LocR = i - 24 and spi_spe = '1' else 'Z';				
-				
+PortDZCtrl:for i in portdout'range generate
+portdout(i) <= PortDReg(i) when DDRDReg(i)='1' else '0';				
 end generate;
-
 
 end generate;
 
 PORTD_Not_Impl:if not CImplPORTD generate
- portd <= (others => 'Z');	
+ portdout <= (others => '0');	
 end generate; 
 	
 -- ************************************************
@@ -784,21 +620,8 @@ io_port_out_en(7) <= porte_out_en;
 
 -- Tri-state control for PORTE
 PortEZCtrl:for i in porte'range generate
---porte(i) <= PortEReg(i) when DDREReg(i)='1' else 'Z'; 	
-porte(i) <= OC0_PWM0_SIG when OC0_PWM0_LocR - 32 = i and PWM0bit = '1' else
-				OC1A_PWM1A_SIG when OC1A_PWM1A_LocR - 32 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC1B_PWM1B_SIG when OC1B_PWM1B_LocR - 32 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC2_PWM2_SIG when OC2_PWM2_LocR - 32 = i and PWM2bit = '1' else
-				spi_mosio when mosi_LocR - 32 = i and spi_spe = '1' else
---				spi_misoo when miso_LocR = i and spi_spe = '1' else
-				spi_scko when sck_LocR - 32 = i and spi_spe = '1' else
---				spi_cs_n_SIG when spi_cs_n_LocR = i and spi_spe = '1' else	
---				slave_outputs_array(0).pins_out_reg(i) when slave_outputs_array(0).pins_dir_reg(i) = '0' and slave_outputs_array(0).wing_slot = porte_Slot else
---				slave_outputs_array(1).pins_out_reg(i) when slave_outputs_array(1).pins_dir_reg(i) = '0' and slave_outputs_array(1).wing_slot = porte_Slot else				
-				PortEReg(i) when DDREReg(i)='1' else 'Z';
-
+porte(i) <= PortEReg(i) when DDREReg(i)='1' else 'Z';
 end generate;
-
 
 end generate;
 
@@ -830,27 +653,11 @@ PORTF_COMP:component pport
 io_port_out(8) <= portf_dbusout;
 io_port_out_en(8) <= portf_out_en;
 
----- Tri-state control for PORTF
---PortFZCtrl:for i in portf'range generate
---portf(i) <= PortFReg(i) when DDRFReg(i)='1' else 'Z'; 	
---end generate;
 
 -- Tri-state control for PORTF
 PortFZCtrl:for i in portf'range generate
---portf(i) <= PortFReg(i) when DDRFReg(i)='1' else 'Z'; 	
-portf(i) <= OC0_PWM0_SIG when OC0_PWM0_LocR - 40 = i and PWM0bit = '1' else
-				OC1A_PWM1A_SIG when OC1A_PWM1A_LocR - 40 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC1B_PWM1B_SIG when OC1B_PWM1B_LocR - 40 = i and not (PWM10bit = '0' and PWM11bit = '0') else
-				OC2_PWM2_SIG when OC2_PWM2_LocR - 40 =  i and PWM2bit = '1' else
-				spi_mosio when mosi_LocR - 40 = i and spi_spe = '1' else
---				spi_misoo when miso_LocR = i and spi_spe = '1' else
-				spi_scko when sck_LocR - 40 = i and spi_spe = '1' else
---				spi_cs_n_SIG when spi_cs_n_LocR = i and spi_spe = '1' else
---				slave_outputs_array(0).pins_out_reg(i) when slave_outputs_array(0).pins_dir_reg(i) = '0' and slave_outputs_array(0).wing_slot = portf_Slot else
---				slave_outputs_array(1).pins_out_reg(i) when slave_outputs_array(1).pins_dir_reg(i) = '0' and slave_outputs_array(1).wing_slot = portf_Slot else				
-				PortFReg(i) when DDRFReg(i)='1' else 'Z';
+portf(i) <= PortFReg(i) when DDRFReg(i)='1' else 'Z';
 end generate;
-
 
 end generate;
 
@@ -860,26 +667,6 @@ end generate;
 	
 -- ************************************************
 
---****************** Swaps PWM and SPI pins to desired external pins ***********************
-swap_pins_Inst:component swap_pins port map(
-                    ireset     => core_ireset,
-                    cp2	       => core_cp2,
-                    adr        => core_ramadr,
-                    dbus_in    => core_dbusout,
-                    iore       => core_ramre,
-                    iowe       => core_ramwe,
-
-                    -- Locations
-                    OC0_PWM0_Loc        => OC0_PWM0_LocR,
-                    OC1A_PWM1A_Loc      => OC1A_PWM1A_LocR,
-                    OC1B_PWM1B_Loc        => OC1B_PWM1B_LocR,
-                    OC2_PWM2_Loc      => OC2_PWM2_LocR,
-						  
-                    mosi_Loc        => mosi_LocR,
-                    miso_Loc      => miso_LocR,
-                    sck_Loc        => sck_LocR,
-                    spi_cs_n_Loc      => spi_cs_n_LocR
-		            );
 
 --****************** External IRQ Controller**************************
 ExtIRQ_Impl:if CImplExtIRQ generate
@@ -923,10 +710,10 @@ TmrCnt_Inst:component Timer_Counter port map(
 			   -- External inputs/outputs
                EXT1           => gnd,
                EXT2           => gnd,
-			   OC0_PWM0       => OC0_PWM0_SIG,
-			   OC1A_PWM1A     => OC1A_PWM1A_SIG,
-			   OC1B_PWM1B     => OC1B_PWM1B_SIG,
-			   OC2_PWM2       => OC2_PWM2_SIG,
+			   OC0_PWM0       => open,
+			   OC1A_PWM1A     => open,
+			   OC1B_PWM1B     => open,
+			   OC2_PWM2       => open,
 			   -- Interrupt related signals
                TC0OvfIRQ      => core_irqlines(15),  -- Timer/Counter0 overflow ($0020)
 			   TC0OvfIRQ_Ack  => ind_irq_ack(15),
@@ -944,10 +731,10 @@ TmrCnt_Inst:component Timer_Counter port map(
 			   TC1CmpBIRQ_Ack => gnd,
 			   TC1ICIRQ       => open,
 			   TC1ICIRQ_Ack   => gnd,
-				PWM0bit		   => PWM0bit,
-				PWM10bit		   => PWM10bit,
-				PWM11bit		   => PWM11bit,
-				PWM2bit		   => PWM2bit);
+				PWM0bit		   => open,
+				PWM10bit		   => open,
+				PWM11bit		   => open,
+				PWM2bit		   => open);
 
 
 -- Timer/Counter connection to the external multiplexer							  
@@ -1115,12 +902,12 @@ spi_slv_sel_inst:component spi_slv_sel generic map(num_of_slvs => c_spi_slvs_num
 
 end generate;
 
---spi_cs_n <= spi_slv_sel_n(0);
+spi_cs_n <= spi_slv_sel_n(0);
 
 no_spi:if not CImplSPI generate
-mosi_SIG <= 'Z';
-miso_SIG <=	'Z'; 
-sck_SIG	 <=	'Z';
+--mosi_SIG <= 'Z';
+--miso_SIG <=	'Z'; 
+--sck_SIG	 <=	'Z';
 
 --io_slv_out(1).dbusout <= (others => '0');
 --io_slv_out(1).out_en  <= gnd;

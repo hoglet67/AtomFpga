@@ -575,7 +575,8 @@ begin
         i8255_data      when i8255_enable = '1'      else
         mc6522_data     when mc6522_enable = '1'     else
         sid_data        when sid_enable = '1'        else
-        spi_data        when spi_enable = '1'        else
+        spi_data        when spi_enable = '1' and CImplSDDOS else
+        extern_data     when spi_enable = '1' and not CImplSDDOS else
         extern_data     when extern_rom_enable = '1' else
         x"f1";          -- un-decoded locations
         

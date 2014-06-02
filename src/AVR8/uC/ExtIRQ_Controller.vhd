@@ -157,10 +157,10 @@ begin
  elsif  (clk='1' and clk'event)  then
   if (clken='1') then       -- Clock Enable	
    if (adr=EIFR_Address and iowe='1') then
-    EIFR(7 downto 4) <= dbus_in(7 downto 4);		 
+    EIFR(7 downto 4) <= EIFR(7 downto 4) and not dbus_in(7 downto 4);		 
 	 EIFR(3 downto 0) <= "0000"; -- in Atmega103, these bits are reserved and always read '0', See Atmega103 Data Sheet top of page 31. 	
 	else
-	 EIFR(7 downto 4) <= TRGR(7 downto 4);
+	 EIFR(7 downto 4) <= EIFR(7 downto 4) or TRGR(7 downto 4);
 	 EIFR(3 downto 0) <= "0000"; -- in Atmega103, these bits are reserved and always read '0', See Atmega103 Data Sheet top of page 31. 	
    end if;
   end if;	 
@@ -184,7 +184,7 @@ end process;
 -- Output Enable 
 out_en <= '1' when ((adr=EIMSK_Address or adr=EIFR_Address or adr=EICR_Address) and iore='1') else '0'; 
 
--- Read register 
+-- Read register
 dbus_out <= EIMSK when (adr=EIMSK_Address) else 
             EIFR when (adr=EIFR_Address) else 
             EICR when (adr=EICR_Address) else

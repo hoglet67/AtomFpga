@@ -23,10 +23,12 @@ entity Atomic_top_hoglet is
     port (clk_32M00 : in  std_logic;
            ps2_clk  : in  std_logic;
            ps2_data : in  std_logic;
-           ERST     : in  std_logic;
-           red      : out std_logic_vector (2 downto 1);
+           ps2_mouse_clk  : in  std_logic;
+           ps2_mouse_data : in  std_logic;
+           ERSTn    : in  std_logic;
+           red      : out std_logic_vector (2 downto 2);
            green    : out std_logic_vector (2 downto 1);
-           blue     : out std_logic_vector (2 downto 1);
+           blue     : out std_logic_vector (2 downto 2);
            vsync    : out std_logic;
            hsync    : out std_logic;
            audiol   : out std_logic;
@@ -44,7 +46,9 @@ entity Atomic_top_hoglet is
            SDCLK    : out std_logic;
            SDMOSI   : out std_logic;
            RxD      : in  std_logic;
-           TxD      : out std_logic
+           TxD      : out std_logic;
+           LED1     : out std_logic;
+           LED2     : out std_logic
            );
 end Atomic_top_hoglet;
 
@@ -80,7 +84,7 @@ architecture behavioral of Atomic_top_hoglet is
             ps2_clk   : in  std_logic;
             ps2_data  : in  std_logic;
             ERSTn     : in  std_logic;
-            SDMISO    : in  std_logic;    
+            SDMISO    : in  std_logic;
             red       : out std_logic_vector(2 downto 0);
             green     : out std_logic_vector(2 downto 0);
             blue      : out std_logic_vector(2 downto 0);
@@ -100,42 +104,50 @@ architecture behavioral of Atomic_top_hoglet is
         );
 	end component;
    
-	COMPONENT AtomPL8
-	PORT(
-		clk : IN std_logic;
-		enable : IN std_logic;
-		nRST : IN std_logic;
-		PHI2 : IN std_logic;
-		RW : IN std_logic;
-		DataIn : IN std_logic_vector(7 downto 0);
-		nARD : IN std_logic;
-		nAWR : IN std_logic;
-		AVRA0 : IN std_logic;    
-		AVRData : INOUT std_logic_vector(7 downto 0);      
-		DataOut : OUT std_logic_vector(7 downto 0);
-		AVRINTOut : OUT std_logic
+	component AtomPL8
+        port (
+            clk         : in std_logic;
+            enable      : in std_logic;
+            nRST        : in std_logic;
+            RW          : in std_logic;
+            Addr        : in std_logic_vector(2 downto 0);
+            DataIn      : in std_logic_vector(7 downto 0);
+            nARD        : in std_logic;
+            nAWR        : in std_logic;
+            AVRA0       : in std_logic;    
+            AVRDataIn   : in std_logic_vector(7 downto 0);      
+            AVRDataOut  : OUT std_logic_vector(7 downto 0);      
+            DataOut     : OUT std_logic_vector(7 downto 0);
+            AVRINTOut   : OUT std_logic;
+            AtomIORDOut : out std_logic;
+            AtomIOWROut : out std_logic
 		);
-	END COMPONENT;
+	end component;
 
 	component AVR8
-	port(
-		clk16M : IN std_logic;
-		nrst : IN std_logic;
-		porta : INOUT std_logic_vector(7 downto 0);
-		portb : INOUT std_logic_vector(7 downto 0);
-		portc : INOUT std_logic_vector(7 downto 0);
-		portd : INOUT std_logic_vector(7 downto 0);
-		porte : INOUT std_logic_vector(7 downto 0);
-		portf : INOUT std_logic_vector(7 downto 0);      
-		rxd : IN std_logic;    
-		txd : OUT std_logic
+        port(
+            clk16M    : in std_logic;
+            nrst      : in std_logic;
+            portain   : in std_logic_vector(7 downto 0);
+            portaout  : out std_logic_vector(7 downto 0);
+            portbin   : in std_logic_vector(7 downto 0);
+            portbout  : out std_logic_vector(7 downto 0);
+            portc     : inout std_logic_vector(7 downto 0);
+            portdin   : in std_logic_vector(7 downto 0);
+            portdout  : out std_logic_vector(7 downto 0);
+            porte     : inout std_logic_vector(7 downto 0);
+            portf     : inout std_logic_vector(7 downto 0);
+            spi_mosio : out std_logic;
+            spi_scko  : out std_logic;
+            spi_cs_n  : out std_logic;
+            spi_misoi : in std_logic;
+            rxd       : in std_logic;    
+            txd       : out std_logic
 		);
 	end component;
 
     signal clk_12M58 : std_logic;
     signal clk_16M00 : std_logic;
-
-    signal ERSTn     : std_logic;
 
     signal RamCE     : std_logic;
     signal RomCE     : std_logic;
@@ -147,17 +159,13 @@ architecture behavioral of Atomic_top_hoglet is
     signal nAWR     : std_logic;
     signal AVRA0    : std_logic;
     signal AVRInt   : std_logic;
-    signal AVRIntTS : std_logic;
-    signal AVRData  : std_logic_vector (7 downto 0);
-
-    signal intSDMISO   : std_logic;
-    signal intSDSS     : std_logic;
-    signal intSDCLK    : std_logic;
-    signal intSDMOSI   : std_logic;
+    signal AVRDataIn  : std_logic_vector (7 downto 0);
+    signal AVRDataOut  : std_logic_vector (7 downto 0);
 
     signal Addr  : std_logic_vector (16 downto 0);
     signal PL8Data  : std_logic_vector (7 downto 0);
     signal PL8Enable: std_logic;
+    signal cpuclken     : std_logic;
 
 begin
 
@@ -173,11 +181,9 @@ begin
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
     
-    ERSTn <= not ERST;
-
     inst_Atomic_core : Atomic_core
     generic map (
-        CImplSID => true,
+        CImplSID => false,
         CImplSDDOS => false
     )
     port map(
@@ -187,12 +193,12 @@ begin
         ps2_clk   => ps2_clk,
         ps2_data  => ps2_data,
         ERSTn     => ERSTn,
-        red(2 downto 1)   => red(2 downto 1),
-        red(0)    => open,
+        red(2)   => red(2),
+        red(1 downto 0)    => open,
         green(2 downto 1) => green(2 downto 1),
         green(0)  => open,
-        blue(2 downto 1)  => blue(2 downto 1),
-        blue(0)   => open,
+        blue(2)  => blue(2),
+        blue(1 downto 0) => open,
         vsync     => vsync,
         hsync     => hsync,
         RamCE     => RamCE,
@@ -210,67 +216,79 @@ begin
         );  
 
 	Inst_AVR8: AVR8 PORT MAP(
-		clk16M => clk_16M00,
-		nrst => ERSTn,
-   		porta      => AVRData,
-		portb(0)   => nARD,
-		portb(1)   => nAWR,
-		portb(2)   => open,
-		portb(3)   => AVRA0,
-		portb(4)   => AVRInt,
-		portb(5)   => open,
-		portb(6)   => open,
-		portb(7)   => open,
-		portc(0)   => open,
-		portc(1)   => open,
-		portc(2)   => open,
-		portc(3)   => open,
-        portc(4)   => intSDMISO,
-        portc(5)   => intSDSS,
-        portc(6)   => intSDCLK,
-        portc(7)   => intSDMOSI,
-		rxd => RxD,
-		txd => TxD 
+		clk16M      => clk_16M00,
+		nrst        => ERSTn,
+   		portain     => AVRDataOut,
+   		portaout    => AVRDataIn,
+
+		portbin(0)  => '0',
+		portbin(1)  => '0',
+		portbin(2)  => '0',
+		portbin(3)  => '0',
+		portbin(4)  => AVRInt,
+		portbin(5)  => '0',
+		portbin(6)  => '0',
+		portbin(7)  => '0',
+        
+		portbout(0)  => nARD,
+		portbout(1)  => nAWR,
+		portbout(2)  => open,
+		portbout(3)  => AVRA0,
+		portbout(4)  => open,
+		portbout(5)  => open,
+		portbout(6)  => open,
+		portbout(7)  => open,
+
+        portdin      => (others => '0'),
+        portdout(0)  => open,
+        portdout(1)  => open,
+        portdout(2)  => open,
+        portdout(3)  => open,
+        portdout(4)  => SDSS,
+        portdout(5)  => open,
+        portdout(6)  => open,
+        portdout(7)  => open,
+
+        spi_mosio    => SDMOSI,
+        spi_scko     => SDCLK,
+        spi_misoi    => SDMISO,
+     
+		rxd          => RxD,
+		txd          => TxD 
 	);
     
     Inst_AtomPL8: AtomPL8 port map(
 		clk => clk_16M00,
 		enable => PL8Enable,
 		nRST => ERSTn,
-		PHI2 => '1',
-		RW => ExternWE,
+		RW => not ExternWE,
+        Addr => Addr(2 downto 0),
 		DataIn => ExternDin,
 		DataOut => PL8Data,
-		AVRData => AVRDATA,
+		AVRDataIn => AVRDataIn,
+		AVRDataOut => AVRDataOut,
 		nARD => nARD,
 		nAWR => nAWR,
 		AVRA0 => AVRA0,
-		AVRINTOut => AVRIntTS
+		AVRINTOut => AVRInt,
+        AtomIORDOut => LED1,
+        AtomIOWROut => LED2
 	);   
-   
-    AVRIntTS <= '0' when AVRInt = '0' else 'Z';
-   
-    intSDMISO <= '0' when SDMISO = '0' else 'Z';
-    SDSS      <= intSDSS;
-    SDCLK     <= intSDCLK;
-    SDMOSI    <= intSDMOSI;
-        
-    RAMCEn     <= not RamCE;
-    RAMWRn     <= not ExternWE;
-    RAMOEn     <= not RamCE;
+           
+    RAMWRn     <= not (ExternWE and RamCE);
+    RAMOEn     <= not ((not ExternWE) and RamCE);
 
-    ROMCEn     <= not RomCE;
-    ROMWRn     <= not ExternWE;
-    ROMOEn     <= not RomCE;
+    ROMWRn     <= not (ExternWE and RomCE);
+    ROMOEn     <= not ((not ExternWE) and RomCE);
 
     ExternD    <= ExternDin when ExternWE = '1' else "ZZZZZZZZ";
     
-    PL8Enable  <= '1' when Addr(15 downto 7) = "10110100" else '0';
+    PL8Enable  <= '1' when Addr(15 downto 8) = "10110100" else '0';
     
     ExternDout <= PL8Data when PL8Enable = '1' else ExternD;
     
     ExternA    <= Addr;
-    
+        
 end behavioral;
 
 
