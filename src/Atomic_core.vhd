@@ -551,7 +551,7 @@ begin
             when x"7" => extern_ram_enable <= '1';
             when x"8" => video_ram_enable  <= '1';  -- 0x8000 -- 0x9fff is RAM
             when x"9" => video_ram_enable  <= '1';
-            when x"A" =>
+            when x"A" => extern_rom_enable <= '1';
             when x"B" =>
                 if cpu_addr(11 downto 8) = "0000" then     -- 0xb000 8255 PIA  
                     i8255_enable <= '1';

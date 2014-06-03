@@ -170,6 +170,12 @@ architecture behavioral of Atomic_top_hoglet is
     signal PL8Data  : std_logic_vector (7 downto 0);
     signal PL8Enable: std_logic;
     signal cpuclken     : std_logic;
+    
+    signal BFFE_Enable : std_logic;
+    signal BFFF_Enable : std_logic;
+    
+    signal RomJumpers  : std_logic_vector (2 downto 0);
+    signal RomLatch  : std_logic_vector (3 downto 0);
 
 begin
 
@@ -290,10 +296,48 @@ begin
     
     PL8Enable  <= '1' when Addr(15 downto 8) = "10110100" else '0';
     
-    ExternDout <= PL8Data when PL8Enable = '1' else ExternD;
-    
-    ExternA    <= Addr;
+    ExternDout <= PL8Data when PL8Enable = '1' else 
+                  ("00000" & RomJumpers) when BFFE_Enable = '1' else 
+                  ("0000" & RomLatch) when BFFF_Enable = '1' else 
+                  ExternD;
+
+    -------------------------------------------------
+    -- External address decoding
+    -------------------------------------------------
+
+    ExternA  <=
         
+        -- A000 ROM (16x 4K banks selected by ROM Latch)
+        ( "0" & RomLatch & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" else
+        
+        -- C000-FFFF ROM (2x 16K banks selected by jumper)
+        ( "10" & RomJumpers(1) & Addr(13 downto 0)) when Addr(15 downto 14) = "11" else
+             
+        -- RAM
+        Addr;
+
+    -------------------------------------------------
+    -- ROM Latch and Jumpers
+    -------------------------------------------------
+    BFFE_Enable <= '1' when Addr(15 downto 0) = "1011111111111110" else '0';
+    BFFF_Enable <= '1' when Addr(15 downto 0) = "1011111111111111" else '0';
+        
+    RomLatchProcess : process (ERSTn, IRSTn, clk_16M00)
+    begin
+        if ERSTn = '0' then
+            RomJumpers <= "000";
+            RomLatch   <= "0000";
+        elsif rising_edge(clk_16M00) then
+            if BFFE_Enable = '1' and ExternWE = '1' then
+                RomJumpers <= ExternDin(2 downto 0);
+            end if;
+            if BFFF_Enable = '1' and ExternWE = '1' then
+                RomLatch   <= ExternDin(3 downto 0);
+            end if;
+        end if;
+    end process;
+    
+    
 end behavioral;
 
 
