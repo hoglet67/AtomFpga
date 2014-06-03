@@ -1,17 +1,19 @@
 --------------------------------------------------------------------------------
--- Copyright (c) 2009 Alan Daly.  All rights reserved.
+-- Copyright (c) 2014 David Banks
+--
+-- based on work by Alan Daly. Copyright(c) 2009. All rights reserved.
 --------------------------------------------------------------------------------
 --   ____  ____ 
 --  /   /\/   / 
 -- /___/  \  /    
 -- \   \   \/    
 --  \   \         
---  /   /         Filename  : Atomic_top.vhf
--- /___/   /\     Timestamp : 02/03/2013 06:17:50
+--  /   /         Filename  : Atomic_top_hoglet.vhf
+-- /___/   /\     Timestamp : 03/04/2014 19:27:00
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
---Design Name: Atomic_top
+--Design Name: Atomic_top_hoglet
 --Device: spartan3E
 
 library ieee;
@@ -84,6 +86,7 @@ architecture behavioral of Atomic_top_hoglet is
             ps2_clk   : in  std_logic;
             ps2_data  : in  std_logic;
             ERSTn     : in  std_logic;
+            IRSTn     : out std_logic;
             SDMISO    : in  std_logic;
             red       : out std_logic_vector(2 downto 0);
             green     : out std_logic_vector(2 downto 0);
@@ -148,6 +151,7 @@ architecture behavioral of Atomic_top_hoglet is
 
     signal clk_12M58 : std_logic;
     signal clk_16M00 : std_logic;
+    signal IRSTn     : std_logic;
 
     signal RamCE     : std_logic;
     signal RomCE     : std_logic;
@@ -183,7 +187,7 @@ begin
     
     inst_Atomic_core : Atomic_core
     generic map (
-        CImplSID => false,
+        CImplSID   => true,
         CImplSDDOS => false
     )
     port map(
@@ -193,6 +197,7 @@ begin
         ps2_clk   => ps2_clk,
         ps2_data  => ps2_data,
         ERSTn     => ERSTn,
+        IRSTn     => IRSTn,
         red(2)   => red(2),
         red(1 downto 0)    => open,
         green(2 downto 1) => green(2 downto 1),
@@ -217,7 +222,7 @@ begin
 
 	Inst_AVR8: AVR8 PORT MAP(
 		clk16M      => clk_16M00,
-		nrst        => ERSTn,
+		nrst        => IRSTn,
    		portain     => AVRDataOut,
    		portaout    => AVRDataIn,
 
@@ -236,8 +241,8 @@ begin
 		portbout(3)  => AVRA0,
 		portbout(4)  => open,
 		portbout(5)  => open,
-		portbout(6)  => open,
-		portbout(7)  => open,
+		portbout(6)  => LED1,
+		portbout(7)  => LED2,
 
         portdin      => (others => '0'),
         portdout(0)  => open,
@@ -260,7 +265,7 @@ begin
     Inst_AtomPL8: AtomPL8 port map(
 		clk => clk_16M00,
 		enable => PL8Enable,
-		nRST => ERSTn,
+		nRST => IRSTn,
 		RW => not ExternWE,
         Addr => Addr(2 downto 0),
 		DataIn => ExternDin,
@@ -271,8 +276,8 @@ begin
 		nAWR => nAWR,
 		AVRA0 => AVRA0,
 		AVRINTOut => AVRInt,
-        AtomIORDOut => LED1,
-        AtomIOWROut => LED2
+        AtomIORDOut => open,
+        AtomIOWROut => open
 	);   
            
     RAMWRn     <= not (ExternWE and RamCE);

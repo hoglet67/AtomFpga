@@ -29,6 +29,7 @@ entity Atomic_core is
         ps2_clk   : in    std_logic;
         ps2_data  : in    std_logic;
         ERSTn     : in    std_logic;
+        IRSTn     : out   std_logic;
         red       : out   std_logic_vector (2 downto 0);
         green     : out   std_logic_vector (2 downto 0);
         blue      : out   std_logic_vector (2 downto 0);
@@ -440,7 +441,7 @@ begin
         O_CB2   => mc6522_cb2,
         I_PB    => mc6522_portb(7 downto 0),
         O_PB    => mc6522_portb(7 downto 0),
-        RESET_L => ERSTn,                --RSTn,
+        RESET_L => RSTn,
         I_P2_H  => cpu_phase,
         ENA_4   => via4_clken,
         CLK     => via_clk);                                      
@@ -499,6 +500,8 @@ begin
 ---------------------------------------------------------------------
 
     RSTn          <= ERSTn and key_break;
+    IRSTn         <= RSTn;
+
     mc6522_ca1    <= '1';
     inpurps2clk   <= ps2_clk;
     inpurps2dat   <= ps2_data;
