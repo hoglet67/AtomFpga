@@ -212,8 +212,8 @@ begin
         blue(1 downto 0) => open,
         vsync     => vsync,
         hsync     => hsync,
-        RamCE     => RamCE,
-        RomCE     => RomCE,
+        RamCE     => open,
+        RomCE     => open,
         ExternWE  => ExternWE,
         ExternA   => Addr,
         ExternDin => ExternDin,
@@ -284,7 +284,12 @@ begin
 		AVRINTOut => AVRInt,
         AtomIORDOut => open,
         AtomIOWROut => open
-	);   
+	);
+
+
+    RamCE      <= '1' when ((Addr(15) = '0') or (Addr(15 downto 12) = "1010" and (RomLatch = "0000" and RomJumpers(0) = '1'))) else '0';
+
+    RomCE      <= '1' when ((Addr(15 downto 14) = "11") or (Addr(15 downto 12) = "1010" and (RomLatch /= "0000" or RomJumpers(0) = '0'))) else '0';
            
     RAMWRn     <= not (ExternWE and RamCE);
     RAMOEn     <= not ((not ExternWE) and RamCE);
@@ -306,6 +311,12 @@ begin
     -------------------------------------------------
 
     ExternA  <=
+    
+        -- 4K remappable RAM bank mapped to 0x7000
+        (RomJumpers(0) & Addr(15 downto 0)) when Addr(15 downto 12) = "0111" else
+
+        -- 4K remappable RAM bank mapped to 0xA000 Rom 0
+        ( "00111" & Addr(11 downto 0)) when ((Addr(15 downto 12) = "1010") and (RomLatch = "0000") and (RomJumpers(0) = '1')) else
         
         -- A000 ROM (16x 4K banks selected by ROM Latch)
         ( "0" & RomLatch & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" else
