@@ -348,7 +348,7 @@ begin
     VDG : mc6847 port map (
         clk            => clk_12M58,
         clk_ena        => '1',
-        reset          => not RSTn,
+        reset          => '0',
         da0            => vdg_da0,
         videoaddr      => video_address,
         dd             => vdg_dd,
@@ -508,12 +508,12 @@ begin
     not_cpu_R_W_n <= not cpu_R_W_n;
     cpu_IRQ_n     <= mc6522_irq;
     --cpu_IRQ_n <= '1';
-    vdg_gm        <= i8255_pa_data(7 downto 5);
-    vdg_an_g      <= i8255_pa_data(4);
+    vdg_gm        <= i8255_pa_data(7 downto 5) when RSTn='1' else "000";
+    vdg_an_g      <= i8255_pa_data(4)  when RSTn='1' else '0';
     vdg_an_s      <= vdg_dd(6);
     vdg_intn_ext  <= vdg_dd(6);
     vdg_inv       <= vdg_dd(7);
-    vdg_css       <= i8255_pc_data(3);
+    vdg_css       <= i8255_pc_data(3) when RSTn='1' else '0';
     audiol        <= sid_audio;
     audioR        <= i8255_pc_data(2);
 
