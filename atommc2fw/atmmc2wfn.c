@@ -5,7 +5,7 @@
 #include "atmmc2def.h"
 #include "diskio.h"
 #include "ff.h"
-#include "wildcard.h"
+#include "..\status.h"
 
 BYTE res;
 
@@ -21,9 +21,6 @@ FATFS fatfs;
 
 extern BYTE windowData[];
 
-#define WILD_LEN	16
-
-char	WildPattern[WILD_LEN+1];
 
 #ifdef INCLUDE_SDDOS
 
@@ -60,72 +57,18 @@ void at_initprocessor(void)
 }
 
 
-void GetWildcard(void)
-{
-	int	Idx			= 0;
-	int	WildPos		= -1;
-	int	LastSlash	= -1;
-	
-	//log0("GetWildcard() %s\n",(const char *)globalData);
-	
-	while ((Idx<strlen((const char*)globalData)) && (WildPos<0)) 
-	{
-		// Check for wildcard character
-		if((globalData[Idx]=='?') || (globalData[Idx]=='*')) 
-			WildPos=Idx;
 
-		// Check for path seperator
-		if((globalData[Idx]=='\\') || (globalData[Idx]=='/'))
-			LastSlash=Idx;
-			
-		Idx++;
-	}
-	
-	//log0("GetWildcard() Idx=%d, WildPos=%d, LastSlash=%d\n",Idx,WildPos,LastSlash);
-	
-	if(WildPos>-1)
-	{
-		if(LastSlash>-1)
-		{
-			// Path followed by wildcard
-			// Terminate dir filename at last slash and copy wildcard
-			globalData[LastSlash]=0x00;
-			strncpy(WildPattern,(const char*)&globalData[LastSlash+1],WILD_LEN);
-		}
-		else
-		{
-			// Wildcard on it's own
-			// Copy wildcard, then set path to null
-			strncpy(WildPattern,(const char*)globalData,WILD_LEN);
-			globalData[0]=0x00;
-		}
-	}
-	else
-	{
-		// No wildcard, show all files
-#if (PLATFORM==PLATFORM_PIC)
-		strcpypgm2ram((char*)&WildPattern[0], (const rom far char*)"*");
-#elif (PLATFORM==PLATFORM_AVR)
-		strncpy_P(WildPattern,PSTR("*"),WILD_LEN);
-#endif
-	}
-	
-	//log0("GetWildcard() globalData=%s WildPattern=%s\n",(const char*)globalData,WildPattern); 
-}
 
 void wfnDirectoryOpen(void)
 {
-	// Separate wildcard and path 
-	GetWildcard();
-   
-	res = f_opendir(&dir, (const char*)globalData);
+   res = f_opendir(&dir, (const char*)globalData);
    if (FR_OK != res)
    {
-      WriteDataPort(STATUS_COMPLETE | res);
+      WriteResult(STATUS_COMPLETE | res);
       return;
    }
 
-   WriteDataPort(STATUS_OK);
+   WriteResult(STATUS_OK);
 }
 
 
@@ -134,54 +77,7 @@ void wfnDirectoryOpen(void)
 void wfnDirectoryRead(void)
 {
    char len;
-	int	Match;
 
-	while (1)
-	{
-		char n = 0;
-
-		res = f_readdir(&dir, &filinfo);
-		if (res != FR_OK || !filinfo.fname[0])
-		{
-			// done
-			WriteDataPort(STATUS_COMPLETE | res);
-			return;
-		}
-
-		// Check to see if filename matches current wildcard
-		//
-		Match=wildcmp(WildPattern,filinfo.fname);
-		//log0("WildPattern=%s, filinfo.fname=%s, Match=%d\n",WildPattern,filinfo.fname,Match);
-		if(Match)
-		{
-			len = (char)strlen(filinfo.fname);
-
-			if (filinfo.fattrib & AM_DIR)	
-			{
-				n = 1;
-				globalData[0] = '<';
-			}
-
-			strcpy((char*)&globalData[n], (const char*)filinfo.fname);
-
-			if (filinfo.fattrib & AM_DIR)
-			{
-				globalData[len+1] = '>';
-				globalData[len+2] = 0;
-				len += 2; // brackets
-			}
-
-			// just for giggles put the attribute & filesize in the buffer
-			//
-			globalData[len+1] = filinfo.fattrib;
-			memcpy(&globalData[len+2], (void*)(&filinfo.fsize), sizeof(DWORD));
-
-			WriteDataPort(STATUS_OK);
-			return;
-		}
-	}
-
-#if 0
    while (1)
    {
       char n = 0;
@@ -190,8 +86,8 @@ void wfnDirectoryRead(void)
       if (res != FR_OK || !filinfo.fname[0])
       {
          // done
-         WriteDataPort(STATUS_COMPLETE | res);
-         return;
+         WriteResult(STATUS_COMPLETE | res);
+		 return;
       }
 
       // no LFNs here ;)
@@ -218,17 +114,16 @@ void wfnDirectoryRead(void)
       globalData[len+1] = filinfo.fattrib;
       memcpy(&globalData[len+2], (void*)(&filinfo.fsize), sizeof(DWORD));
 
-      WriteDataPort(STATUS_OK);
+      WriteResult(STATUS_OK);
       return;
    }
-#endif
 }
 
 
 
 void wfnSetCWDirectory(void)
 {
-   WriteDataPort(STATUS_COMPLETE | f_chdir((const XCHAR*)globalData));
+   WriteResult(STATUS_COMPLETE | f_chdir((const XCHAR*)globalData));
 }
 
 
@@ -236,19 +131,19 @@ void wfnSetCWDirectory(void)
 
 static BYTE fileOpen(BYTE mode)
 {
-   return 0x40 | f_open(&fil, (const char*)globalData, mode);
+   return STATUS_COMPLETE | f_open(&fil, (const char*)globalData, mode);
 }
 
 void wfnFileOpenRead(void)
 {
    res = fileOpen(FA_OPEN_EXISTING|FA_READ);
    get_fileinfo_special(&filinfo);
-   WriteDataPort(STATUS_COMPLETE | res);
+   WriteResult(STATUS_COMPLETE | res);
 }
 
 void wfnFileOpenWrite(void)
 {
-   WriteDataPort(STATUS_COMPLETE | fileOpen(FA_CREATE_NEW|FA_WRITE));
+   WriteResult(STATUS_COMPLETE | fileOpen(FA_CREATE_NEW|FA_WRITE));
 }
 
 
@@ -284,7 +179,7 @@ void wfnFileGetInfo(void)
 
    globalData[12] = filinfo.fattrib & 0x3f;
 
-   WriteDataPort(STATUS_OK);
+   WriteResult(STATUS_OK);
 }
 
 
@@ -298,7 +193,7 @@ void wfnFileRead(void)
       globalAmount = 256;
    }
 
-   WriteDataPort(STATUS_COMPLETE | f_read(&fil, globalData, globalAmount, &read));
+   WriteResult(STATUS_COMPLETE | f_read(&fil, globalData, globalAmount, &read));
 }
 
 
@@ -312,7 +207,7 @@ void wfnFileWrite(void)
       globalAmount = 256;
    }
 
-   WriteDataPort(STATUS_COMPLETE | f_write(&fil, (void*)globalData, globalAmount, &written));
+   WriteResult(STATUS_COMPLETE | f_write(&fil, (void*)globalData, globalAmount, &written));
 }
 
 
@@ -320,7 +215,7 @@ void wfnFileWrite(void)
 
 void wfnFileClose(void)
 {
-   WriteDataPort(STATUS_COMPLETE | f_close(&fil));
+   WriteResult(STATUS_COMPLETE | f_close(&fil));
 }
 
 
@@ -330,7 +225,7 @@ void wfnFileClose(void)
 
 void wfnFileDelete(void)
 {
-   WriteDataPort(STATUS_COMPLETE | f_unlink((const XCHAR*)&globalData[0]));
+   WriteResult(STATUS_COMPLETE | f_unlink((const XCHAR*)&globalData[0]));
 }
 
 
@@ -409,6 +304,9 @@ void wfnOpenSDDOSImg(void)
    memset(image, 0, sizeof(imgInfo));
    strncpy((char*)&image->filename, (const char*)&globalData[1], 13);
 
+log0("%s : %s\n",(char*)&image->filename,(const char*)&globalData[1]);
+log0("%d\n",globalData);
+				
    error = tryOpenImage(image);
    if (error >= STATUS_COMPLETE)
    {
@@ -422,7 +320,7 @@ void wfnOpenSDDOSImg(void)
    //
    saveDrivesImpl();
 
-   WriteDataPort(error);
+   WriteResult(error);
 }
 
 
@@ -451,7 +349,7 @@ void wfnReadSDDOSSect(void)
 
          memcpy((void*)globalData, (const void*)(&sectorData[(globalLBAOffset & 1) * 256]), 256);
 
-         WriteDataPort(STATUS_OK);
+         WriteResult(STATUS_OK);
          return;
       }
 
@@ -459,7 +357,7 @@ void wfnReadSDDOSSect(void)
       returnCode |= STATUS_COMPLETE;
    }
 
-   WriteDataPort(returnCode);
+   WriteResult(returnCode);
 }
 
 
@@ -477,7 +375,7 @@ void wfnWriteSDDOSSect(void)
       {
          // read-only
          //
-         WriteDataPort(STATUS_COMPLETE | ERROR_READ_ONLY);
+         WriteResult(STATUS_COMPLETE | ERROR_READ_ONLY);
          return;
       }
 
@@ -500,7 +398,7 @@ void wfnWriteSDDOSSect(void)
 
       if (RES_OK == returnCode)
       {
-         WriteDataPort(STATUS_OK);
+         WriteResult(STATUS_OK);
          return;
       }
 
@@ -508,7 +406,7 @@ void wfnWriteSDDOSSect(void)
       returnCode |= STATUS_COMPLETE;
    }
 
-   WriteDataPort(returnCode);
+   WriteResult(returnCode);
 }
 
 
@@ -549,14 +447,14 @@ void wfnValidateSDDOSDrives(void)
 
    saveDrivesImpl();
 
-   WriteDataPort(STATUS_OK);
+   WriteResult(STATUS_OK);
 }
 
 
 void wfnSerialiseSDDOSDrives(void)
 {
    saveDrivesImpl();
-   WriteDataPort(STATUS_OK);
+   WriteResult(STATUS_OK);
 }
 
 
@@ -570,7 +468,7 @@ void wfnUnmountSDDOSImg(void)
    memset(image, 0xff, sizeof(imgInfo));
 
    saveDrivesImpl();
-   WriteDataPort(STATUS_OK);
+   WriteResult(STATUS_OK);
 }
 
 
@@ -595,7 +493,7 @@ void wfnGetSDDOSImgNames(void)
       ++n;
    }
 
-   WriteDataPort(STATUS_OK);
+   WriteResult(STATUS_OK);
 }
 
 
@@ -616,7 +514,7 @@ void wfnExecuteArbitrary(void)
 {
    if (globalAmount == 0 && globalDataPresent == 0)
    {
-      WriteDataPort(STATUS_COMPLETE | ERROR_NO_DATA);
+      WriteResult(STATUS_COMPLETE | ERROR_NO_DATA);
       return;
    }
 
@@ -635,7 +533,7 @@ void wfnExecuteArbitrary(void)
             globalData[n] = ReadEEPROM(i);
          }
 
-         WriteDataPort(STATUS_OK);
+         WriteResult(STATUS_OK);
       }
       break;
 
@@ -652,7 +550,7 @@ void wfnExecuteArbitrary(void)
             WriteEEPROM(i,globalData[n]);
          }
 
-         WriteDataPort(STATUS_OK);
+         WriteResult(STATUS_OK);
       }
       break;
    }

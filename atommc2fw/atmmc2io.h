@@ -1,7 +1,8 @@
 #ifndef _IO
 
-// Mask applied to register address bits.
-#define ADDRESS_MASK	0x07
+#include "../status.h"
+
+#define DEBUG_RESULT	0
 
 #if (PLATFORM==PLATFORM_PIC)
 
@@ -81,8 +82,8 @@ extern void redSignal(unsigned char);
 #define AtomRWLine		4
 #define AtomRWMask		(1 << AtomRWLine)
 
-#define LatchAddressIn()			{ SelectAddr(); SetIORead(); AssertOE(); LatchedAddressLast=DATAPIN; ClearOE(); }
-#define ReadDataPort()				{ SelectData(); SetIORead(); AssertOE(); LatchedData=DATAPIN; ClearOE(); }
+#define LatchAddressIn()			{ SelectAddr(); SetIORead(); AssertOE(); NOPDelay(); LatchedAddressLast=DATAPIN; ClearOE(); }
+#define ReadDataPort()				{ SelectData(); SetIORead(); AssertOE(); NOPDelay(); LatchedData=DATAPIN; ClearOE(); }
 #define WriteDataPort(value)		{ SelectData(); SetIOWrite(); DATAPORT=value; AssertLE(); ClearLE(); }	
 #define AddressPORT	
 
@@ -112,6 +113,8 @@ extern void redSignal(unsigned char);
 #define redSignal(x)
 
 #endif
+
+#define WriteResult(value) 	{ if (DEBUG_RESULT) log0("res=%02X\n",value); WriteDataPort(value); }
 
 #define _IO
 #endif

@@ -11,6 +11,6 @@
 #define PLATFORM_AVR	2
 #define PLATFORM_EMU	3
 
-#define PLATFORM 		PLATFORM_PIC
+#define PLATFORM 		PLATFORM_AVR
 
 #endif

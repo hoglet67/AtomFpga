@@ -191,13 +191,9 @@ void main(void)
    LATB = ReadEEPROM(EE_PORTBVALU);
    TRISB = ReadEEPROM(EE_PORTBTRIS);
 
-	INTCON2bits.RBPU=0;
-	
    at_initprocessor();
 
    RELEASEIRQ();
-
-    _asm nop _endasm;
 
 doneprocessing:
    ACTIVITYSTROBE(1);

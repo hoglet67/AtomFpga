@@ -5,7 +5,7 @@
 #include "atmmc2def.h"
 #include "ff.h"
 
-//#include "status.h"
+#include "status.h"
 
 #include <string.h>
 
@@ -59,12 +59,13 @@ void at_process(void)
    // port a holds the latched contents of the address bus a0-a3
    //
    LatchAddressIn();
+   
+ 
    if (WASWRITE)
 		LatchedAddress=LatchedAddressLast;
 		
-   //log0("%02X\n",LatchedAddress & ADDRESS_MASK);
-			
-   switch (LatchedAddress & ADDRESS_MASK)
+//log0("LaL=%02X, La=%02X ",LatchedAddressLast,LatchedAddress);			
+   switch (LatchedAddress & 0x03)
    {
    case CMD_REG:
       {
@@ -72,9 +73,10 @@ void at_process(void)
          {
 			ReadDataPort();
             received = LatchedData;
-            WriteDataPort(STATUS_BUSY);
-			//log0("%02X\n",LatchedData);
-			
+#if (PLATFORM!=PLATFORM_AVR)
+            WriteDataPort(STATUS_BUSY);		// Busy handled in CPLD.
+#endif
+//log0("cmd=%02X ",received);
 			// Directory group, moved here 2011-05-29 PHS.
 			//
             if (received == CMD_DIR_OPEN)
@@ -146,10 +148,10 @@ void at_process(void)
 			   // data from READ_DATA_PORT. After execution of this command the first byte 
 			   // of data may be read from the READ_DATA_PORT.
 			   //
-               WriteDataPort(globalData[0]);
-			   globalIndex = 1;
+               globalIndex = 1;
 			   LatchedAddress=READ_DATA_REG;
-            }
+			   WriteResult(globalData[0]);
+			}
 			else if (received == CMD_INIT_WRITE)
             {
                // all data write requests must send CMD_INIT_WRITE here before poking data at 
@@ -158,6 +160,7 @@ void at_process(void)
                //
                globalIndex = 0;
                globalDataPresent = 0;
+			   //WriteDataPort(STATUS_OK);
             }
 			else if (received == CMD_READ_BYTES)
 			{	
@@ -191,12 +194,13 @@ void at_process(void)
                // globalData[1..4 incl] = 256 byte sector number
                globalCurDrive = globalData[0] & 3;
                globalLBAOffset = LD_DWORD(&globalData[1]);
+			   WriteResult(STATUS_OK);
             }
             if (received == CMD_GET_IMG_STATUS)
             {
                // retrieve sddos image status
                // globalData[0] = img num
-               WriteDataPort(driveInfo[byteValueLatch & 3].attribs);
+               WriteResult(driveInfo[byteValueLatch & 3].attribs);
             }
             if (received == CMD_GET_IMG_NAME)
             {
@@ -243,55 +247,55 @@ void at_process(void)
             {
                // get card type - it's a slowcmd despite appearance
                disk_initialize(0);
-               WriteDataPort(CardType);
-            }
+               WriteResult(CardType);
+		    }
 #if (PLATFORM!=PLATFORM_AVR)
 // AVR doesn't currently have spare port so don't compile it !
             else if (received == CMD_GET_PORT_DDR) // get portb direction register
             {
-				WriteDataPort(TRISB);
+				WriteResult(TRISB);
             }
             else if (received == CMD_SET_PORT_DDR) // set portb direction register
             {
                TRISB = byteValueLatch;
 
                WriteEEPROM(EE_PORTBTRIS, byteValueLatch);
-               WriteDataPort(STATUS_OK);
+               WriteResult(STATUS_OK);
             }
             else if (received == CMD_READ_PORT) // read portb
             {
-               WriteDataPort(PORTB);
+               WriteResult(PORTB);
             }
             else if (received == CMD_WRITE_PORT) // write port B value
             {
                LATB = byteValueLatch;
 
                WriteEEPROM(EE_PORTBVALU, byteValueLatch);
-               WriteDataPort(STATUS_OK);
+               WriteResult(STATUS_OK);
             }
 #endif
             else if (received == CMD_GET_FW_VER) // read firmware version
             {
-               WriteDataPort(VSN_MAJ<<4|VSN_MIN);
+               WriteResult(VSN_MAJ<<4|VSN_MIN);
             }
             else if (received == CMD_GET_BL_VER) // read bootloader version
             {
-               WriteDataPort(blVersion);
+               WriteResult(blVersion);
             }
             else if (received == CMD_GET_CFG_BYTE) // read config byte
             {
-               WriteDataPort(configByte);
+               WriteResult(configByte);
             }
             else if (received == CMD_SET_CFG_BYTE) // write config byte
             {
                configByte = byteValueLatch;
 
                WriteEEPROM(EE_SYSFLAGS, configByte);
-               WriteDataPort(STATUS_OK);
+               WriteResult(STATUS_OK);
             }
             else if (received == CMD_READ_AUX) // read porta - latch & aux pin on dongle
             {
-               WriteDataPort(LatchedAddress);
+               WriteResult(LatchedAddress);
             }
             else if (received == CMD_GET_HEARTBEAT)
             {
@@ -300,73 +304,25 @@ void at_process(void)
                // osrdch call. the psp may not be enabled by that point,
                // so we have to wait till it is.
                //
-               WriteDataPort(heartbeat);
-               heartbeat ^= 0xff;
+               WriteResult(heartbeat);
+			   heartbeat ^= 0xff;
             }
          }
       }
       break;
 
-#if 0
-   case READ_BYTES_REG:
-      {
-         if (WASWRITE)
-         {
-			ReadDataPort();
-            received = LatchedData;
-            WriteDataPort(STATUS_BUSY);
-
-            // read the next N (received) bytes into the data buffer
-            // received=0 = 256 to read.
-            //
-            globalAmount = received;
-            worker = WFN_FileRead;
-         }
-      }
-      break;
-
-   case WRITE_BYTES_REG:
-      {
-         // write the next N bytes from the global data buffer
-         // received=0 = 256 to write.
-         //
-         if (WASWRITE)
-         {
-			ReadDataPort();
-            received = LatchedData;
-            WriteDataPort(STATUS_BUSY);
-
-            globalAmount = received;
-            worker = WFN_FileWrite;
-         }
-      }
-      break;
-#endif 
 
    case READ_DATA_REG:
       {
          // read data port.
          //
-         // any data read requests must be primed by writing CMD_INIT_READ (0x3f) here
+         // any data read requests must be primed by writing CMD_INIT_READ (0x20) 
          // before the 1st read.
          //
 		 // this has to be done this way as the PIC hardware only latches the address 
 		 // on a WRITE.
-//         if (WASWRITE)
-//         {
-//			ReadDataPort();
-//            received = LatchedData;
-//            if (received == CMD_INIT_READ)
-//            {
-//               WriteDataPort(globalData[0]);
-//               globalIndex = 1;
-//            }
-//         }
-//         else
-//         {
-            WriteDataPort((globalData[(int)globalIndex]));
-            ++globalIndex;
-//         }
+		WriteDataPort((globalData[(int)globalIndex]));
+        ++globalIndex;
       }
       break;
 
@@ -380,9 +336,11 @@ void at_process(void)
 			ReadDataPort();
             received = LatchedData;
 
+//log0("wb=%02X ",received);
+
             globalData[globalIndex] = received;
             ++globalIndex;
-
+//log0("index=%d \n",globalIndex);
             globalDataPresent = 1;
          }
       }
