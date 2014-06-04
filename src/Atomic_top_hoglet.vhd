@@ -318,8 +318,11 @@ begin
         -- 4K remappable RAM bank mapped to 0xA000 Rom 0
         ( "00111" & Addr(11 downto 0)) when ((Addr(15 downto 12) = "1010") and (RomLatch = "0000") and (RomJumpers(0) = '1')) else
         
-        -- A000 ROM (16x 4K banks selected by ROM Latch)
-        ( "0" & RomLatch & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" else
+        -- A000 ROM (16x 4K banks selected by ROM Latch) in Atom Mode
+        ( "0" & RomLatch & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" and RomJumpers(1) = '0' else
+
+        -- A000 ROM in a fixed slot in BBC Mode
+        ( "11000" & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" and RomJumpers(1) = '1' else
         
         -- C000-FFFF ROM (2x 16K banks selected by jumper)
         ( "10" & RomJumpers(1) & Addr(13 downto 0)) when Addr(15 downto 14) = "11" else
