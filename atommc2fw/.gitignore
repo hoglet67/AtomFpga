@@ -1,0 +1,6 @@
+*.o
+avr_progmem.hex
+avr_progmem.map
+avr_progmem.mem
+avr_progmem.out
+avr.bit

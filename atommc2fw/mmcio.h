@@ -26,9 +26,9 @@
 
 
 /* SPI stuff : PHS 2010-06-08 */
-#define SPIPORT		PORTB
-#define SPIPIN		PINB
-#define	SPIDDR		DDRB
+#define SPIPORT		PORTD
+#define SPIPIN		PIND
+#define	SPIDDR		DDRD
 #define SPI_SS		4
 #define SPI_MOSI	5
 #define SPI_MISO	6

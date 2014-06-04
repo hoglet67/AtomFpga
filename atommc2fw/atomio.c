@@ -16,8 +16,8 @@ void InitIO(void)
 	SetIORead();
 	
 	// Setup input interrupt, negedge
-	EICRA &= ~INTINMASK;
-	EICRA |= INTINDIR;
+	EICR &= ~INTINMASK;
+	EICR |= INTINDIR;
 	
 	// Enable interrupt
 	EIMSK &= ~INTINMASK;

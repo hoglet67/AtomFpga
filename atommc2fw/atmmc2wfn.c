@@ -5,7 +5,7 @@
 #include "atmmc2def.h"
 #include "diskio.h"
 #include "ff.h"
-#include "..\status.h"
+#include "status.h"
 
 BYTE res;
 
@@ -192,7 +192,6 @@ void wfnFileRead(void)
    {
       globalAmount = 256;
    }
-
    WriteResult(STATUS_COMPLETE | f_read(&fil, globalData, globalAmount, &read));
 }
 

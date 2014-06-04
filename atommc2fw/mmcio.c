@@ -51,7 +51,7 @@ void INIT_SPI(void)
     // SPCR &= ~((1<<CPOL) | (1<<DORD) | (1<<SPR0) | (1<<SPR1));
 	
 	SPCR &= ~((1<<SPR0) | (1<<SPR1));
-	SPSR |= (1<<SPI2X);
+	// SPSR |= (1<<SPI2X);
 	SPCR |= (1<<SPE);
 	
 	ClearSS();

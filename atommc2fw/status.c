@@ -74,6 +74,7 @@ void cls(uint8_t	Port)
 	}
 }
 
+
 void USART_Init0(const uint32_t BaudRate)
 {
 #ifdef UCSR0A
@@ -83,9 +84,7 @@ void USART_Init0(const uint32_t BaudRate)
 	
 	UBRR0  = SERIAL_UBBRVAL(BaudRate);
 #else
-	UCSRA = 0;
-	UCSRB = ((1 << RXEN)  | (1 << TXEN));
-	UCSRC = ((1 << UCSZ1) | (1 << UCSZ0));
+	UCR = ((1 << RXEN)  | (1 << TXEN));
 	
 	UBRR  	= SERIAL_UBBRVAL(BaudRate);
 #endif
@@ -113,7 +112,7 @@ void Serial_TxByte0(const char DataByte)
 	while ( !( UCSR0A & (1<<UDRE0)) )		;
 	UDR0=DataByte;
 #else
-	while ( !( UCSRA & (1<<UDRE)) )		;
+	while ( !( USR & (1<<UDRE)) )		;
 	UDR=DataByte;
 #endif
 }
@@ -134,10 +133,10 @@ void Serial_TxByte1(const char DataByte)
 char Serial_RxByte0(void)
 {
 #ifdef UCSR0A
-	while (!(UCSR0A & (1 << RXC0)))	;
+	while (!(USR & (1 << RXC0)))	;
 	return UDR0;
 #else 
-	while (!(UCSRA & (1<<RXC)))	;
+	while (!(USR & (1<<RXC)))	;
 	return UDR;
 #endif
 }
@@ -157,7 +156,7 @@ uint8_t Serial_ByteRecieved0(void)
 #ifdef UCSR0A
 	return (UCSR0A & (1 << RXC0));
 #else
-	return (UCSRA & (1<<RXC));
+	return (USR & (1<<RXC));
 #endif
 }
 
@@ -202,7 +201,7 @@ void HexDump(const uint8_t 	*Buff,
 	char		*LineBuffPos;
 	uint16_t	LineOffset;
 	uint16_t	CharOffset;
-	uint8_t		*BuffPtr;
+	const uint8_t		*BuffPtr;
 	
 	BuffPtr=Buff;
 	
@@ -281,7 +280,8 @@ void Serial_TxByte1(const char DataByte) {};
 char Serial_RxByte1(void) {};
 uint8_t Serial_ByteRecieved1(void) {};
 
-void Serial_Init(const uint32_t BaudRate) {};
+void Serial_Init(const uint32_t BaudRate0,
+				 const uint32_t BaudRate1) {};
 
 void cls(uint8_t	Port) {};
 

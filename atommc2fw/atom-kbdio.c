@@ -42,18 +42,15 @@
 #include <avr/interrupt.h>
 #include <inttypes.h>
 #include <util/delay.h>
-#include "ps2kbd.h"
-#include "ps2scancode.h"
 #include "status.h"
-#include "mt8816.h"
-#include "matrix_kbd.h"
 #include "atomio.h"
-#include "mmc/integer.h"
-#include "mmc/atmmc2.h"
+#include "integer.h"
+#include "atmmc2.h"
 
 // Global data for MMC
 
 unsigned char globalData[256];
+
 char windowData[512];
 BYTE configByte;
 BYTE blVersion;
@@ -64,81 +61,113 @@ extern WORD globalAmount;
 unsigned char sectorData[512];
 #endif
 
-#define LED_DELAY	150
 
-// Toggle the PS/2 leds so that the user knows the system is ready.
-void flag_init(void)
+extern void INIT_SPI(void);
+
+void redSignal(char code)
 {
-	uint8_t	leds = 0;
-	
-	ps2_kbd_set_leds(leds);	_delay_ms(LED_DELAY);
-	leds|=KBD_LED_SCROLL;
-	ps2_kbd_set_leds(leds);	_delay_ms(LED_DELAY);
-	leds|=KBD_LED_CAPS;
-	ps2_kbd_set_leds(leds);	_delay_ms(LED_DELAY);
-	leds|=KBD_LED_NUMLOCK;
-	ps2_kbd_set_leds(leds);	_delay_ms(LED_DELAY);
+   int mark;
+   long arm;
 
-	leds&=~KBD_LED_SCROLL;
-	ps2_kbd_set_leds(leds);	_delay_ms(LED_DELAY);
-	leds&=~KBD_LED_CAPS;
-	ps2_kbd_set_leds(leds);	_delay_ms(LED_DELAY);
-	leds&=~KBD_LED_NUMLOCK;
-	ps2_kbd_set_leds(leds);	_delay_ms(LED_DELAY);
+   for (mark = 0; mark < code; ++mark)
+   {
+      REDLEDON();
+      for(arm = 0; arm < 40000; ++arm)
+      {
+      }
+      REDLEDOFF();
+      for(arm = 0; arm < 40000; ++arm)
+      {
+      }
+   }
+
+   for(arm = 0; arm < 200000; ++arm)
+   {
+   }
 }
 
-void key_callback(uint8_t	scancode,
-				  uint8_t	state)
+
+void greenSignal(char code)
 {
-	if(state==KEY_DOWN)
-	{
-		switch(scancode)
-		{
-			case SCAN_CODE_F10 :
-				log0("\n");
-				log0("%d\n",globalData);
-				HexDumpHead(&globalData,256,0);
-				break;
-		}
-	}
+   int mark;
+   long arm;
+
+   for (mark = 0; mark < code; ++mark)
+   {
+      GREENLEDON();
+      for(arm = 0; arm < 40000; ++arm)
+      {
+      }
+      GREENLEDOFF();
+      for(arm = 0; arm < 40000; ++arm)
+      {
+      }
+   }
+
+   for(arm = 0; arm < 200000; ++arm)
+   {
+   }
+}
+
+void bail(int code)
+{
+   int i;
+
+   GREENLEDOFF();
+
+   for (i = 0; i < 25; ++i)
+   {
+      redSignal(code);
+   }
+
+   for (;;)
+   {
+   }
 }
 
 int main(void)
 {
-	uint8_t	old = EIFR;
 	
-	Serial_Init(115200,115200);
-	log0("Atom PS/2 Keyboard and IO interface V1.0\n");
-	log0("2011-05-30 Ramoth Software.\n");
-	
-	log0("PS/2 keyboard init\n");
-	ps2_kbd_init();
+  Serial_Init(57600,57600);
 
-	mt_init();
-
-	matrix_init(&mt_output_key,&key_callback);
-	
-	log0("I/O Init\n");
+  //	log0("I/O Init\n");
 	InitIO();
-	configByte = ReadEEPROM(EE_SYSFLAGS);
+
+	// configByte = ReadEEPROM(EE_SYSFLAGS);
 	
-	log0("MMC Init\n");
+   REDLEDOFF();
+   GREENLEDOFF();
+
+   LEDPINSOUT();
+
+	configByte = 0xff;
+
+	//log0("MMC Init\n");
 	INIT_SPI();
 	at_initprocessor();
 	
-	log0("init done!\n");
+	//log0("init done!\n");
 	sei();
 
-	flag_init();
+	// This is necessary because of a bug in the AVR8 core
+	EIMSK = 16;
 
 	while(1)
 	{
-		matrix_check_output();
-		
+	  //log0("eifr %d\n", EIFR);
+	  //log0("eicr %d\n", EICR);
+	  //log0("stat %02x eifr %02x eicr %02x eimsk %02x pinb %02x ddbr %02x\n", SREG, EIFR, EICR, EIMSK, PINB, DDRB);
+	  //log0("pinb %d\n", PINB);
+	  //log0("ddrb %d\n", DDRB);
 		if(LatchInt())
 		{
+		  //		  log0("process: PA=%02x PB=%02x PD=%02x\n", PINA, PINB, PIND);
+
 			ClearLatchInt();
 			at_process();
+
+			// log0("done: DDRA=%02x PORTA=%02x PD=%02x\n", DDRA, PORTA);
+
 		}
 	}
 	

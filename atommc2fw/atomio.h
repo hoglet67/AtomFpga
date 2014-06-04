@@ -7,14 +7,14 @@
 #ifndef _ATOM_IO_H_
 #define _ATOM_IO_H_
 
-#include "mmc/platform.h"
-#include "mmc/atmmc2io.h"
+#include "platform.h"
+#include "atmmc2io.h"
 
 /* Interrupt trigered by host writing to input latch */
-#define INTIN_vect	INT2_vect
-#define INTIN		(1<<INT2)
-#define INTINMASK	((1<<ISC20) | (1<<ISC21))
-#define	INTINDIR	(1<<ISC21)	// Negedge triggered
+#define INTIN_vect	INT4_vect
+#define INTIN		(1<<INT4)
+#define INTINMASK	((1<<ISC40) | (1<<ISC41))
+#define	INTINDIR	(1<<ISC41)	// Negedge triggered
 
 #define LatchInt()		((EIFR & INTIN)!=0)
 #define ClearLatchInt()	{ EIFR |= INTIN; }
@@ -22,7 +22,7 @@
 #define INTIN_PORT PORTB
 #define INTIN_DDR	DDRB
 #define INTIN_PIN	PINB
-#define INTIN_PPIN	2
+#define INTIN_PPIN	4
 #define INTIN_PMASK	(1<<INTIN_PPIN)
 
 //
