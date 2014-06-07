@@ -29,7 +29,7 @@ CFLAGS=-DF_CPU=${F_CPU}UL -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prol
 # Use these flags to enable serial console (missing out SDDOS)
 # CFLAGS=-DF_CPU=${F_CPU}UL -DSERIAL_STATUS -DCOOKED_SERIAL -DNOUSART1 -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
 
-OBJECTS=atom-kbdio.o status.o atomio.o ff.o diskio.o mmcio.o atmmc2core.o atmmc2wfn.o
+OBJECTS=atom-kbdio.o status.o atomio.o ff.o diskio.o mmcio.o atmmc2core.o atmmc2wfn.o wildcard.o
 
 load: avr.bit
 #	sudo $(PROG) -v -f avr.bit

@@ -6,6 +6,7 @@
 #include "diskio.h"
 #include "ff.h"
 #include "status.h"
+#include "wildcard.h"
 
 BYTE res;
 
@@ -21,6 +22,9 @@ FATFS fatfs;
 
 extern BYTE windowData[];
 
+#define WILD_LEN	16
+
+char	WildPattern[WILD_LEN+1];
 
 #ifdef INCLUDE_SDDOS
 
@@ -59,8 +63,66 @@ void at_initprocessor(void)
 
 
 
+void GetWildcard(void)
+{
+	int	Idx			= 0;
+	int	WildPos		= -1;
+	int	LastSlash	= -1;
+	
+	//log0("GetWildcard() %s\n",(const char *)globalData);
+	
+	while ((Idx<strlen((const char*)globalData)) && (WildPos<0)) 
+	{
+		// Check for wildcard character
+		if((globalData[Idx]=='?') || (globalData[Idx]=='*')) 
+			WildPos=Idx;
+
+		// Check for path seperator
+		if((globalData[Idx]=='\\') || (globalData[Idx]=='/'))
+			LastSlash=Idx;
+			
+		Idx++;
+	}
+	
+	//log0("GetWildcard() Idx=%d, WildPos=%d, LastSlash=%d\n",Idx,WildPos,LastSlash);
+	
+	if(WildPos>-1)
+	{
+		if(LastSlash>-1)
+		{
+			// Path followed by wildcard
+			// Terminate dir filename at last slash and copy wildcard
+			globalData[LastSlash]=0x00;
+			strncpy(WildPattern,(const char*)&globalData[LastSlash+1],WILD_LEN);
+		}
+		else
+		{
+			// Wildcard on it's own
+			// Copy wildcard, then set path to null
+			strncpy(WildPattern,(const char*)globalData,WILD_LEN);
+			globalData[0]=0x00;
+		}
+	}
+	else
+	{
+		// No wildcard, show all files
+#if (PLATFORM==PLATFORM_PIC)
+		strcpypgm2ram((char*)&WildPattern[0], (const rom far char*)"*");
+#elif (PLATFORM==PLATFORM_AVR)
+		strncpy_P(WildPattern,PSTR("*"),WILD_LEN);
+#endif
+	}
+	
+	//log0("GetWildcard() globalData=%s WildPattern=%s\n",(const char*)globalData,WildPattern); 
+}
+
+
 void wfnDirectoryOpen(void)
 {
+
+   // Separate wildcard and path 
+   GetWildcard();
+
    res = f_opendir(&dir, (const char*)globalData);
    if (FR_OK != res)
    {
@@ -78,6 +140,54 @@ void wfnDirectoryRead(void)
 {
    char len;
 
+   int	Match;
+
+	while (1)
+	{
+		char n = 0;
+
+		res = f_readdir(&dir, &filinfo);
+		if (res != FR_OK || !filinfo.fname[0])
+		{
+			// done
+			WriteResult(STATUS_COMPLETE | res);
+			return;
+		}
+
+		// Check to see if filename matches current wildcard
+		//
+		Match=wildcmp(WildPattern,filinfo.fname);
+		//log0("WildPattern=%s, filinfo.fname=%s, Match=%d\n",WildPattern,filinfo.fname,Match);
+		if(Match)
+		{
+			len = (char)strlen(filinfo.fname);
+
+			if (filinfo.fattrib & AM_DIR)	
+			{
+				n = 1;
+				globalData[0] = '<';
+			}
+
+			strcpy((char*)&globalData[n], (const char*)filinfo.fname);
+
+			if (filinfo.fattrib & AM_DIR)
+			{
+				globalData[len+1] = '>';
+				globalData[len+2] = 0;
+				len += 2; // brackets
+			}
+
+			// just for giggles put the attribute & filesize in the buffer
+			//
+			globalData[len+1] = filinfo.fattrib;
+			memcpy(&globalData[len+2], (void*)(&filinfo.fsize), sizeof(DWORD));
+
+			WriteResult(STATUS_OK);
+			return;
+		}
+	}
+
+#if 0
    while (1)
    {
       char n = 0;
@@ -117,6 +227,7 @@ void wfnDirectoryRead(void)
       WriteResult(STATUS_OK);
       return;
    }
+#endif
 }
 
 
