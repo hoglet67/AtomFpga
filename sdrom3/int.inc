@@ -1988,20 +1988,29 @@ LE0FB:          LSR A
 ; Latch routines for AVR
 .ifdef AVR
 WaitUntilRead:
+    pha
+WaitUntilRead1:
 	lda		ASTATUS_REG			; Read status reg
 	and		#MMC_MCU_READ		; Been read yet ?
-	bne		WaitUntilRead		; nope keep waiting
+	bne		WaitUntilRead1		; nope keep waiting
+    pla
 	rts
 
 WaitUntilWritten:
+    pha
+WaitUntilWritten1:
 	lda		ASTATUS_REG			; Read status reg
 	and		#MMC_MCU_WROTE		; Been written yet ?
-	beq		WaitUntilWritten	; nope keep waiting
+	beq		WaitUntilWritten1	; nope keep waiting
+    pla
 	rts
 
 WaitWhileBusy:
+    pha
+WaitWhileBusy1:
 	lda		ASTATUS_REG			; Read status reg
 	and		#MMC_MCU_BUSY		; MCU still busy ?
-	bne		WaitWhileBusy		; yes keep waiting
+	bne		WaitWhileBusy1		; yes keep waiting
+    pla
 	rts
 .endif
