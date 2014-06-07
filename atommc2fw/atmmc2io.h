@@ -3,6 +3,8 @@
 #include "status.h"
 
 #define DEBUG_RESULT	0
+#define DEBUG_CMD       0
+#define DEBUG_GLOBAL    0
 
 #if (PLATFORM==PLATFORM_PIC)
 

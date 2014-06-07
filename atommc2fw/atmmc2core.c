@@ -9,7 +9,6 @@
 
 #include <string.h>
 
-
 extern unsigned char configByte;
 extern unsigned char blVersion;
 extern unsigned char portBVal;
@@ -63,8 +62,11 @@ void at_process(void)
  
    if (WASWRITE)
 		LatchedAddress=LatchedAddressLast;
-		
-//log0("LaL=%02X, La=%02X ",LatchedAddressLast,LatchedAddress);			
+
+   if (DEBUG_CMD) {
+	 log0("LaL=%02X, La=%02X ",LatchedAddressLast,LatchedAddress);
+   }
+
    switch (LatchedAddress & 0x03)
    {
    case CMD_REG:
@@ -76,7 +78,11 @@ void at_process(void)
 #if (PLATFORM!=PLATFORM_AVR)
             WriteDataPort(STATUS_BUSY);		// Busy handled in CPLD.
 #endif
-//log0("cmd=%02X ",received);
+
+			if (DEBUG_CMD) {
+			  log0("cmd=%02X ",received);
+			}
+
 			// Directory group, moved here 2011-05-29 PHS.
 			//
             if (received == CMD_DIR_OPEN)
@@ -364,4 +370,19 @@ void at_process(void)
    {
       worker();
    }
+
+   if (DEBUG_GLOBAL) {
+	 if ((LatchedAddress & 0x03) == CMD_REG) {
+	   unsigned char *ptr;
+	   int i;
+	   ptr=globalData;
+	   for (i=0; i<256;i++) {
+		 log0("%02x ", *ptr++);
+		 if (i%16 == 15) {
+		   log0("\n");
+		 }
+	   }
+	 }
+   }
+
 }
