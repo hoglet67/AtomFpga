@@ -149,6 +149,27 @@ architecture behavioral of Atomic_top_hoglet is
 		);
 	end component;
 
+	component miniuart
+        generic  (
+            BRDIVISOR: INTEGER range 0 to 65535
+        );    
+        port(
+            wb_clk_i : in std_logic;
+            wb_rst_i : in std_logic;
+            wb_adr_i : in std_logic_vector(1 downto 0);
+            wb_dat_i : in std_logic_vector(7 downto 0);
+            wb_we_i : in std_logic;
+            wb_stb_i : in std_logic;
+            br_clk_i : in std_logic;
+            rxd_pad_i : in std_logic;          
+            wb_dat_o : out std_logic_vector(7 downto 0);
+            wb_ack_o : out std_logic;
+            inttx_o : out std_logic;
+            intrx_o : out std_logic;
+            txd_pad_o : out std_logic
+        );
+	end component;
+
     signal clk_12M58 : std_logic;
     signal clk_16M00 : std_logic;
     signal IRSTn     : std_logic;
@@ -171,6 +192,12 @@ architecture behavioral of Atomic_top_hoglet is
     signal PL8Enable: std_logic;
     signal cpuclken     : std_logic;
     
+    signal UARTData    : std_logic_vector (7 downto 0);
+    signal UARTEnable  : std_logic;
+    signal UARTEnable1 : std_logic;
+    signal UARTEnable2 : std_logic;
+    signal UARTCE      : std_logic;
+
     signal BFFE_Enable : std_logic;
     signal BFFF_Enable : std_logic;
     
@@ -193,7 +220,7 @@ begin
     
     inst_Atomic_core : Atomic_core
     generic map (
-        CImplSID   => true,
+        CImplSID   => false,
         CImplSDDOS => false
     )
     port map(
@@ -248,7 +275,7 @@ begin
 		portbout(4)  => open,
 		portbout(5)  => open,
 		portbout(6)  => LED1,
-		portbout(7)  => LED2,
+		portbout(7)  => open,
 
         portdin      => (others => '0'),
         portdout(0)  => open,
@@ -301,7 +328,11 @@ begin
     
     PL8Enable  <= '1' when Addr(15 downto 8) = "10110100" else '0';
     
-    ExternDout <= PL8Data when PL8Enable = '1' else 
+    -- decode B5 for the Uart
+    UARTEnable  <= '1' when Addr(15 downto 8) = "10110101" else '0';
+    
+    ExternDout <= PL8Data when PL8Enable = '1' else
+                  UARTData when UARTEnable = '1' else
                   ("00000" & RomJumpers) when BFFE_Enable = '1' else 
                   ("0000" & RomLatch) when BFFF_Enable = '1' else 
                   ExternD;
@@ -351,6 +382,39 @@ begin
         end if;
     end process;
     
+    -------------------------------------------------
+    -- Uart
+    -------------------------------------------------     
+  
+    UARTEnableProcess : process (clk_16M00)
+    begin
+        UARTEnable1 <= UARTEnable;
+        UARTEnable2 <= UARTEnable1;
+    end process;
+    
+    UARTCE <= UARTEnable1 and not UARTEnable2;
+  
+	inst_miniuart: miniuart
+        generic map (
+            BRDIVISOR => 104
+        )
+        port map(
+		wb_clk_i => clk_16M00,
+		wb_rst_i => not IRSTn,
+		wb_adr_i => Addr(1 downto 0),
+		wb_dat_i => ExternDin,
+		wb_dat_o => UARTData,
+		wb_we_i => ExternWE,
+		wb_stb_i => UARTEnable,
+		wb_ack_o => open,
+		inttx_o => open,
+		intrx_o => open,
+		br_clk_i => clk_16M00,
+		txd_pad_o => open,
+		rxd_pad_i => RxD
+	);
+
+    LED2 <= RxD;
     
 end behavioral;
 

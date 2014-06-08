@@ -557,8 +557,8 @@ begin
                     i8255_enable <= '1';
                 elsif cpu_addr(11 downto 8) = "1000" then  -- 0xb800 6522 VIA (optional)
                     mc6522_enable <= '1';
-                elsif cpu_addr(11 downto 8) = "0100" then
-                    spi_enable <= '1';  -- 0xb400 SPI
+                elsif cpu_addr(11 downto 10) = "01" then
+                    spi_enable <= '1';  -- 0xb400-0xb7ff SPI
                 elsif cpu_addr(11 downto 5) = "1101110" then
                     sid_enable <= '1';  -- 0xbdc0-0xbddf SID
                 end if;
