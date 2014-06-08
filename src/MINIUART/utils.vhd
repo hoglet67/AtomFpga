@@ -98,29 +98,30 @@ end Behaviour;
 -------------------------------------------------------------------------------
 library IEEE,STD;
 use IEEE.std_logic_1164.all;
+use IEEE.numeric_std.all;
 
 entity Counter is
-  generic(Count: INTEGER range 0 to 65535); -- Count revolution
   port (
      Clk      : in  std_logic;  -- Clock
      Reset    : in  std_logic;  -- Reset input
      CE       : in  std_logic;  -- Chip Enable
+     Count    : in  std_logic_vector (15 downto 0); -- Count revolution
      O        : out std_logic); -- Output
 end Counter;
 
 architecture Behaviour of Counter is
 begin
   counter : process(Clk,Reset)
-     variable Cnt : INTEGER range 0 to Count-1;
+     variable Cnt : unsigned (15 downto 0);
   begin
      if Reset = '1' then
-        Cnt := Count - 1;
+        Cnt := unsigned(Count);
         O <= '0';
      elsif Rising_Edge(Clk) then
         if CE = '1' then
-           if Cnt = 0 then
+           if Cnt = 1 then
               O <= '1';
-              Cnt := Count - 1;
+              Cnt := unsigned(Count);
            else
               O <= '0';
               Cnt := Cnt - 1;

@@ -150,9 +150,6 @@ architecture behavioral of Atomic_top_hoglet is
 	end component;
 
 	component miniuart
-        generic  (
-            BRDIVISOR: INTEGER range 0 to 65535
-        );    
         port(
             wb_clk_i : in std_logic;
             wb_rst_i : in std_logic;
@@ -395,9 +392,6 @@ begin
     UARTCE <= UARTEnable1 and not UARTEnable2;
   
 	inst_miniuart: miniuart
-        generic map (
-            BRDIVISOR => 104
-        )
         port map(
 		wb_clk_i => clk_16M00,
 		wb_rst_i => not IRSTn,
