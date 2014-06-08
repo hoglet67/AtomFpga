@@ -191,9 +191,6 @@ architecture behavioral of Atomic_top_hoglet is
     
     signal UARTData    : std_logic_vector (7 downto 0);
     signal UARTEnable  : std_logic;
-    signal UARTEnable1 : std_logic;
-    signal UARTEnable2 : std_logic;
-    signal UARTCE      : std_logic;
 
     signal BFFE_Enable : std_logic;
     signal BFFF_Enable : std_logic;
@@ -217,7 +214,7 @@ begin
     
     inst_Atomic_core : Atomic_core
     generic map (
-        CImplSID   => false,
+        CImplSID   => true,
         CImplSDDOS => false
     )
     port map(
@@ -272,7 +269,7 @@ begin
 		portbout(4)  => open,
 		portbout(5)  => open,
 		portbout(6)  => LED1,
-		portbout(7)  => open,
+		portbout(7)  => LED2,
 
         portdin      => (others => '0'),
         portdout(0)  => open,
@@ -382,15 +379,7 @@ begin
     -------------------------------------------------
     -- Uart
     -------------------------------------------------     
-  
-    UARTEnableProcess : process (clk_16M00)
-    begin
-        UARTEnable1 <= UARTEnable;
-        UARTEnable2 <= UARTEnable1;
-    end process;
     
-    UARTCE <= UARTEnable1 and not UARTEnable2;
-  
 	inst_miniuart: miniuart
         port map(
 		wb_clk_i => clk_16M00,
@@ -408,8 +397,6 @@ begin
 		rxd_pad_i => RxD
 	);
 
-    LED2 <= RxD;
-    
 end behavioral;
 
 
