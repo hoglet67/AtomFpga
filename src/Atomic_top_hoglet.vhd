@@ -195,8 +195,15 @@ architecture behavioral of Atomic_top_hoglet is
     signal BFFE_Enable : std_logic;
     signal BFFF_Enable : std_logic;
     
-    signal RomJumpers  : std_logic_vector (2 downto 0);
-    signal RomLatch  : std_logic_vector (3 downto 0);
+    signal RomJumpers  : std_logic_vector (7 downto 0);
+    signal RomLatch  : std_logic_vector (7 downto 0);
+    
+    signal BeebMode : std_logic;
+    signal PageA000Ram : std_logic;
+
+    signal TxD_UART : std_logic;
+    signal TxD_AVR : std_logic;
+    
 
 begin
 
@@ -286,7 +293,7 @@ begin
         spi_misoi    => SDMISO,
      
 		rxd          => RxD,
-		txd          => TxD 
+		txd          => TxD_AVR
 	);
     
     Inst_AtomPL8: AtomPL8 port map(
@@ -308,9 +315,9 @@ begin
 	);
 
 
-    RamCE      <= '1' when ((Addr(15) = '0') or (Addr(15 downto 12) = "1010" and (RomLatch = "0000" and RomJumpers(0) = '1'))) else '0';
+    RamCE      <= '1' when ((Addr(15) = '0') or (Addr(15 downto 12) = "1010" and (RomLatch(3 downto 0) = "0000" and PageA000Ram = '1'))) else '0';
 
-    RomCE      <= '1' when ((Addr(15 downto 14) = "11") or (Addr(15 downto 12) = "1010" and (RomLatch /= "0000" or RomJumpers(0) = '0'))) else '0';
+    RomCE      <= '1' when ((Addr(15 downto 14) = "11") or (Addr(15 downto 12) = "1010" and (RomLatch(3 downto 0) /= "0000" or PageA000Ram = '0'))) else '0';
            
     RAMWRn     <= not (ExternWE and RamCE);
     RAMOEn     <= not ((not ExternWE) and RamCE);
@@ -327,8 +334,8 @@ begin
     
     ExternDout <= PL8Data when PL8Enable = '1' else
                   UARTData when UARTEnable = '1' else
-                  ("00000" & RomJumpers) when BFFE_Enable = '1' else 
-                  ("0000" & RomLatch) when BFFF_Enable = '1' else 
+                  RomJumpers when BFFE_Enable = '1' else 
+                  RomLatch when BFFF_Enable = '1' else 
                   ExternD;
 
     -------------------------------------------------
@@ -338,19 +345,20 @@ begin
     ExternA  <=
     
         -- 4K remappable RAM bank mapped to 0x7000
-        (RomJumpers(0) & Addr(15 downto 0)) when Addr(15 downto 12) = "0111" else
+        (PageA000Ram & Addr(15 downto 0)) when Addr(15 downto 12) = "0111" else
 
         -- 4K remappable RAM bank mapped to 0xA000 Rom 0
-        ( "00111" & Addr(11 downto 0)) when ((Addr(15 downto 12) = "1010") and (RomLatch = "0000") and (RomJumpers(0) = '1')) else
+        ( "00111" & Addr(11 downto 0)) when ((Addr(15 downto 12) = "1010") and (RomLatch(3 downto 0) = "0000") and (PageA000Ram = '1')) else
         
         -- A000 ROM (16x 4K banks selected by ROM Latch) in Atom Mode
-        ( "0" & RomLatch & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" and RomJumpers(1) = '0' else
+        -- 5 bits of RomLatch are used here, to allow any of the 32 pages of FLASH to A000 for in system programming
+        ( RomLatch(4 downto 0) & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" and BeebMode = '0' else
 
         -- A000 ROM in a fixed slot in BBC Mode
-        ( "11000" & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" and RomJumpers(1) = '1' else
+        ( "11000" & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" and BeebMode = '1' else
         
         -- C000-FFFF ROM (2x 16K banks selected by jumper)
-        ( "10" & RomJumpers(1) & Addr(13 downto 0)) when Addr(15 downto 14) = "11" else
+        ( "10" & BeebMode & Addr(13 downto 0)) when Addr(15 downto 14) = "11" else
              
         -- RAM
         Addr;
@@ -360,18 +368,20 @@ begin
     -------------------------------------------------
     BFFE_Enable <= '1' when Addr(15 downto 0) = "1011111111111110" else '0';
     BFFF_Enable <= '1' when Addr(15 downto 0) = "1011111111111111" else '0';
+    BeebMode <= RomJumpers(3);
+    PageA000Ram <= RomJumpers(0);
         
     RomLatchProcess : process (ERSTn, IRSTn, clk_16M00)
     begin
         if ERSTn = '0' then
-            RomJumpers <= "000";
-            RomLatch   <= "0000";
+            RomJumpers <= "00000000";
+            RomLatch   <= "00000000";
         elsif rising_edge(clk_16M00) then
             if BFFE_Enable = '1' and ExternWE = '1' then
-                RomJumpers <= ExternDin(2 downto 0);
+                RomJumpers <= ExternDin;
             end if;
             if BFFF_Enable = '1' and ExternWE = '1' then
-                RomLatch   <= ExternDin(3 downto 0);
+                RomLatch   <= ExternDin;
             end if;
         end if;
     end process;
@@ -393,9 +403,12 @@ begin
 		inttx_o => open,
 		intrx_o => open,
 		br_clk_i => clk_16M00,
-		txd_pad_o => open,
+		txd_pad_o => TxD_UART,
 		rxd_pad_i => RxD
 	);
+    
+    -- Idle state is high, logically OR the active low signals
+    TxD <= TxD_UART and TxD_AVR;
 
 end behavioral;
 

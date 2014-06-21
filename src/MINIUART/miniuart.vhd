@@ -125,7 +125,7 @@ begin
       if (WB_RST_I = '1') then
         ReadA <= '0';
         LoadA <= '0';
-        Divisor <= std_logic_vector(to_unsigned(104, 16));
+        Divisor <= std_logic_vector(to_unsigned(34, 16));
       else
         if (WB_STB_I = '1' and WB_WE_I = '1' and WB_ADR_I = "00") then  -- Write Byte to Tx
           TxData <= WB_DAT_I;
