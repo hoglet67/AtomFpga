@@ -35,7 +35,6 @@ start_asm:
 	.include "flash.inc"
 	.include "beeb.inc"
 	.include "fpgahelp.inc"
-	.include "demodos.inc"
 
 .org $AFFF
 	brk
