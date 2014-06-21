@@ -7,7 +7,7 @@ cat sddos-v3.25-avr.rom >> 128K.rom
 cat pcharme_v1.73.rom >> 128K.rom
 cat gags_v2.3.rom >> 128K.rom
 cat axr1.rom >> 128K.rom
-cat fpgautils_v0.12.rom >> 128K.rom
+cat fpgautils_v0.14.rom >> 128K.rom
 cat atomic_windows_v1.1.rom >> 128K.rom
 cat we_rom.rom >> 128K.rom
 cat pp_toolkit.rom >> 128K.rom

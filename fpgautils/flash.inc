@@ -94,6 +94,11 @@ relLoop:
 
 relCodeStart:
 
+	;; Save the Shadow Rom Latch
+	SEI
+	LDA shadowl
+	PHA
+
 ;; =========================================
 ;; Code to Erase the whole page
 ;; =========================================
@@ -151,6 +156,12 @@ flashprog2:
     LDA dst + 1
     CMP #>romend
     BNE flashprog1
+
+	; Restore the original value of the ROM Latch
+
+	PLA
+	STA romlatch
+	CLI
 
     RTS
 

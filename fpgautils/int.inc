@@ -15,6 +15,8 @@ stack4		= $43
 tmp_ptr3	= $D5
 tmp_ptr5	= $D6
 tmp_ptr6	= $D7
+shadowl     = $FD		; Shadow ROM Latch
+
 dlg_buffer	= $140
 
 next_param	= $C231		; OS calls

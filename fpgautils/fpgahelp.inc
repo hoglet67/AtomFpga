@@ -2,7 +2,7 @@ fpgahelp:
 
 		JSR prttxt
 		
-		.byte "HOGLET'S ATOMFPGA UTILS V0.12",10,13
+		.byte "HOGLET'S ATOMFPGA UTILS V0.14",10,13
 		NOP
 
 
