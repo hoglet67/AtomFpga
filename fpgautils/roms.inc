@@ -166,6 +166,9 @@ known_crc_table:
    	 .word $E386
 	 .byte "AKERNEL ORIG", 0
 
+	 .word $4C45
+	 .byte "ADOS ORIG",0
+
 ;; these are the ones I'm including in the AtomFPGA FLASH ROM
 	.word $14F6
 	.byte "BBC BASIC 1/4", 0
@@ -186,16 +189,16 @@ known_crc_table:
 	.byte "AKERNEL PATCHED", 0
 
 	.word $982A
-	.byte "ATOMMC2 V2.95 AVR", 0
+	.byte "ATOMMC2 AVR V2.95", 0
 
 	.word $B449
-	.byte "SDDOS V3.25 AVR", 0
+	.byte "SDDOS AVR V3.25", 0
 
 	.word $BE19
-	.byte "PCHARME V1.7", 0
+	.byte "GAGS V2.3", 0
 
 	.word $EAB4
-	.byte "BBC MOS V3 HOGLET", 0
+	.byte "BBC MOS HOGLET V3", 0
 
 ;; these are recent builds
 
@@ -238,64 +241,64 @@ known_crc_table:
 	.byte "AEK SCREEN", 0
 
 	.word $7261
-	.byte "AF UTILITY", 0
+	.byte "A&F UTILITY", 0
 
 	.word $E1FB
-	.byte "NC ACE20", 0
+	.byte "ACE V2.0", 0
 
 	.word $97BE
-	.byte "NC ACE22", 0
+	.byte "ACE V2.2", 0
 
 	.word $2BBB
-	.byte "NC ACE30", 0
+	.byte "ACE V3.0", 0
 
 	.word $4234
-	.byte "NC ATOMICW", 0
+	.byte "ATOMIC WINDOWS V1.1", 0
 
 	.word $7D81
-	.byte "NC ATOMICW", 0
+	.byte "ATOMIC WINDOWS V1.2BD", 0
 
 	.word $CCEB
-	.byte "NC AXR1", 0
+	.byte "AXR1", 0
 
 	.word $54D4
-	.byte "NC COMBOX", 0
-
-	.word $1B3B
-	.byte "NC DISKROM", 0
+	.byte "COMBOX", 0
 
 	.word $B2F9
-	.byte "NC DISKROM", 0
+	.byte "DISKROM", 0
+
+	.word $1B3B
+	.byte "DISKROM", 0
 
 	.word $CB78
-	.byte "NC DISKROM", 0
+	.byte "DISKROM", 0
 
 	.word $9F4C
-	.byte "NC GAGS", 0
+	.byte "GAGS V2.4", 0
 
 	.word $6206
-	.byte "NC JOSBOX", 0
+	.byte "JOSBOX", 0
 
 	.word $6D90
-	.byte "NC MOUSEBOX", 0
+	.byte "MOUSEBOX V1.01", 0
 
 	.word $C16B
-	.byte "NC PCHARME", 0
+	.byte "PCHARME V1.73", 0
 
 	.word $46E6
-	.byte "NC RXBOX", 0
+	.byte "RXBOX V1.1", 0
 
 	.word $9F75
-	.byte "NC SALFAA", 0
+	.byte "SALFAA V2.6", 0
 
 	.word $5F26
-	.byte "NC SDROM2", 0
+	.byte "SDROM V2.3", 0
 
 	.word $CEE2
-	.byte "NC SDROM3", 0
+	.byte "SDROM V3.24", 0
 
 	.word $B1BD
-	.byte "PP SUPERB", 0
+	.byte "PP SUPERBASIC", 0
 
 	.word $660E
 	.byte "PP TOOLBOX", 0
@@ -328,7 +331,7 @@ known_crc_table:
 	.byte "WATFORD WEROM", 0
 
 	.word $F315
-	.byte "WILLOW UTILITY", 0
+	.byte "WILLOW UTILITY V1.1", 0
 
 ;; End Delimiter
 

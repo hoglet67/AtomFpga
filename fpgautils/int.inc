@@ -3,7 +3,7 @@
 ; #Axxx command interpreter
 ;=================================================================
 
-.DEFINE NAME_VERSION    "FPGA UTILS 0.16"
+.DEFINE NAME_VERSION    "FPGA UTILS V0.17"
 
 ;=================================================================
 ; Constant DECLARATION
@@ -42,6 +42,9 @@ fcrc	    	= $88
 tmpa        	= $8a
 
 dlg_buffer	= $140
+
+wrcvec		= $208
+rdcvec		= $20A
 
 ;; TODO: Probaly need to change these....
 relocate    	= $2800
@@ -137,6 +140,15 @@ com_tab:
 	.byte "BAUD"
 	.byte >baud,<baud
 
+	.byte "SINOUT"
+	.byte >sinout,<sinout
+
+	.byte "SIN"
+	.byte >sin,<sin
+
+	.byte "SOUT"
+	.byte >sout,<sout
+
 	.byte "UPLOAD"
 	.byte >upload,<upload
 
@@ -146,7 +158,7 @@ com_tab:
 	.byte "CRC"
 	.byte >atomCRC,<atomCRC
 
-	.byte "ROMS"
+	.byte "RLIST"
 	.byte >roms,<roms
 
 	.byte "FLASH"
@@ -167,6 +179,15 @@ help_tab:
 
 	; Baud
 	.byte "<BAUD RATE>",0
+
+	; Sinout
+	.byte 0
+
+	; Sin
+	.byte 0
+
+	; Sout
+	.byte 0
 
 	; Upload
 	.byte "<START>,<END>",0

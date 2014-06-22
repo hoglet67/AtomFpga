@@ -1,5 +1,54 @@
+;=================================================================
+; Command: SINOUT
+;
+; Equivalent to SIN and SOUT
+;=================================================================
 
+sinout:
+	JSR sout
 
+;=================================================================
+; Command: SIN
+;
+; Revector OSRDCH to read from the serial port
+;=================================================================
+
+sin:
+	LDA #<sinhandler
+	STA rdcvec
+	LDA #>sinhandler
+	STA rdcvec+1
+	RTS
+
+sinhandler:
+	LDA STATUS
+	AND #$02
+	BEQ sinhandler
+	LDA DATA
+	RTS
+
+;=================================================================
+; Command: SOUT
+;
+; Revector OSWRCD to write to the serial port
+;=================================================================
+
+sout:
+	LDA #<southandler
+	STA wrcvec
+	LDA #>southandler
+	STA wrcvec+1
+	RTS
+
+southandler:
+	PHA
+southandler1:
+	LDA STATUS
+	AND #$01
+	BEQ southandler1
+	PLA
+	STA DATA
+	JMP $FE52
 
 ;=================================================================
 ; Command: BAUD <Baud Rate>
