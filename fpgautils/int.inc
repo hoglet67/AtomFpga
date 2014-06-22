@@ -3,6 +3,14 @@
 ; #Axxx command interpreter
 ;=================================================================
 
+.DEFINE NAME_VERSION    "FPGA UTILS 0.16"
+
+;=================================================================
+; Constant DECLARATION
+;=================================================================
+
+CLOCK		= 16000000
+
 ;=================================================================
 ; VARIABLE DECLARATION
 ;=================================================================
@@ -15,9 +23,40 @@ stack4		= $43
 tmp_ptr3	= $D5
 tmp_ptr5	= $D6
 tmp_ptr6	= $D7
-shadowl     = $FD		; Shadow ROM Latch
+cursor_hpos     = $E0		; Cursor horizontal position
+shadowl     	= $FD		; Shadow ROM Latch
+
+
+; Used by FLASH command
+src         	= $80
+dst         	= $82
+bank        	= $84
+
+; Used by UPLOAD/DNLOAD/CRC commands
+
+start           = $80
+mem         	= $82
+ptr		= $84
+mycrc         	= $86
+fcrc	    	= $88
+tmpa        	= $8a
 
 dlg_buffer	= $140
+
+;; TODO: Probaly need to change these....
+relocate    	= $2800
+ramCrcTableLo 	= $3A00
+ramCrcTableHi 	= $3B00
+
+romstart    	= $A000
+romend      	= $B000
+
+PORTC       	= $b002
+DATA        	= $b500
+STATUS      	= $b501
+DIVIDER_LO  	= $b502
+DIVIDER_HI  	= $b503
+romlatch    	= $BFFF
 
 next_param	= $C231		; OS calls
 read_text	= $CEB1
@@ -33,9 +72,9 @@ prtspc		= $F7FD
 prthex		= $F802
 prtdigit	= $F80B
 
-OSRDCH      = $FFE3
+OSRDCH          = $FFE3
 OSWRCH		= $FFF4
-OSCRLF      = $FFED
+OSCRLF          = $FFED
 
 ;=================================================================
 ; ROM IDENTIFIER
@@ -85,183 +124,96 @@ comint5:
 comint6:
 	JMP ($0052)
 
-;=================================================================
-; STAR-COMMAND INTERPRETER
-;=================================================================
-
-star_com:
-	LDX #$FF		; Set up pointers
-	CLD
-star_com1:
-	LDY #0
-	JSR skip_spc
-	DEY
-star_com2:
-	INY
-	INX
-star_com3:
-	LDA starcom_tab,X	; Look up star-command
-	BMI star_com5
-	CMP $100,Y
-	BEQ star_com2
-	DEX
-star_com4:
-	INX
-	LDA starcom_tab,X
-	BPL star_com4
-	INX
-	LDA $100,Y
-	CMP #'.'
-	BNE star_com1
-	INY
-	DEX
-	BCS star_com3
-star_com5:
-	STY $9A
-
-	LDY $3			; Save command pointers
-	STY tmp_ptr3
-	LDY $5
-	STY tmp_ptr5
-	LDY $6
-	STY tmp_ptr6
-	LDY #<$100
-	STY $5
-	LDY #>$100
-	STY $6
-	LDY $9A
-	STY $3
-
-	STA $53			; Execute star command
-	LDA com_tab+1,X
-	STA $52
-	JSR comint6
-
-	LDY tmp_ptr5		; Restore command pointers
-	STY $5
-	LDY tmp_ptr6
-	STY $6
-	LDY tmp_ptr3
-	STY $3
-
-	LDA #$0D
-	STA ($5),Y
-
-	RTS 
 
 ;=================================================================
 ; COMMAND TABLE
 ;=================================================================
 
-.macro commands
+com_tab:
+
+	.byte "FHELP"
+	.byte >fpgahelp,<fpgahelp
+
+	.byte "BAUD"
+	.byte >baud,<baud
+
 	.byte "UPLOAD"
 	.byte >upload,<upload
 
 	.byte "DNLOAD"
 	.byte >download,<download
 
-	.byte "FLASH"
-	.byte >flash,<flash
-
 	.byte "CRC"
 	.byte >atomCRC,<atomCRC
 
-	.byte "BAUD"
-	.byte >baud,<baud
+	.byte "ROMS"
+	.byte >roms,<roms
+
+	.byte "FLASH"
+	.byte >flash,<flash
 
 	.byte "BEEB"
 	.byte >beeb,<beeb
 
-	.byte "FPGAHELP"
-	.byte >fpgahelp,<fpgahelp
+	.byte >no_com,<no_com 	; No command
 
-.endmacro
-
+;=================================================================
+; HELP TABLE
+;=================================================================
 
 help_tab:
+	; FHELP
+    	.byte 0
+
+	; Baud
+	.byte "<BAUD RATE>",0
+
 	; Upload
 	.byte "<START>,<END>",0
 
 	; Download
 	.byte "<START>",0
 
-	; Flash
-	.byte "<START>,<BANK>",0
-
-    ; Crc
+    	; Crc
 	.byte "<START>,<END>",0
 
-    ; Baud
-	.byte "<BAUD RATE>",0
+	; Roms
+	.byte 0
+
+	; Flash
+	.byte "<START>,<BANK>",0
 
 	; Beeb
 	.byte 0
 
-	; FHELP
-    .byte 0
-
-com_tab:
-
-	commands
-
-	.byte >no_com,<no_com 	; No command
-
-; STAR commands
-
-starcom_tab:
-
-	commands
-
-	.byte >command_error,<command_error	; No star commands
-
 ;=================================================================
-; Read variabele routine
+; Command parser helper routines
 ;=================================================================
 
-read_var:
-	LDY $3
-	JSR skip_spc		; Negeer spaties
+read_start_end:
+	JSR read_param
+	JSR next_param
+	JSR read_param
+	JSR next_param
 
-	CMP #'A'		; Test of karakter, letter is
-	BMI no_var
-	CMP #'['
-	BPL no_var
-	STA stack1
+	LDA stack1
+	STA start
+	LDA stack2
+	STA start + 1
 
-	INY			; Spring naar einde parameter
-	STY $3
-	JMP next_param
-no_var:
-	BRK
-
-;=================================================================
-; Read number or calculation routine
-;=================================================================
-
-read_num:
-	JSR read_param		; Lees expressie
-	JSR next_param		; Spring naar einde expressie
-
-	LDA stack1		; Zet lo-byte in accu
-	LDY #0			; Reset stackpointer
-	STY stackpointer
+	LDA stack1 + 1
+	STA mem
+	LDA stack2 + 1
+	STA mem + 1
 	RTS
 
 ;=================================================================
-; Read text routine
+; Print out own version
 ;=================================================================
 
-read_txt:
-	JSR read_text		; Lees string in buffer
-copy_text:
-	LDX #0			; Kopieer string naar buffer
-	LDY #0
-next_letter:
-	LDA ($52),Y
-	STA dlg_buffer,X
-	INX
-	INY
-	CMP #$0D
-	BNE next_letter
-var_ok:
-	JMP next_param		; Spring naar einde string
+print_name_version:
+	JSR prttxt
+	.byte NAME_VERSION
+	NOP
+	RTS
+

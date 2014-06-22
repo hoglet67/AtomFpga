@@ -1,10 +1,13 @@
+;=================================================================
+; Command: FPGAHELP
+;
+; Outputs the version and command help
+;=================================================================
+
 fpgahelp:
 
-		JSR prttxt
-		
-		.byte "HOGLET'S ATOMFPGA UTILS V0.14",10,13
-		NOP
-
+		JSR print_name_version
+		JSR OSCRLF
 
 		LDX #0
 		LDY #0
@@ -23,6 +26,9 @@ help2:
 help3:
 		LDA #32
 		JSR OSWRCH
+		LDA cursor_hpos
+		CMP #8
+		BNE help3
 help4:
 		LDA help_tab,Y
 	   	BEQ help5
@@ -40,7 +46,10 @@ help5:
 
 		JSR prttxt
 		
-		.byte "E.G. FLASH #8200,1",10,10,13
+		.byte "EXAMPLES:",10,13
+		.byte " BAUD 115200",10,13
+		.byte " DNLOAD #4000",10,13
+		.byte " FLASH #4000,4",10,13
 		NOP
 
 		RTS

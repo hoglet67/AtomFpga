@@ -31,10 +31,12 @@ name_end:
 exec:
 start_asm:
 	.include "int.inc"
+	.include "fastCRC.inc"
 	.include "serial.inc"
 	.include "flash.inc"
 	.include "beeb.inc"
 	.include "fpgahelp.inc"
+	.include "roms.inc"
 
 .org $AFFF
 	brk
