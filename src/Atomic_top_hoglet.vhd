@@ -315,9 +315,9 @@ begin
 	);
 
 
-    RamCE      <= '1' when ((Addr(15) = '0') or (Addr(15 downto 12) = "1010" and (RomLatch(3 downto 0) = "0000" and PageA000Ram = '1'))) else '0';
+    RamCE      <= '1' when ((Addr(15) = '0') or (Addr(15 downto 12) = "1010" and (RomLatch(4 downto 0) = "00000" and PageA000Ram = '1'))) else '0';
 
-    RomCE      <= '1' when ((Addr(15 downto 14) = "11") or (Addr(15 downto 12) = "1010" and (RomLatch(3 downto 0) /= "0000" or PageA000Ram = '0'))) else '0';
+    RomCE      <= '1' when ((Addr(15 downto 14) = "11") or (Addr(15 downto 12) = "1010" and (RomLatch(4 downto 0) /= "00000" or PageA000Ram = '0'))) else '0';
            
     RAMWRn     <= not (ExternWE and RamCE);
     RAMOEn     <= not ((not ExternWE) and RamCE);
@@ -348,7 +348,7 @@ begin
         (PageA000Ram & Addr(15 downto 0)) when Addr(15 downto 12) = "0111" else
 
         -- 4K remappable RAM bank mapped to 0xA000 Rom 0
-        ( "00111" & Addr(11 downto 0)) when ((Addr(15 downto 12) = "1010") and (RomLatch(3 downto 0) = "0000") and (PageA000Ram = '1')) else
+        ( "00111" & Addr(11 downto 0)) when ((Addr(15 downto 12) = "1010") and (RomLatch(4 downto 0) = "00000") and (PageA000Ram = '1')) else
         
         -- A000 ROM (16x 4K banks selected by ROM Latch) in Atom Mode
         -- 5 bits of RomLatch are used here, to allow any of the 32 pages of FLASH to A000 for in system programming
