@@ -16,7 +16,7 @@ entity keyboard is
         CTRL_OUT   : out std_logic;
         REPEAT_OUT : out std_logic;
         BREAK_OUT  : out std_logic;
-        TURBO      : out std_logic);
+        TURBO      : out std_logic_vector(1 downto 0));
 end entity;
 
 architecture rtl of keyboard is
@@ -64,7 +64,7 @@ begin
         if nRESET = '0' then
             release  <= '0';
             extended <= '0';
-            TURBO    <= '0';
+            TURBO    <= "00";
 
             BREAK_OUT  <= '1';
             SHIFT_OUT  <= '1';
@@ -99,8 +99,10 @@ begin
                     extended <= '0';
 
                     case keyb_data is
-                        when X"05"         => TURBO      <= '0';      -- F1 
-                        when X"06"         => TURBO      <= '1';      -- F2 
+                        when X"05"         => TURBO      <= "00";     -- F1 (1MHz)
+                        when X"06"         => TURBO      <= "01";     -- F2 (2MMz)
+                        when X"04"         => TURBO      <= "10";     -- F3 (4MHz)
+                        when X"0C"         => TURBO      <= "11";     -- F4 (8MHz)
                         when X"09"         => BREAK_OUT  <= release;  -- F10 (BREAK)
                         when X"11"         => REPEAT_OUT <= release;  -- LEFT ALT (SHIFT LOCK)
                         when X"12" | X"59" =>

@@ -155,7 +155,7 @@ architecture BEHAVIORAL of Atomic_core is
             CTRL_OUT   : out std_logic;
             REPEAT_OUT : out std_logic;
             BREAK_OUT  : out std_logic;
-            TURBO      : out std_logic);
+            TURBO      : out std_logic_vector(1 downto 0));
     end component;
 
     component M6522
@@ -307,7 +307,7 @@ architecture BEHAVIORAL of Atomic_core is
     signal key_ctrl    : std_logic;
     signal key_repeat  : std_logic;
     signal key_break   : std_logic;
-    signal key_turbo   : std_logic;
+    signal key_turbo   : std_logic_vector(1 downto 0);
 
     signal dcm12M58 : std_logic;
     
@@ -597,17 +597,23 @@ begin
     begin
         if RSTn = '0' then
             clken_counter <= (others => '0');
+            cpu_clken <= '0';
         elsif rising_edge(clk_16M00) then
             clken_counter <= clken_counter + 1;
-        end if;
-    end process;
-
-    process(key_turbo)
-    begin
-        if key_turbo = '0'then
-            cpu_clken <= not (clken_counter(0) or clken_counter(1) or clken_counter(2) or clken_counter(3));  -- on cycle 0
-        else
-            cpu_clken <= not (clken_counter(0));  -- or clken_counter(1) or clken_counter(2) or clken_counter(3)); -- on cycle 0
+            case (key_turbo) is
+                when "01" =>
+                    -- 2MHz
+                    cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);  -- on cycles 0, 8
+                when "10" =>
+                    -- 4MHz
+                    cpu_clken <= clken_counter(0) and clken_counter(1);  -- on cycle 0, 4, 8, 12
+                when "11" =>
+                    -- 8MHz
+                    cpu_clken <= clken_counter(0); -- on cycle 0, 2, 4, 6, 8, 10, 12, 14
+                when others =>
+                    -- 1MHz
+                    cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);  -- on cycle 0
+            end case;
         end if;
     end process;
 
