@@ -103,19 +103,22 @@ begin
                         when X"06"         => TURBO      <= '1';      -- F2 
                         when X"09"         => BREAK_OUT  <= release;  -- F10 (BREAK)
                         when X"11"         => REPEAT_OUT <= release;  -- LEFT ALT (SHIFT LOCK)
-                        when X"12" | X"59" => SHIFT_OUT  <= release;  -- Left SHIFT -- Right SHIFT
+                        when X"12" | X"59" =>
+                            if (extended = '0') then -- Ignore fake shifts
+                                SHIFT_OUT  <= release; -- Left SHIFT -- Right SHIFT
+                            end if; 
                         when X"14"         => CTRL_OUT   <= release;  -- LEFT/RIGHT CTRL (CTRL) 
                                                                       -----------------------------------------------------
                                         -- process matrix
                                                                       -----------------------------------------------------
                         when X"29"         => keys(9)(0) <= release;  -- SPACE
                         when X"54"         => keys(8)(0) <= release;  -- [       
-                        when X"61"         => keys(7)(0) <= release;  -- \       
+                        when X"5D"         => keys(7)(0) <= release;  -- \       
                         when X"5B"         => keys(6)(0) <= release;  -- ]
-                        when X"75"         => keys(5)(0) <= release;  -- UP      
+                        when X"0D"         => keys(5)(0) <= release;  -- UP      
                         when X"58"         => keys(4)(0) <= release;  -- CAPS LOCK                                       
                         when X"74"         => keys(3)(0) <= release;  -- RIGHT           
-                        when X"6B"         => keys(2)(0) <= release;  -- LEFT
+                        when X"75"         => keys(2)(0) <= release;  -- UP
 
                         when X"5A" => keys(6)(1) <= release;  -- RETURN
                         when X"69" => keys(5)(1) <= release;  -- END (COPY)
@@ -138,7 +141,7 @@ begin
 
                         when X"49" => keys(9)(3) <= release;  -- .
                         when X"4A" => keys(8)(3) <= release;  -- /
-                        when X"0E" => keys(7)(3) <= release;  -- ` (@)
+                        when X"55" => keys(7)(3) <= release;  -- @ (TAB)
                         when X"1C" => keys(6)(3) <= release;  -- A
                         when X"32" => keys(5)(3) <= release;  -- B
                         when X"21" => keys(4)(3) <= release;  -- C
