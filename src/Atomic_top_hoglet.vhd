@@ -198,8 +198,15 @@ architecture behavioral of Atomic_top_hoglet is
     signal RomJumpers  : std_logic_vector (7 downto 0);
     signal RomLatch  : std_logic_vector (7 downto 0);
     
-    signal BeebMode : std_logic;
-    signal PageA000Ram : std_logic;
+    signal ExtRAMEN : std_logic; -- SwitchLatch[0] on Phill's board
+    signal DskRAMEN : std_logic; -- SwitchLatch[1] on Phill's board, not currently used in AtomFPGA
+    signal DskROMEN : std_logic; -- SwitchLatch[2] on Phill's board
+    signal BeebMode : std_logic; -- SwitchLatch[3] on Phill's board
+
+    signal Addr7000RAM : std_logic;
+    signal Addr7000ROM : std_logic;
+    signal AddrA000RAM : std_logic;
+    signal AddrA000ROM : std_logic;
 
     signal TxD_UART : std_logic;
     signal TxD_AVR : std_logic;
@@ -314,10 +321,23 @@ begin
         AtomIOWROut => open
 	);
 
+    Addr7000ROM <= '1' when Addr(15 downto 12) = "0111" and (BeebMode = '1' and ExtRAMEN = '0')
+                       else '0';
 
-    RamCE      <= '1' when ((Addr(15) = '0') or (Addr(15 downto 12) = "1010" and (RomLatch(4 downto 0) = "00000" and PageA000Ram = '1'))) else '0';
+    Addr7000RAM <= '1' when Addr(15 downto 12) = "0111" and (BeebMode = '0' or ExtRAMEN = '1')
+                       else '0';
+        
+    AddrA000ROM <= '1' when Addr(15 downto 12) = "1010" and (BeebMode = '1' or RomLatch(4 downto 0) /= "00000" or ExtRAMEN = '0')
+                       else '0';
 
-    RomCE      <= '1' when ((Addr(15 downto 14) = "11") or (Addr(15 downto 12) = "1010" and (RomLatch(4 downto 0) /= "00000" or PageA000Ram = '0'))) else '0';
+    AddrA000RAM <= '1' when Addr(15 downto 12) = "1010" and (BeebMode = '0' and RomLatch(4 downto 0) = "00000" and ExtRAMEN = '1')
+                       else '0';
+    
+    RamCE       <= '1' when Addr(15 downto 12) < "0111" or Addr7000RAM = '1' or AddrA000RAM = '1'
+                       else '0';
+
+    RomCE       <= '1' when Addr(15 downto 14) = "11" or Addr7000ROM = '1' or AddrA000ROM = '1'
+                       else '0';
            
     RAMWRn     <= not (ExternWE and RamCE);
     RAMOEn     <= not ((not ExternWE) and RamCE);
@@ -343,22 +363,28 @@ begin
     -------------------------------------------------
 
     ExternA  <=
+
+        -- 0x7000 comes from ROM address 0x09000 in Beeb Mode (Ext ROM 2)
+        ( "01001" & Addr(11 downto 0)) when Addr7000ROM = '1' else
     
-        -- 4K remappable RAM bank mapped to 0x7000
-        (PageA000Ram & Addr(15 downto 0)) when Addr(15 downto 12) = "0111" else
+        -- 0x7000 is 4K remappable RAM bank mapped to 0x7000
+        (ExtRAMEN & Addr(15 downto 0)) when Addr7000RAM = '1' else
 
-        -- 4K remappable RAM bank mapped to 0xA000 Rom 0
-        ( "00111" & Addr(11 downto 0)) when ((Addr(15 downto 12) = "1010") and (RomLatch(4 downto 0) = "00000") and (PageA000Ram = '1')) else
+        -- 0xA000 remappable RAM bank at 0x7000 re-mapped to 0xA000
+        ( "00111" & Addr(11 downto 0)) when AddrA000RAM = '1' else
         
-        -- A000 ROM (16x 4K banks selected by ROM Latch) in Atom Mode
+        -- 0xA000 is bank switched by ROM Latch in Atom Mode
         -- 5 bits of RomLatch are used here, to allow any of the 32 pages of FLASH to A000 for in system programming
-        ( RomLatch(4 downto 0) & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" and BeebMode = '0' else
+        ( RomLatch(4 downto 0) & Addr(11 downto 0)) when AddrA000ROM = '1' and BeebMode = '0' else
 
-        -- A000 ROM in a fixed slot in BBC Mode
-        ( "11000" & Addr(11 downto 0)) when Addr(15 downto 12) = "1010" and BeebMode = '1' else
+        -- 0xA000 comes from ROM address 0x0A000 in Beeb Mode
+        ( "01010" & Addr(11 downto 0)) when AddrA000ROM = '1' and BeebMode = '1' else
+
+        -- 0xC000-0xFFFF comes from ROM address 0x0C000-0x0FFFF in Beeb Mode
+        ( "0" & Addr(15 downto 0)) when Addr(15 downto 14) = "11" and BeebMode = '1' else
         
-        -- C000-FFFF ROM (2x 16K banks selected by jumper)
-        ( "10" & BeebMode & Addr(13 downto 0)) when Addr(15 downto 14) = "11" else
+        -- 0xC000-0xFFFF comes from ROM address 0x10000-0x17FFF in Atom Mode (2x 16K banks selected SwitchLatch[2])
+        ( "10" & DskROMEN & Addr(13 downto 0)) when Addr(15 downto 14) = "11" and BeebMode = '0' else
              
         -- RAM
         Addr;
@@ -368,8 +394,11 @@ begin
     -------------------------------------------------
     BFFE_Enable <= '1' when Addr(15 downto 0) = "1011111111111110" else '0';
     BFFF_Enable <= '1' when Addr(15 downto 0) = "1011111111111111" else '0';
+
+    ExtRAMEN <= RomJumpers(0);
+    DskRAMEN <= RomJumpers(1); -- currently unused
+    DskROMEN <= RomJumpers(2);
     BeebMode <= RomJumpers(3);
-    PageA000Ram <= RomJumpers(0);
         
     RomLatchProcess : process (ERSTn, IRSTn, clk_16M00)
     begin
