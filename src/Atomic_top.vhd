@@ -90,6 +90,7 @@ architecture behavioral of Atomic_top is
             ps2_data  : in  std_logic;
             ERSTn     : in  std_logic;
             SDMISO    : in  std_logic;    
+            IRSTn     : out std_logic;
             red       : out std_logic_vector(2 downto 0);
             green     : out std_logic_vector(2 downto 0);
             blue      : out std_logic_vector(2 downto 0);
@@ -159,13 +160,15 @@ begin
 		ps2_clk => ps2_clk,
 		ps2_data => ps2_data,
 		ERSTn => ERSTn,
+		IRSTn => open,
 		red => red,
 		green => green,
 		blue => blue,
 		vsync => vsync,
 		hsync => hsync,
 		ExternWE => ExternWE,
-		RAMCE => RAMCE,
+		RamCE => RamCE,
+        RomCE => RomCE,
 		ExternA => ExternA,
 		ExternDin => ExternDin,
 		ExternDout => ExternDout,
