@@ -6,11 +6,11 @@
 ;
 
 STARSAVE:
-;   jsr  read_filename       ; copy filename into $140
-;   jsr  $f844               ; set $c9\a = $140, set x = $c9
-;   jmp  $fabe               ; scan parameters and jmp through SAVVEC
+   jsr  read_filename       ; copy filename into $140
+   jsr  LF844               ; set $c9\a = $140, set x = $c9
+   jsr  LFABE               ; scan parameters and jmp through SAVVEC
 
-
+; Fall through
 
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
@@ -124,3 +124,39 @@ overwrite:
 
    jsr   OSRDCH
    jmp   OSWRCH
+
+;----------------------------------------------------------------
+; Atom kernal routines rewritten for BBCMMC *SAVE
+;----------------------------------------------------------------
+
+LFABE:
+	ldx #SLOAD
+	jsr LFA65	; Interpret start address
+
+	ldx #SEND
+	jsr LFA65	; Interpret end address
+
+	ldx #SEXEC
+	jsr LF893	; Interpret run address
+
+	php
+	lda SLOAD
+	ldx SLOAD+1
+	plp
+	bne LFAD9
+	sta SEXEC
+	stx SEXEC+1
+LFAD9:
+	sta SSTART
+	stx SSTART+1
+	jsr LFA76
+	ldx #SFNPTR
+LFADA:
+	rts
+
+; Convert ASCII address into binary and store as parameter
+
+LFA65:
+	jsr LF893	; Read address
+	bne LFADA	; Return if ok
+	jmp LFA77	; Generate error

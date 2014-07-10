@@ -29,6 +29,7 @@ extrom1_id	= $6000		; EXTROM1 ID byte
 osbyte		= $fff4		; OSBYTE
 oswrch          = $ffee		; OSWRCH, print character in A
 osascii		= $ffe3		; OSACII, print character in A and LF
+oscli		= $fff7		; OSCLI, execute *command
 
 ;***********************************************************************
 ;* Initialisation MOS EXT ROM 2
@@ -39,7 +40,7 @@ extrom2_init:
 
 	JSR print		; Report ROM on screen
 extrom2_msgtxt:
-	.byte "BBCMMC ROM V1.0",13,10
+	.byte "BBCMMC 1.00",13,10
 	NOP
 
 	LDA #<OSCLI_entry	; Reset OSCLI vector
@@ -52,7 +53,23 @@ extrom2_msgtxt:
 	LDA #>OSFILE_entry
 	STA file_vec+1
 
+;*********************
+; SHIFT-BREAK option
+;*********************
+	bit $b001
+	bmi no_boot
+
+	ldx #<boot_command
+	ldy #>boot_command
+	jsr oscli
+
+;*********************
+
+no_boot:
 	RTS
+
+boot_command:
+	.byte "R.!BOOT",13
 
 ;***********************************************************************
 ; OSCLI entry, new vector $0208/209
@@ -149,6 +166,14 @@ LF5E9:
 	.byte >STARDELETE+$80
 	.byte <STARDELETE
 
+	.byte "DIR"
+	.byte >STARDIR+$80
+	.byte <STARDIR
+
+	.byte "INFO"
+	.byte >STARINFO+$80
+	.byte <STARINFO
+
 	.byte "LOAD"
 	.byte >STARLOAD+$80
 	.byte <STARLOAD
@@ -157,12 +182,19 @@ LF5E9:
 	.byte >STARSAVE+$80
 	.byte <STARSAVE
 
+	.byte "RUN"
+	.byte >STARRUN+$80
+	.byte <STARRUN
+
 	.byte "HELP"
 	.byte >STARHELP+$80
 	.byte <STARHELP
 
-	.byte >LF8B6+$80	; Command not found, ERROR
-	.byte <LF8B6
+	.byte >STARARBITRARY+$80
+	.byte <STARARBITRARY
+
+;	.byte >LF8B6+$80	; Command not found, ERROR
+;	.byte <LF8B6
 
 ; Command not found, report BAD COMMAND and generate error
 
@@ -189,8 +221,11 @@ LF863:
 
 	.include "cat.inc"
 	.include "delete.inc"
+	.include "cwd.inc"
+	.include "info.inc"
 	.include "load.inc"
 	.include "save.inc"
+	.include "run.inc"
 	.include "help.inc"
 
 ;***********************************************************************
@@ -209,7 +244,19 @@ OSFILE_entry:
 	STX L00C7
 	STY L00C8
 
-	JSR read_filename	; Read filename from (0,X) to $140
+	LDA 0,X			; Set pointer to filename
+	STA $c9
+	LDA 1,X
+	STA $ca
+
+
+	ldy #$ff		; Copy filename to $140
+read_loop:
+	iny
+	lda (L00C9),y
+	sta NAME,y
+	cmp #$0d
+	bne read_loop
 
 ; Check OSFILE action
 
@@ -220,11 +267,11 @@ OSFILE_entry:
 	JMP OSFILE_return
 
 action_0:			; Action=0 -> SAVE file
-	JSR STARSAVE
+	JSR ossavecode
 	JMP OSFILE_return
 
 action_ff:			; Action=$ff -> LOAD file
-	JSR STARLOAD
+	JSR osloadcode
 
 OSFILE_return:
         LDY     L00C8		; Restore A,X,Y

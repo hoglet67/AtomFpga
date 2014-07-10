@@ -53,23 +53,32 @@ prepare_write_data:
    jmp 				interwritedelay
  
    
-.ifdef AVR
-WaitUntilRead:
-	lda		ASTATUS_REG			; Read status reg
+.ifdef AVR		; Extra PHA/PLA added for restoring A
+WaitUntilRead:		
+	pha
+WaitUntilRead1:		
+	lda		ASTATUS_REG		; Read status reg
 	and		#MMC_MCU_READ		; Been read yet ?
-	bne		WaitUntilRead		; nope keep waiting
+	bne		WaitUntilRead1		; nope keep waiting
+	pla
 	rts
 
 WaitUntilWritten:
-	lda		ASTATUS_REG			; Read status reg
+	pha
+WaitUntilWritten1:
+	lda		ASTATUS_REG		; Read status reg
 	and		#MMC_MCU_WROTE		; Been written yet ?
-	beq		WaitUntilWritten	; nope keep waiting
+	beq		WaitUntilWritten1	; nope keep waiting
+	pla
 	rts
 
 WaitWhileBusy:
-	lda		ASTATUS_REG			; Read status reg
+	pha
+WaitWhileBusy1:
+	lda		ASTATUS_REG		; Read status reg
 	and		#MMC_MCU_BUSY		; MCU still busy ?
-	bne		WaitWhileBusy		; yes keep waiting
+	bne		WaitWhileBusy1		; yes keep waiting
+	pla
 	rts
 .endif
 
@@ -214,12 +223,12 @@ reportFailure:
 ;   sta   $6
 
 	lda #10
-	jsr oswrch
+	jsr OSWRCH
 	ldy #$ff
 failure_loop:
 	iny
 	lda ($d5),y
-	jsr oswrch
+	jsr OSWRCH
 	cmp #$0d
 	bne failure_loop
 	brk
@@ -316,25 +325,44 @@ print_filename:
 ;
 ; Shows load, exec, length
 ;
-;print_fileinfo:
-;   lda   LLOAD+1
-;   jsr   HEXOUT
-;   lda   LLOAD
-;   jsr   HEXOUTS
+print_fileinfo:
+   lda   LLOAD+1
+   jsr   HEXOUT
+   lda   LLOAD
+   jsr   HEXOUTS
 
-;   lda   LEXEC+1
-;   jsr   HEXOUT
-;   lda   LEXEC
-;   jsr   HEXOUTS
+   lda   LEXEC+1
+   jsr   HEXOUT
+   lda   LEXEC
+   jsr   HEXOUTS
 
-;   lda   LLENGTH+1
-;   jsr   HEXOUT
-;   lda   LLENGTH
-;   jmp   HEXOUTS
+   lda   LLENGTH+1
+   jsr   HEXOUT
+   lda   LLENGTH
+   jmp   HEXOUTS
 
+HEXOUT:
+	PHA		; Save original A
+	LSR A		; Shift right 4 times, padding top 4 bits with 0
+	LSR A		; ie. Demoting top 4 bits, or dividing by 16
+	LSR A
+	LSR A
+	JSR convert
+	PLA		; Restore A
+	AND #15		; Remove upper 
+	JSR convert 
+	RTS		; Exit. Add an extra PHA/PLA if you want A uncorrupted
+convert:
+	SED		; Perform in binary coded decimal from now on
+	CMP #10
+	ADC #48		; Add on ASCii code for the number 0
+	CLD		; Work in pure binary again
+	JMP OSWRCH	; Using JMP means the OS does the RTS - saves a byte
 
-
-
+HEXOUTS:
+	jsr HEXOUT
+	lda #' '
+	jsr OSWRCH
 
 
 
@@ -347,75 +375,57 @@ print_filename:
 ; Output $140 contains filename
 ;
 read_filename:
-	LDA 0,X			; Set pointer to filename
-	STA $c9
-	LDA 1,X
-	STA $ca
-
-
-	ldy #$ff		; Copy filename to $140
-read_loop:
-	iny
-	lda (L00C9),y
-	sta NAME,y
-	cmp #$0d
-	bne read_loop
-	rts
-
-
-
-
-;   ldx   #0
+   ldx   #0
 ;   ldy   $9a
 
-;@filename1:
-;   jsr   SKIPSPC
-;   cmp   #$22
-;   beq   @filename5
+@filename1:
+   jsr   SKIPSPC
+   cmp   #$22
+   beq   @filename5
 
-;@filename2:
-;   cmp   #$0d
-;   beq   @filename3
+@filename2:
+   cmp   #$0d
+   beq   @filename3
 
-;   sta   NAME,x
-;   inx
-;   iny
-;   lda   $100,y
-;   cmp   #$20
-;   bne   @filename2
+   sta   NAME,x
+   inx
+   iny
+   lda   $100,y
+   cmp   #$20
+   bne   @filename2
 
-;@filename3:
-;   lda   #$0d
-;   sta   NAME,x
+@filename3:
+   lda   #$0d
+   sta   NAME,x
 
-;   cpx   #0
-;   beq   @filename6
+   cpx   #0
+   beq   @filename6
 
-;   rts
+   rts
 
-;@filename5:
-;   iny
-;   lda   $100,y
-;   cmp   #$0d
-;   beq   @filename6
+@filename5:
+   iny
+   lda   $100,y
+   cmp   #$0d
+   beq   @filename6
 
-;   sta   NAME,x
-;   inx
-;   cmp   #$22
-;   bne   @filename5
+   sta   NAME,x
+   inx
+   cmp   #$22
+   bne   @filename5
 
-;   dex
-;   iny
-;   lda   $100,y
-;   cmp   #$22
-;   bne   @filename3
+   dex
+   iny
+   lda   $100,y
+   cmp   #$22
+   bne   @filename3
 
-;   inx
-;   bcs   @filename5
+   inx
+   bcs   @filename5
 
-;@filename6:
+@filename6:
 
-;	rts
+	rts
 ;   jmp   COSSYN
 
 

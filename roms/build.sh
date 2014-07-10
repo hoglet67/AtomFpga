@@ -5,7 +5,7 @@ function build_rom {
 ROM=$1
 AVR=$2
 
-echo Building ${ROM}${AVR}
+echo Building ${ROM}
 
 rm -f ${ROM}
 touch ${ROM}
