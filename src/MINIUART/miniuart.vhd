@@ -50,7 +50,9 @@ entity MINIUART is
     IntRx_O   : out std_logic;  -- Receive interrupt: indicate Byte received
     BR_Clk_I  : in  std_logic;          -- Clock used for Transmit/Receive
     TxD_PAD_O : out std_logic;          -- Tx RS232 Line
-    RxD_PAD_I : in  std_logic);         -- Rx RS232 Line     
+    RxD_PAD_I : in  std_logic;         -- Rx RS232 Line
+    ESC_O     : out std_logic;
+    BREAK_O   : out std_logic);
 end MINIUART;
 
 -- Architecture for UART for synthesis
@@ -88,6 +90,7 @@ architecture Behaviour of MINIUART is
   end component;
 
   signal RxData  : std_logic_vector(7 downto 0);   -- Last Byte received
+  signal RxData1 : std_logic_vector(7 downto 0);
   signal TxData  : std_logic_vector(7 downto 0);   -- Last bytes transmitted
   signal SReg    : std_logic_vector(7 downto 0);   -- Status register
   signal EnabRx  : std_logic;           -- Enable RX unit
@@ -100,7 +103,6 @@ architecture Behaviour of MINIUART is
   signal Sig1    : std_logic;           -- vcc signal  
   signal Divisor : std_logic_vector(15 downto 0);  -- Baud Rate
 
-  
 begin
   sig0 <= '0';
   sig1 <= '1';
@@ -116,6 +118,48 @@ begin
   SReg(1)          <= RxAv;
   SReg(7 downto 2) <= "000000";
 
+
+  -- 16MHz x 1M = 64ms
+--  ESCctrl: process(WB_CLK_I)
+--  variable count : unsigned(19 downto 0);
+--  begin
+--    if Rising_Edge(WB_CLK_I) then
+--      if (WB_RST_I = '1') then
+--         ESC_O <= '1';
+--         count := (others => '0');
+--      elsif RxData = X"1B" then
+--         ESC_O <= '0';
+--         count := (others => '1');
+--      elsif count > 0 then
+--         count := count - 1;
+--      else
+--         ESC_O <= '1';   
+--      end if;
+--    end if;
+--  end process;
+
+
+BREAKctrl: process(WB_CLK_I)
+  variable count : unsigned(7 downto 0);
+  begin
+    if Rising_Edge(WB_CLK_I) then
+      RxData1 <= RxData;
+      if (WB_RST_I = '1') then
+         BREAK_O <= '1';
+         count := (others => '0');
+      elsif RxData1 /= X"1A" and RxData = X"1A" then
+         BREAK_O <= '0';
+         count := (others => '1');
+      elsif count > 0 then
+         count := count - 1;
+      else
+         BREAK_O <= '1';   
+      end if;
+    end if;
+  end process;
+
+  ESC_O          <= '0' when RxData = X"1B" else '1';
+  
   -- Implements WishBone data exchange.
   -- Clocked on rising edge. Synchronous Reset RST_I
   WBctrl : process(WB_CLK_I, WB_RST_I, WB_STB_I, WB_WE_I, WB_ADR_I)

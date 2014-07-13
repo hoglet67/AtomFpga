@@ -46,7 +46,9 @@ entity Atomic_core is
         SDMISO    : in    std_logic;
         SDSS      : out   std_logic;
         SDCLK     : out   std_logic;
-        SDMOSI    : out   std_logic
+        SDMOSI    : out   std_logic;
+        ESC_IN    : in    std_logic := '1';
+        BREAK_IN  : in    std_logic := '1'
         );
 end Atomic_core;
 
@@ -151,6 +153,8 @@ architecture BEHAVIORAL of Atomic_core is
             PS2_DATA   : in  std_logic;
             KEYOUT     : out std_logic_vector(5 downto 0);
             ROW        : in  std_logic_vector(3 downto 0);
+            ESC_IN     : in  std_logic;
+            BREAK_IN   : in  std_logic;
             SHIFT_OUT  : out std_logic;
             CTRL_OUT   : out std_logic;
             REPEAT_OUT : out std_logic;
@@ -413,6 +417,8 @@ begin
         PS2_DATA   => inpurps2dat,
         KEYOUT     => ps2dataout,
         ROW        => i8255_pa_data(3 downto 0),
+        ESC_IN     => ESC_IN,
+        BREAK_IN   => BREAK_IN,
         SHIFT_OUT  => key_shift,
         CTRL_OUT   => key_ctrl,
         REPEAT_OUT => key_repeat,

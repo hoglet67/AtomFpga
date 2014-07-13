@@ -103,7 +103,9 @@ architecture behavioral of Atomic_top_hoglet is
             audioR    : out std_logic;
             SDSS      : out std_logic;
             SDCLK     : out std_logic;
-            SDMOSI    : out std_logic
+            SDMOSI    : out std_logic;
+            ESC_IN    : in  std_logic := '1';
+            BREAK_IN  : in  std_logic := '1'     
         );
 	end component;
    
@@ -163,7 +165,9 @@ architecture behavioral of Atomic_top_hoglet is
             wb_ack_o : out std_logic;
             inttx_o : out std_logic;
             intrx_o : out std_logic;
-            txd_pad_o : out std_logic
+            txd_pad_o : out std_logic;
+            esc_o : out std_logic;
+            break_o : out std_logic
         );
 	end component;
 
@@ -211,7 +215,9 @@ architecture behavioral of Atomic_top_hoglet is
     signal TxD_UART : std_logic;
     signal TxD_AVR : std_logic;
     
-
+    signal esc_uart : std_logic;
+    signal break_uart : std_logic;
+    
 begin
 
     inst_dcm4 : dcm4 port map(
@@ -258,7 +264,9 @@ begin
         SDMISO    => '0',
         SDSS      => open,
         SDCLK     => open,
-        SDMOSI    => open
+        SDMOSI    => open,
+        ESC_IN    => esc_uart,
+        BREAK_IN  => break_uart
         );  
 
 	Inst_AVR8: AVR8 PORT MAP(
@@ -282,8 +290,8 @@ begin
 		portbout(3)  => AVRA0,
 		portbout(4)  => open,
 		portbout(5)  => open,
-		portbout(6)  => LED1,
-		portbout(7)  => LED2,
+		portbout(6)  => open,
+		portbout(7)  => open,
 
         portdin      => (others => '0'),
         portdout(0)  => open,
@@ -433,12 +441,17 @@ begin
 		intrx_o => open,
 		br_clk_i => clk_16M00,
 		txd_pad_o => TxD_UART,
-		rxd_pad_i => RxD
+		rxd_pad_i => RxD,
+        esc_o  => esc_uart,
+        break_o => break_uart   
 	);
     
     -- Idle state is high, logically OR the active low signals
     TxD <= TxD_UART and TxD_AVR;
 
+    LED1 <= esc_uart;
+    LED2 <= break_uart;
+    
 end behavioral;
 
 

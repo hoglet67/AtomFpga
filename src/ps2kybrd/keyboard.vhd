@@ -12,6 +12,8 @@ entity keyboard is
         PS2_DATA   : in  std_logic;
         KEYOUT     : out std_logic_vector(5 downto 0);
         ROW        : in  std_logic_vector(3 downto 0);
+        ESC_IN     : in  std_logic;        
+        BREAK_IN   : in  std_logic;        
         SHIFT_OUT  : out std_logic;
         CTRL_OUT   : out std_logic;
         REPEAT_OUT : out std_logic;
@@ -89,6 +91,11 @@ begin
             keys(14) <= (others => '1');
             keys(15) <= (others => '1');
         elsif rising_edge(CLOCK) then
+        
+            keys(0)(5) <= ESC_IN;
+
+            BREAK_OUT <= BREAK_IN;
+            
             if keyb_valid = '1' then
                 if keyb_data = X"e0" then
                     extended <= '1';
@@ -97,7 +104,7 @@ begin
                 else
                     release  <= '0';
                     extended <= '0';
-
+                    
                     case keyb_data is
                         when X"05"         => TURBO      <= "00";     -- F1 (1MHz)
                         when X"06"         => TURBO      <= "01";     -- F2 (2MMz)
