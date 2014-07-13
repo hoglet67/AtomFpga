@@ -20,14 +20,24 @@ use ieee.numeric_std.all;
 
 entity Atomic_core is
     generic (
-       CImplSDDOS : boolean;
-       CImplSID : boolean
+       CImplSDDOS       : boolean;
+       CImplGraphicsExt : boolean;
+       CImplSoftChar    : boolean;
+       CImplSID         : boolean;
+       CImplVGA80x40    : boolean;
+       CImplHWScrolling : boolean;
+       CImplMouse       : boolean;
+       CImplUart        : boolean;
+       MainClockSpeed   : integer;
+       DefaultBaud      : integer
     );
-    port (clk_12M58 : in    std_logic;
+    port (clk_vga : in    std_logic;
         clk_16M00 : in    std_logic;
         clk_32M00 : in    std_logic;
         ps2_clk   : in    std_logic;
         ps2_data  : in    std_logic;
+        ps2_mouse_clk   : inout    std_logic;
+        ps2_mouse_data  : inout    std_logic;
         ERSTn     : in    std_logic;
         IRSTn     : out   std_logic;
         red       : out   std_logic_vector (2 downto 0);
@@ -47,8 +57,10 @@ entity Atomic_core is
         SDSS      : out   std_logic;
         SDCLK     : out   std_logic;
         SDMOSI    : out   std_logic;
-        ESC_IN    : in    std_logic := '1';
-        BREAK_IN  : in    std_logic := '1'
+        uart_RxD  : in    std_logic;
+        uart_TxD  : out   std_logic;
+        LED1      : out   std_logic;        
+        LED2      : out   std_logic
         );
 end Atomic_core;
 
@@ -79,56 +91,9 @@ architecture BEHAVIORAL of Atomic_core is
             DO      : out std_logic_vector(7 downto 0));
 	end component;
 
-    component mc6847
-        generic
-            (
-                T1_VARIANT   : boolean := false;
-                CVBS_NOT_VGA : boolean := false);
-        port
-            (
-                clk            : in  std_logic;
-                clk_ena        : in  std_logic;
-                reset          : in  std_logic;
-                da0            : out std_logic;
-                videoaddr      : out std_logic_vector (12 downto 0);
-                dd             : in  std_logic_vector(7 downto 0);
-                hs_n           : out std_logic;
-                fs_n           : out std_logic;
-                an_g           : in  std_logic;
-                an_s           : in  std_logic;
-                intn_ext       : in  std_logic;
-                gm             : in  std_logic_vector(2 downto 0);
-                css            : in  std_logic;
-                inv            : in  std_logic;
-                red            : out std_logic_vector(7 downto 0);
-                green          : out std_logic_vector(7 downto 0);
-                blue           : out std_logic_vector(7 downto 0);
-                hsync          : out std_logic;
-                vsync          : out std_logic;
-                hblank         : out std_logic;
-                vblank         : out std_logic;
-                artifact_en    : in  std_logic;
-                artifact_set   : in  std_logic;
-                artifact_phase : in  std_logic;
-                cvbs           : out std_logic_vector(7 downto 0));
-    end component;
-    
-    component SRAM0x8000
-        port (
-            clk      : in  std_logic;
-            rd_vid   : in  std_logic;
-            addr_vid : in  std_logic_vector (12 downto 0);
-            Q_vid    : out std_logic_vector (7 downto 0);
-            we_uP    : in  std_logic;
-            ce       : in  std_logic;
-            addr_uP  : in  std_logic_vector (12 downto 0);
-            D_uP     : in  std_logic_vector (7 downto 0);
-            Q_uP     : out std_logic_vector (7 downto 0));
-    end component;
 
     component I82C55
         port (
-
             I_ADDR : in  std_logic_vector(1 downto 0);  -- A1-A0
             I_DATA : in  std_logic_vector(7 downto 0);  -- D7-D0
             O_DATA : out std_logic_vector(7 downto 0);
@@ -159,7 +124,8 @@ architecture BEHAVIORAL of Atomic_core is
             CTRL_OUT   : out std_logic;
             REPEAT_OUT : out std_logic;
             BREAK_OUT  : out std_logic;
-            TURBO      : out std_logic_vector(1 downto 0));
+            TURBO      : out std_logic_vector(1 downto 0);
+            ESC_OUT    : out std_logic);
     end component;
 
     component M6522
@@ -189,24 +155,6 @@ architecture BEHAVIORAL of Atomic_core is
             );
     end component;
 
-    component sid6581
-        port(
-            clk_1MHz : in std_logic;
-            clk32 : in std_logic;
-            clk_DAC : in std_logic;
-            reset : in std_logic;
-            cs : in std_logic;
-            we : in std_logic;
-            addr : in std_logic_vector(4 downto 0);
-            di : in std_logic_vector(7 downto 0);    
-            pot_x : in std_logic;
-            pot_y : in std_logic;      
-            do : out std_logic_vector(7 downto 0);
-            audio_out : out std_logic;
-            audio_data : out std_logic_vector(17 downto 0)
-            );
-    end component;
-
     component SPI_Port
         port (
             nRST    : in  std_logic;
@@ -223,11 +171,83 @@ architecture BEHAVIORAL of Atomic_core is
             );
     end component;
 
--------------------------------------------------
--- divide external 32 MHz sid clock by 32
--------------------------------------------------
-    signal clk_1M00            : std_logic;
-    signal div32             : std_logic_vector (4 downto 0);
+    component AtomGodilVideo
+        generic (
+           CImplGraphicsExt : boolean;
+           CImplSoftChar    : boolean;
+           CImplSID         : boolean;
+           CImplVGA80x40    : boolean;
+           CImplHWScrolling : boolean;
+           CImplMouse       : boolean;
+           CImplUart        : boolean;
+           MainClockSpeed   : integer;
+           DefaultBaud      : integer
+        );
+        port (
+            -- clock_vga is a full speed VGA clock (25MHz ish)      
+            clock_vga      : in    std_logic;
+    
+            -- clock_main is the main clock    
+            clock_main      : in    std_logic;
+        
+            -- A fixed 32MHz clock for the SID
+            clock_sid_32MHz  : in    std_logic;
+    
+            -- As fast a clock as possible for the SID DAC
+            clock_sid_dac  : in    std_logic;
+    
+            -- Reset signal (active high)
+            reset        : in    std_logic;
+    
+            -- Reset signal to 6847 (active high), not currently used
+            reset_vid    : in    std_logic;
+            
+            -- Main Address / Data Bus
+            din          : in    std_logic_vector (7 downto 0);
+            dout         : out   std_logic_vector (7 downto 0);
+            addr         : in    std_logic_vector (12 downto 0);
+    
+            -- 6847 Control Signals
+            CSS          : in    std_logic;
+            AG           : in    std_logic;
+            GM           : in    std_logic_vector (2 downto 0);
+            nFS          : out   std_logic;
+    
+            -- RAM signals
+            ram_we       : in    std_logic;
+    
+            -- SID signals
+            reg_cs       : in    std_logic;
+            reg_we       : in    std_logic;
+    
+            -- SID signals
+            sid_cs       : in    std_logic;
+            sid_we       : in    std_logic;
+            sid_audio    : out   std_logic;
+            
+            -- PS/2 Mouse
+            PS2_CLK      : inout std_logic;
+            PS2_DATA     : inout std_logic;
+
+            -- UART signals
+            uart_cs      : in    std_logic;
+            uart_we      : in    std_logic;
+            uart_RxD     : in    std_logic;
+            uart_TxD     : out   std_logic;     
+            uart_escape  : out   std_logic;
+            uart_break   : out   std_logic;  
+            
+            -- VGA Signals
+            final_red    : out   std_logic;
+            final_green1 : out   std_logic;
+            final_green0 : out   std_logic;
+            final_blue   : out   std_logic;
+            final_vsync  : out   std_logic;
+            final_hsync  : out   std_logic
+    
+            );
+    end component;
+    
 -------------------------------------------------
 -- cpu signals names
 -------------------------------------------------
@@ -236,7 +256,7 @@ architecture BEHAVIORAL of Atomic_core is
     signal cpu_din           : std_logic_vector (7 downto 0);
     signal cpu_dout          : std_logic_vector (7 downto 0);
     signal cpu_IRQ_n         : std_logic;
---cpu clock and enales
+--cpu clock and enables
     signal clken_counter     : std_logic_vector (3 downto 0);
     signal cpu_cycle         : std_logic;
     signal cpu_clken         : std_logic;
@@ -245,41 +265,40 @@ architecture BEHAVIORAL of Atomic_core is
 -- VDG signals names
 ---------------------------------------------------
     signal RSTn              : std_logic;
-    signal vdg_da0           : std_logic;
-    signal vdg_dd            : std_logic_vector(7 downto 0);
-    signal vdg_hs_n          : std_logic;
     signal vdg_fs_n          : std_logic;
     signal vdg_an_g          : std_logic;
-    signal vdg_an_s          : std_logic;
-    signal vdg_intn_ext      : std_logic;
     signal vdg_gm            : std_logic_vector(2 downto 0);
     signal vdg_css           : std_logic;
-    signal vdg_inv           : std_logic;
     -- VGA output
-    signal vdg_red           : std_logic_vector(7 downto 0);
-    signal vdg_green         : std_logic_vector(7 downto 0);
-    signal vdg_blue          : std_logic_vector(7 downto 0);
+    signal vdg_red           : std_logic;
+    signal vdg_green1        : std_logic;
+    signal vdg_green0        : std_logic;
+    signal vdg_blue          : std_logic;
     signal vdg_hsync         : std_logic;
     signal vdg_vsync         : std_logic;
     signal vdg_hblank        : std_logic;
     signal vdg_vblank        : std_logic;
-    -- CVBS output
-    signal video_address     : std_logic_vector(12 downto 0);
-    signal video_address_t   : std_logic_vector(12 downto 0);
 ----------------------------------------------------
 -- enables
 ----------------------------------------------------
-    signal mc6847_enable     : std_logic;
     signal mc6522_enable     : std_logic;
     signal i8255_enable      : std_logic;
     signal extern_rom_enable : std_logic;
     signal extern_ram_enable : std_logic;
     signal video_ram_enable  : std_logic;
+    signal reg_enable        : std_logic;
+    signal sid_enable        : std_logic;
+    signal uart_enable       : std_logic;
+    signal gated_we          : std_logic;
+    signal video_ram_we      : std_logic;
+    signal reg_we            : std_logic;
+    signal sid_we            : std_logic;
+    signal uart_we           : std_logic;
 ----------------------------------------------------
 -- ram/roms
 ----------------------------------------------------
     signal extern_data       : std_logic_vector(7 downto 0);
-    signal video_ram_data    : std_logic_vector(7 downto 0);
+    signal godil_data        : std_logic_vector(7 downto 0);
 ----------------------------------------------------
 --
 ----------------------------------------------------
@@ -311,17 +330,17 @@ architecture BEHAVIORAL of Atomic_core is
     signal key_ctrl    : std_logic;
     signal key_repeat  : std_logic;
     signal key_break   : std_logic;
+    signal key_escape  : std_logic;
     signal key_turbo   : std_logic_vector(1 downto 0);
 
-    signal dcm12M58 : std_logic;
-    
-    signal sid_enable : std_logic;
-    signal sid_data   : std_logic_vector (7 downto 0);
     signal sid_audio  : std_logic;
 
     signal spi_enable : std_logic;
     signal spi_data   : std_logic_vector (7 downto 0);
- 
+
+    signal uart_escape : std_logic;
+    signal uart_break : std_logic;
+     
 --------------------------------------------------------------------
 --                   here it begin :)
 --------------------------------------------------------------------
@@ -349,47 +368,54 @@ begin
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------                           
-    VDG : mc6847 port map (
-        clk            => clk_12M58,
-        clk_ena        => '1',
-        reset          => '0',
-        da0            => vdg_da0,
-        videoaddr      => video_address,
-        dd             => vdg_dd,
-        hs_n           => vdg_hs_n,
-        fs_n           => vdg_fs_n,
-        an_g           => vdg_an_g,
-        an_s           => vdg_an_s,
-        intn_ext       => vdg_intn_ext,
-        gm             => vdg_gm,
-        css            => vdg_css,
-        inv            => vdg_inv,
-        red            => vdg_red,
-        green          => vdg_green,
-        blue           => vdg_blue,
-        hsync          => vdg_hsync,
-        vsync          => vdg_vsync,
-        hblank         => vdg_hblank,
-        vblank         => vdg_vblank,
-        artifact_en    => '0',
-        artifact_set   => '0',
-        artifact_phase => '0',
-        cvbs           => open);                        
-        
----------------------------------------------------------------------
---
----------------------------------------------------------------------
-
-    ram8000 : SRAM0x8000 port map(
-        clk      => clk_16M00,
-        rd_vid   => '1',
-        addr_vid => video_address(12 downto 0),
-        Q_vid    => vdg_dd,
-        we_uP    => not_cpu_R_W_n,
-        ce       => video_ram_enable,
-        addr_uP  => cpu_addr(12 downto 0),
-        D_uP     => cpu_dout(7 downto 0),
-        Q_uP     => video_ram_data);
+    Inst_AtomGodilVideo : AtomGodilVideo
+        generic map (
+           CImplGraphicsExt => CImplGraphicsExt,
+           CImplSoftChar    => CImplSoftChar,
+           CImplSID         => CImplSID,
+           CImplVGA80x40    => CImplVGA80x40,
+           CImplHWScrolling => CImplHWScrolling,
+           CImplMouse       => CImplMouse,
+           CImplUart        => CImplUart,
+           MainClockSpeed   => MainClockSpeed,
+           DefaultBaud      => DefaultBaud
+        )
+      
+        port map (
+            clock_vga => clk_vga,
+            clock_main => clk_16M00,
+            clock_sid_32Mhz => clk_32M00,
+            clock_sid_dac => clk_32M00,
+            reset => not RSTn,
+            reset_vid => '0',
+            din => cpu_dout,
+            dout => godil_data,
+            addr => cpu_addr(12 downto 0),
+            CSS => vdg_css,
+            AG => vdg_an_g,
+            GM => vdg_gm,
+            nFS => vdg_fs_n,
+            ram_we => video_ram_we,
+            reg_cs => reg_enable,
+            reg_we => reg_we,
+            sid_cs => sid_enable,
+            sid_we => sid_we,
+            sid_audio => sid_audio,
+            PS2_CLK => ps2_mouse_clk,
+            PS2_DATA => ps2_mouse_data,            
+            uart_cs => uart_enable,
+            uart_we => uart_we,
+            uart_RxD => uart_RxD,
+            uart_TxD => uart_TxD,
+            uart_escape => uart_escape,
+            uart_break => uart_break,
+            final_red => vdg_red,
+            final_green1 => vdg_green1,
+            final_green0 => vdg_green0,
+            final_blue => vdg_blue,
+            final_vsync => vdg_vsync,
+            final_hsync => vdg_hsync
+            );
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------                   
@@ -417,13 +443,14 @@ begin
         PS2_DATA   => inpurps2dat,
         KEYOUT     => ps2dataout,
         ROW        => i8255_pa_data(3 downto 0),
-        ESC_IN     => ESC_IN,
-        BREAK_IN   => BREAK_IN,
+        ESC_IN     => uart_escape,
+        BREAK_IN   => uart_break,
         SHIFT_OUT  => key_shift,
         CTRL_OUT   => key_ctrl,
         REPEAT_OUT => key_repeat,
         BREAK_OUT  => key_break,
-        TURBO      => key_turbo);
+        TURBO      => key_turbo,
+        ESC_OUT    => key_escape);
       
 ---------------------------------------------------------------------
 --  
@@ -451,38 +478,6 @@ begin
         I_P2_H  => cpu_phase,
         ENA_4   => via4_clken,
         CLK     => via_clk);                                      
----------------------------------------------------------------------
---
----------------------------------------------------------------------
-    -- Pipelined version of address/data/write signals
-    process (clk_32M00)
-    begin
-        if rising_edge(clk_32M00) then
-            div32 <= div32 + 1;
-        end if;
-    end process;
-
-    -- clk_1M00 is derived by dividing clk_32M00 down by 32
-    clk_1M00 <= div32(4);
-
-    Inst_sid6581: if CImplSID generate
-        Inst_sid6581_comp : component sid6581
-            port map (
-                clk_1MHz => clk_1M00,
-                clk32 => clk_32M00,
-                clk_DAC => clk_32M00,
-                reset => not RSTn,
-                cs => sid_enable,
-                we => not_cpu_R_W_n,
-                addr => cpu_addr(4 downto 0),
-                di => cpu_dout(7 downto 0),
-                do => sid_data,
-                pot_x => '0',
-                pot_y => '0',
-                audio_out => sid_audio,
-                audio_data => open 
-            );
-     end generate;
 
     Inst_spi: if (CImplSDDOS) generate
         Inst_spi_comp : component SPI_Port
@@ -505,6 +500,12 @@ begin
 --
 ---------------------------------------------------------------------
 
+    gated_we      <= not_cpu_R_W_n;
+    uart_we       <= gated_we;
+    video_ram_we  <= gated_we and video_ram_enable;
+    reg_we        <= gated_we;
+    sid_we        <= gated_we;
+
     RSTn          <= ERSTn and key_break;
     IRSTn         <= RSTn;
 
@@ -513,23 +514,20 @@ begin
     inpurps2dat   <= ps2_data;
     not_cpu_R_W_n <= not cpu_R_W_n;
     cpu_IRQ_n     <= mc6522_irq;
-    --cpu_IRQ_n <= '1';
-    vdg_gm        <= i8255_pa_data(7 downto 5) when RSTn='1' else "000";
-    vdg_an_g      <= i8255_pa_data(4)  when RSTn='1' else '0';
-    vdg_an_s      <= vdg_dd(6);
-    vdg_intn_ext  <= vdg_dd(6);
-    vdg_inv       <= vdg_dd(7);
-    vdg_css       <= i8255_pc_data(3) when RSTn='1' else '0';
+
+    
     audiol        <= sid_audio;
     audioR        <= i8255_pc_data(2);
 
     i8255_pc_idata <= vdg_fs_n & key_repeat & "11" & i8255_pc_data (3 downto 0);
     i8255_pb_idata <= key_shift & key_ctrl & ps2dataout;
     
-
-    red(2 downto 0)   <= vdg_red(7) & vdg_red(7) & vdg_red(7);  -- downto 5);
-    green(2 downto 0) <= vdg_green(7) & vdg_green(7) & vdg_green(7);  -- downto 5);
-    blue(2 downto 0)  <= vdg_blue(7) & vdg_blue(7) & vdg_blue(7);  -- downto 5);
+    vdg_gm        <= i8255_pa_data(7 downto 5) when RSTn='1' else "000";
+    vdg_an_g      <= i8255_pa_data(4)  when RSTn='1' else '0';
+    vdg_css       <= i8255_pc_data(3) when RSTn='1' else '0';
+    red(2 downto 0)   <= vdg_red & vdg_red & vdg_red;
+    green(2 downto 0) <= vdg_green1 & vdg_green0 & vdg_green0;
+    blue(2 downto 0)  <= vdg_blue & vdg_blue & vdg_blue;
     vsync             <= vdg_vsync;
     hsync             <= vdg_hsync;
 
@@ -537,7 +535,6 @@ begin
     process(cpu_addr)
     begin
         -- All regions normally de-selected
-        mc6847_enable     <= '0';
         mc6522_enable     <= '0';
         i8255_enable      <= '0';
         extern_ram_enable <= '0';
@@ -545,7 +542,9 @@ begin
         video_ram_enable  <= '0';
         sid_enable        <= '0'; 
         spi_enable        <= '0'; 
-
+        reg_enable        <= '0';
+        uart_enable       <= '0';
+        
         case cpu_addr(15 downto 12) is
             when x"0" => extern_ram_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
             when x"1" => extern_ram_enable <= '1';
@@ -565,8 +564,12 @@ begin
                     mc6522_enable <= '1';
                 elsif cpu_addr(11 downto 10) = "01" then
                     spi_enable <= '1';  -- 0xb400-0xb7ff SPI
+                elsif cpu_addr(11 downto 4) = "11011011" then
+                    uart_enable <= '1';  -- 0xbdb0-0xbdbf UART
                 elsif cpu_addr(11 downto 5) = "1101110" then
                     sid_enable <= '1';  -- 0xbdc0-0xbddf SID
+                elsif cpu_addr(11 downto 5) = "1101111" then
+                    reg_enable <= '1';  -- 0xbde0-0xbdff GODIL Registers
                 end if;
                 
             when x"C"   => extern_rom_enable <= '1';
@@ -579,17 +582,19 @@ begin
     end process;
 
     cpu_din <=
-        extern_data     when extern_ram_enable = '1' else
-        video_ram_data  when video_ram_enable = '1'  else
-        i8255_data      when i8255_enable = '1'      else
-        mc6522_data     when mc6522_enable = '1'     else
-        sid_data        when sid_enable = '1'        else
-        spi_data        when spi_enable = '1' and CImplSDDOS else
-        extern_data     when spi_enable = '1' and not CImplSDDOS else
-        extern_data     when extern_rom_enable = '1' else
+        extern_data     when extern_ram_enable = '1'               else
+        godil_data      when video_ram_enable = '1'                else
+        i8255_data      when i8255_enable = '1'                    else
+        mc6522_data     when mc6522_enable = '1'                   else
+        godil_data      when sid_enable = '1'  and CImplSID        else
+        godil_data      when uart_enable = '1' and CImplUart       else
+        godil_data      when reg_enable = '1'                      else -- TODO add CImpl constraint
+        spi_data        when spi_enable = '1'  and CImplSDDOS      else
+        extern_data     when spi_enable = '1'  and not CImplSDDOS  else
+        extern_data     when extern_rom_enable = '1'               else
         x"f1";          -- un-decoded locations
         
-    ExternWE        <= not_cpu_R_W_n;
+    ExternWE        <= not_cpu_R_W_n and cpu_clken;
     RamCE           <= extern_ram_enable;			
     RomCE           <= extern_rom_enable;			
     ExternA         <= '0' & cpu_addr(15 downto 0);
@@ -626,6 +631,9 @@ begin
     cpu_phase  <= clken_counter(3) & clken_counter(2);
     via4_clken <= not (clken_counter(0) or clken_counter(1));
     via_clk    <= clk_16M00;
+    
+    LED1 <= uart_escape;
+    LED2 <= key_escape;
  
 end BEHAVIORAL;
 

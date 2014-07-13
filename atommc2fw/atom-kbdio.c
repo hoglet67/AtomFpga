@@ -140,6 +140,7 @@ int main(void)
 
    LEDPINSOUT();
 
+	// configByte = 0xbf;
 	configByte = 0xff;
 
 	//log0("MMC Init\n");

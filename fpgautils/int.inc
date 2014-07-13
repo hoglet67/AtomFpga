@@ -3,7 +3,7 @@
 ; #Axxx command interpreter
 ;=================================================================
 
-.DEFINE NAME_VERSION    "FPGA UTILS V0.17"
+.DEFINE NAME_VERSION    "FPGA UTILS V0.18"
 
 ;=================================================================
 ; Constant DECLARATION
@@ -55,10 +55,10 @@ romstart    	= $A000
 romend      	= $B000
 
 PORTC       	= $b002
-DATA        	= $b500
-STATUS      	= $b501
-DIVIDER_LO  	= $b502
-DIVIDER_HI  	= $b503
+DATA        	= $bdb0
+STATUS      	= $bdb1
+DIVIDER_LO  	= $bdb2
+DIVIDER_HI  	= $bdb3
 romlatch    	= $BFFF
 
 next_param	= $C231		; OS calls
