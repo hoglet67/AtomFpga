@@ -23,6 +23,8 @@ entity Atomic_top_papilio is
     port (clk_32M00 : in  std_logic;
            ps2_clk  : in  std_logic;
            ps2_data : in  std_logic;
+           ps2_mouse_clk  : inout  std_logic;
+           ps2_mouse_data : inout  std_logic;
            ERST     : in  std_logic;
            red      : out std_logic_vector (2 downto 0);
            green    : out std_logic_vector (2 downto 0);
@@ -34,7 +36,13 @@ entity Atomic_top_papilio is
            SDMISO   : in  std_logic;
            SDSS     : out std_logic;
            SDCLK    : out std_logic;
-           SDMOSI   : out std_logic
+           SDMOSI   : out std_logic;
+           RxD      : in  std_logic;
+           TxD      : out std_logic;
+           LED1     : out std_logic;
+           LED2     : out std_logic;
+           LED3     : out std_logic;
+           LED4     : out std_logic
           );
 end Atomic_top_papilio;
 
@@ -208,8 +216,8 @@ begin
         CImplSID         => true,
         CImplVGA80x40    => false,
         CImplHWScrolling => false,
-        CImplMouse       => false,
-        CImplUart        => false,
+        CImplMouse       => true,
+        CImplUart        => true,
         MainClockSpeed   => 16000000,
         DefaultBaud      => 115200          
      )
@@ -219,8 +227,8 @@ begin
         clk_32M00 => clk_32M00,
         ps2_clk   => ps2_clk,
         ps2_data  => ps2_data,
-        ps2_mouse_clk   => open,
-        ps2_mouse_data  => open,
+        ps2_mouse_clk   => ps2_mouse_clk,
+        ps2_mouse_data  => ps2_mouse_data,
         ERSTn     => ERSTn,
         red       => red,
         green     => green,
@@ -239,11 +247,15 @@ begin
         SDSS      => SDSS,
         SDCLK     => SDCLK,
         SDMOSI    => SDMOSI,
-        uart_RxD  => '1',
-        uart_TxD  => open,
-        LED1      => open,
-        LED2      => open
-       );  
+        uart_RxD  => RxD,
+        uart_TxD  => TxD,
+        LED1      => LED1,
+        LED2      => LED2
+       );
+
+        LED3 <= '0';
+        LED4 <= '0';
+        LED4 <= '0';
 
 end behavioral;
 
