@@ -265,8 +265,8 @@ begin
         SDMOSI    => open,
         uart_RxD  => uart_RxD,
         uart_TxD  => uart_TxD,
-        LED1      => LED1,
-        LED2      => LED2
+        LED1      => open,
+        LED2      => open
         );  
 
     Inst_AVR8: AVR8 PORT MAP(
@@ -290,8 +290,8 @@ begin
         portbout(3)  => AVRA0,
         portbout(4)  => open,
         portbout(5)  => open,
-        portbout(6)  => open, -- LED1
-        portbout(7)  => open, -- LED2
+        portbout(6)  => LED1,
+        portbout(7)  => LED2,
 
         portdin      => (others => '0'),
         portdout(0)  => open,
