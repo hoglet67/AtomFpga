@@ -632,8 +632,8 @@ begin
     via4_clken <= not (clken_counter(0) or clken_counter(1));
     via_clk    <= clk_16M00;
     
-    LED1 <= uart_escape;
-    LED2 <= key_escape;
+    LED1 <= '0';
+    LED2 <= '0';
  
 end BEHAVIORAL;
 

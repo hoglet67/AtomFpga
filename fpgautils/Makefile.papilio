@@ -1,0 +1,34 @@
+# Paths that will need changing
+
+ATOMFPGA=$(HOME)/atom/AtomFpga
+PAPILIO_LOADER=$(HOME)/papilio/Papilio-Loader/
+XILINX=/opt/Xilinx/14.4
+
+# Shouldn't need to make changes below this point
+
+BIT_FILE=$(ATOMFPGA)/working/Atomic_top_papilio.bit
+BMM_FILE=$(ATOMFPGA)/src/Atomic_papilio_bd.bmm
+
+ROM=$(ATOMFPGA)/roms/fpgautils.rom
+
+# Papilio dev environment
+PROG=${PAPILIO_LOADER}/papilio-prog/papilio-prog
+BSCAN=${PAPILIO_LOADER}/Fpga/bscan_spi_xc3s500e.bit
+SREC_CAT=srec_cat
+GAWK=gawk
+DATA2MEM=${XILINX}/ISE_DS/ISE/bin/lin/data2mem
+
+load: patch.bit
+#	sudo $(PROG) -v -f patch.bit
+	sudo $(PROG) -v -b $(BSCAN) -f patch.bit -sa
+
+patch.bit: patch.mem
+	$(DATA2MEM) -bm $(BMM_FILE) -bd patch.mem -bt $(BIT_FILE) -o b patch.bit
+
+patch.mem: $(ROM)
+	od -An -v -tx1 -w1 $(ROM) | rev > patch.mem
+
+.phony: clean
+
+clean:
+	rm -f patch.bit patch.mem patch.hex patch.out patch.map
