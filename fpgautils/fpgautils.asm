@@ -37,6 +37,7 @@ start_asm:
 	.include "beeb.inc"
 	.include "fpgahelp.inc"
 	.include "roms.inc"
+	.include "vga80.inc"
 
 .org $AFFF
 	brk
