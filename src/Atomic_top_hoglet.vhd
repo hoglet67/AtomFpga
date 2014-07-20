@@ -25,8 +25,8 @@ entity Atomic_top_hoglet is
     port (clk_32M00 : in  std_logic;
            ps2_clk  : in  std_logic;
            ps2_data : in  std_logic;
-           ps2_mouse_clk  : in  std_logic;
-           ps2_mouse_data : in  std_logic;
+           ps2_mouse_clk  : inout  std_logic;
+           ps2_mouse_data : inout  std_logic;
            ERSTn    : in  std_logic;
            red      : out std_logic_vector (2 downto 2);
            green    : out std_logic_vector (2 downto 1);
@@ -35,10 +35,8 @@ entity Atomic_top_hoglet is
            hsync    : out std_logic;
            audiol   : out std_logic;
            audioR   : out std_logic;
-           RAMCEn   : out std_logic;
            RAMOEn   : out std_logic;
            RAMWRn   : out std_logic;
-           ROMCEn   : out std_logic;
            ROMOEn   : out std_logic;
            ROMWRn   : out std_logic;
            ExternA  : out std_logic_vector (16 downto 0);
@@ -75,16 +73,26 @@ architecture behavioral of Atomic_top_hoglet is
     end component;
  
     component Atomic_core
-        generic  (
-            CImplSID      : boolean;
-            CImplSDDOS    : boolean
+        generic (
+            CImplSDDOS       : boolean;
+            CImplGraphicsExt : boolean;
+            CImplSoftChar    : boolean;
+            CImplSID         : boolean;
+            CImplVGA80x40    : boolean;
+            CImplHWScrolling : boolean;
+            CImplMouse       : boolean;
+            CImplUart        : boolean;
+            MainClockSpeed   : integer;
+            DefaultBaud      : integer
         );
         port (
-            clk_12M58 : in  std_logic;
+            clk_vga : in  std_logic;
             clk_16M00 : in  std_logic;
             clk_32M00 : in  std_logic;
             ps2_clk   : in  std_logic;
             ps2_data  : in  std_logic;
+            ps2_mouse_clk : inout    std_logic;
+            ps2_mouse_data : inout    std_logic;
             ERSTn     : in  std_logic;
             IRSTn     : out std_logic;
             SDMISO    : in  std_logic;
@@ -95,6 +103,7 @@ architecture behavioral of Atomic_top_hoglet is
             hsync     : out std_logic;
             RamCE     : out std_logic;
             RomCE     : out std_logic;
+            Phi2      : out   std_logic;
             ExternWE  : out std_logic;
             ExternA   : out std_logic_vector (16 downto 0);
             ExternDin : out std_logic_vector (7 downto 0);
@@ -103,11 +112,15 @@ architecture behavioral of Atomic_top_hoglet is
             audioR    : out std_logic;
             SDSS      : out std_logic;
             SDCLK     : out std_logic;
-            SDMOSI    : out std_logic
-        );
-	end component;
+            SDMOSI    : out std_logic;
+            uart_RxD  : in  std_logic;
+            uart_TxD  : out std_logic;
+            LED1      : out   std_logic;        
+            LED2      : out   std_logic
+            );
+    end component;
    
-	component AtomPL8
+    component AtomPL8
         port (
             clk         : in std_logic;
             enable      : in std_logic;
@@ -124,10 +137,10 @@ architecture behavioral of Atomic_top_hoglet is
             AVRINTOut   : OUT std_logic;
             AtomIORDOut : out std_logic;
             AtomIOWROut : out std_logic
-		);
-	end component;
+        );
+    end component;
 
-	component AVR8
+    component AVR8
         port(
             clk16M    : in std_logic;
             nrst      : in std_logic;
@@ -146,30 +159,13 @@ architecture behavioral of Atomic_top_hoglet is
             spi_misoi : in std_logic;
             rxd       : in std_logic;    
             txd       : out std_logic
-		);
-	end component;
-
-	component miniuart
-        port(
-            wb_clk_i : in std_logic;
-            wb_rst_i : in std_logic;
-            wb_adr_i : in std_logic_vector(1 downto 0);
-            wb_dat_i : in std_logic_vector(7 downto 0);
-            wb_we_i : in std_logic;
-            wb_stb_i : in std_logic;
-            br_clk_i : in std_logic;
-            rxd_pad_i : in std_logic;          
-            wb_dat_o : out std_logic_vector(7 downto 0);
-            wb_ack_o : out std_logic;
-            inttx_o : out std_logic;
-            intrx_o : out std_logic;
-            txd_pad_o : out std_logic
         );
-	end component;
+    end component;
 
-    signal clk_12M58 : std_logic;
+    signal clk_vga : std_logic;
     signal clk_16M00 : std_logic;
     signal IRSTn     : std_logic;
+    signal Phi2      : std_logic;
 
     signal RamCE     : std_logic;
     signal RomCE     : std_logic;
@@ -189,9 +185,6 @@ architecture behavioral of Atomic_top_hoglet is
     signal PL8Enable: std_logic;
     signal cpuclken     : std_logic;
     
-    signal UARTData    : std_logic_vector (7 downto 0);
-    signal UARTEnable  : std_logic;
-
     signal BFFE_Enable : std_logic;
     signal BFFF_Enable : std_logic;
     
@@ -208,15 +201,16 @@ architecture behavioral of Atomic_top_hoglet is
     signal AddrA000RAM : std_logic;
     signal AddrA000ROM : std_logic;
 
-    signal TxD_UART : std_logic;
-    signal TxD_AVR : std_logic;
+    signal avr_TxR : std_logic;
     
-
+    signal uart_RxD : std_logic;
+    signal uart_TxD : std_logic;     
+    
 begin
 
     inst_dcm4 : dcm4 port map(
         CLKIN_IN  => clk_32M00,
-        CLK0_OUT  => clk_12M58,
+        CLK0_OUT  => clk_vga,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
 
@@ -228,15 +222,25 @@ begin
     
     inst_Atomic_core : Atomic_core
     generic map (
-        CImplSID   => true,
-        CImplSDDOS => false
-    )
-    port map(
-        clk_12M58 => clk_12M58,
+        CImplSDDOS => false,
+        CImplGraphicsExt => true,
+        CImplSoftChar    => true,
+        CImplSID         => true,
+        CImplVGA80x40    => true,
+        CImplHWScrolling => true,
+        CImplMouse       => true,
+        CImplUart        => true,
+        MainClockSpeed   => 16000000,
+        DefaultBaud      => 115200          
+     )
+     port map(
+        clk_vga   => clk_vga,
         clk_16M00 => clk_16M00,
         clk_32M00 => clk_32M00,
         ps2_clk   => ps2_clk,
         ps2_data  => ps2_data,
+        ps2_mouse_clk   => ps2_mouse_clk,
+        ps2_mouse_data  => ps2_mouse_data,
         ERSTn     => ERSTn,
         IRSTn     => IRSTn,
         red(2)   => red(2),
@@ -249,6 +253,7 @@ begin
         hsync     => hsync,
         RamCE     => open,
         RomCE     => open,
+        Phi2      => Phi2,
         ExternWE  => ExternWE,
         ExternA   => Addr,
         ExternDin => ExternDin,
@@ -258,32 +263,36 @@ begin
         SDMISO    => '0',
         SDSS      => open,
         SDCLK     => open,
-        SDMOSI    => open
+        SDMOSI    => open,
+        uart_RxD  => uart_RxD,
+        uart_TxD  => uart_TxD,
+        LED1      => open,
+        LED2      => open
         );  
 
-	Inst_AVR8: AVR8 PORT MAP(
-		clk16M      => clk_16M00,
-		nrst        => IRSTn,
-   		portain     => AVRDataOut,
-   		portaout    => AVRDataIn,
+    Inst_AVR8: AVR8 PORT MAP(
+        clk16M      => clk_16M00,
+        nrst        => IRSTn,
+        portain     => AVRDataOut,
+        portaout    => AVRDataIn,
 
-		portbin(0)  => '0',
-		portbin(1)  => '0',
-		portbin(2)  => '0',
-		portbin(3)  => '0',
-		portbin(4)  => AVRInt,
-		portbin(5)  => '0',
-		portbin(6)  => '0',
-		portbin(7)  => '0',
+        portbin(0)  => '0',
+        portbin(1)  => '0',
+        portbin(2)  => '0',
+        portbin(3)  => '0',
+        portbin(4)  => AVRInt,
+        portbin(5)  => '0',
+        portbin(6)  => '0',
+        portbin(7)  => '0',
         
-		portbout(0)  => nARD,
-		portbout(1)  => nAWR,
-		portbout(2)  => open,
-		portbout(3)  => AVRA0,
-		portbout(4)  => open,
-		portbout(5)  => open,
-		portbout(6)  => LED1,
-		portbout(7)  => LED2,
+        portbout(0)  => nARD,
+        portbout(1)  => nAWR,
+        portbout(2)  => open,
+        portbout(3)  => AVRA0,
+        portbout(4)  => open,
+        portbout(5)  => open,
+        portbout(6)  => LED1,
+        portbout(7)  => LED2,
 
         portdin      => (others => '0'),
         portdout(0)  => open,
@@ -299,27 +308,27 @@ begin
         spi_scko     => SDCLK,
         spi_misoi    => SDMISO,
      
-		rxd          => RxD,
-		txd          => TxD_AVR
-	);
+        rxd          => RxD,
+        txd          => avr_TxR
+    );
     
     Inst_AtomPL8: AtomPL8 port map(
-		clk => clk_16M00,
-		enable => PL8Enable,
-		nRST => IRSTn,
-		RW => not ExternWE,
+        clk => clk_16M00,
+        enable => PL8Enable,
+        nRST => IRSTn,
+        RW => not ExternWE,
         Addr => Addr(2 downto 0),
-		DataIn => ExternDin,
-		DataOut => PL8Data,
-		AVRDataIn => AVRDataIn,
-		AVRDataOut => AVRDataOut,
-		nARD => nARD,
-		nAWR => nAWR,
-		AVRA0 => AVRA0,
-		AVRINTOut => AVRInt,
+        DataIn => ExternDin,
+        DataOut => PL8Data,
+        AVRDataIn => AVRDataIn,
+        AVRDataOut => AVRDataOut,
+        nARD => nARD,
+        nAWR => nAWR,
+        AVRA0 => AVRA0,
+        AVRINTOut => AVRInt,
         AtomIORDOut => open,
         AtomIOWROut => open
-	);
+    );
 
     Addr7000ROM <= '1' when Addr(15 downto 12) = "0111" and (BeebMode = '1' and ExtRAMEN = '0')
                        else '0';
@@ -339,21 +348,17 @@ begin
     RomCE       <= '1' when Addr(15 downto 14) = "11" or Addr7000ROM = '1' or AddrA000ROM = '1'
                        else '0';
            
-    RAMWRn     <= not (ExternWE and RamCE);
+    RAMWRn     <= not (ExternWE and RamCE and Phi2);
     RAMOEn     <= not ((not ExternWE) and RamCE);
 
-    ROMWRn     <= not (ExternWE and RomCE);
+    ROMWRn     <= not (ExternWE and RomCE and Phi2);
     ROMOEn     <= not ((not ExternWE) and RomCE);
 
     ExternD    <= ExternDin when ExternWE = '1' else "ZZZZZZZZ";
     
     PL8Enable  <= '1' when Addr(15 downto 8) = "10110100" else '0';
     
-    -- decode B5 for the Uart
-    UARTEnable  <= '1' when Addr(15 downto 8) = "10110101" else '0';
-    
     ExternDout <= PL8Data when PL8Enable = '1' else
-                  UARTData when UARTEnable = '1' else
                   RomJumpers when BFFE_Enable = '1' else 
                   RomLatch when BFFF_Enable = '1' else 
                   ExternD;
@@ -415,30 +420,11 @@ begin
         end if;
     end process;
     
-    -------------------------------------------------
-    -- Uart
-    -------------------------------------------------     
-    
-	inst_miniuart: miniuart
-        port map(
-		wb_clk_i => clk_16M00,
-		wb_rst_i => not IRSTn,
-		wb_adr_i => Addr(1 downto 0),
-		wb_dat_i => ExternDin,
-		wb_dat_o => UARTData,
-		wb_we_i => ExternWE,
-		wb_stb_i => UARTEnable,
-		wb_ack_o => open,
-		inttx_o => open,
-		intrx_o => open,
-		br_clk_i => clk_16M00,
-		txd_pad_o => TxD_UART,
-		rxd_pad_i => RxD
-	);
-    
+    uart_RxD <= RxD;
     -- Idle state is high, logically OR the active low signals
-    TxD <= TxD_UART and TxD_AVR;
-
+    TxD <= uart_TxD and avr_TxR;
+    
+    
 end behavioral;
 
 

@@ -1,0 +1,11 @@
+ADDRESS_MAP avrmap PPC405 0
+
+    ADDRESS_SPACE fpgautils RAMB16 [0x00000000:0x00000fff]
+        BUS_BLOCK
+	    rom_a000/rom0.inst [3:0];
+	    rom_a000/rom1.inst [7:4];
+        END_BUS_BLOCK;
+		  
+    END_ADDRESS_SPACE;
+
+END_ADDRESS_MAP;

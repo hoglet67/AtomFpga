@@ -12,11 +12,14 @@ entity keyboard is
         PS2_DATA   : in  std_logic;
         KEYOUT     : out std_logic_vector(5 downto 0);
         ROW        : in  std_logic_vector(3 downto 0);
+        ESC_IN     : in  std_logic;        
+        BREAK_IN   : in  std_logic;        
         SHIFT_OUT  : out std_logic;
         CTRL_OUT   : out std_logic;
         REPEAT_OUT : out std_logic;
         BREAK_OUT  : out std_logic;
-        TURBO      : out std_logic_vector(1 downto 0));
+        TURBO      : out std_logic_vector(1 downto 0);
+        ESC_OUT    : out std_logic);
 end entity;
 
 architecture rtl of keyboard is
@@ -42,6 +45,8 @@ architecture rtl of keyboard is
     signal release    : std_logic;
     signal extended   : std_logic;
     signal key_data   : std_logic_vector(7 downto 0);
+    signal ESC_IN1    : std_logic;
+    signal BREAK_IN1  : std_logic;
 
 begin
     ps2 : ps2_intf port map (
@@ -70,6 +75,9 @@ begin
             SHIFT_OUT  <= '1';
             CTRL_OUT   <= '1';
             REPEAT_OUT <= '1';
+            
+            ESC_IN1 <= ESC_IN;
+            BREAK_IN1 <= BREAK_IN;
 
             keys(0) <= (others => '1');
             keys(1) <= (others => '1');
@@ -89,6 +97,23 @@ begin
             keys(14) <= (others => '1');
             keys(15) <= (others => '1');
         elsif rising_edge(CLOCK) then
+        
+            -- handle the escape key seperately, as it's value also depends on ESC_IN
+            if keyb_valid = '1' and keyb_data = X"76" then
+                keys(0)(5) <= release;
+            elsif ESC_IN /= ESC_IN1 then
+                keys(0)(5) <= ESC_IN;
+            end if;
+
+            ESC_IN1 <= ESC_IN;           
+            -- handle the break key seperately, as it's value also depends on BREAK_IN
+            if keyb_valid = '1' and keyb_data = X"09" then
+                BREAK_OUT <= release;
+            elsif BREAK_IN /= BREAK_IN1 then
+                BREAK_OUT <= BREAK_IN;
+            end if;
+            BREAK_IN1 <= BREAK_IN;
+            
             if keyb_valid = '1' then
                 if keyb_data = X"e0" then
                     extended <= '1';
@@ -97,30 +122,30 @@ begin
                 else
                     release  <= '0';
                     extended <= '0';
-
+                    
                     case keyb_data is
-                        when X"05"         => TURBO      <= "00";     -- F1 (1MHz)
-                        when X"06"         => TURBO      <= "01";     -- F2 (2MMz)
-                        when X"04"         => TURBO      <= "10";     -- F3 (4MHz)
-                        when X"0C"         => TURBO      <= "11";     -- F4 (8MHz)
-                        when X"09"         => BREAK_OUT  <= release;  -- F10 (BREAK)
-                        when X"11"         => REPEAT_OUT <= release;  -- LEFT ALT (SHIFT LOCK)
+                        when X"05" => TURBO      <= "00";     -- F1 (1MHz)
+                        when X"06" => TURBO      <= "01";     -- F2 (2MMz)
+                        when X"04" => TURBO      <= "10";     -- F3 (4MHz)
+                        when X"0C" => TURBO      <= "11";     -- F4 (8MHz)
+--                        when X"09" => BREAK_OUT  <= release;  -- F10 (BREAK)
+                        when X"11" => REPEAT_OUT <= release;  -- LEFT ALT (SHIFT LOCK)
                         when X"12" | X"59" =>
                             if (extended = '0') then -- Ignore fake shifts
                                 SHIFT_OUT  <= release; -- Left SHIFT -- Right SHIFT
                             end if; 
-                        when X"14"         => CTRL_OUT   <= release;  -- LEFT/RIGHT CTRL (CTRL) 
-                                                                      -----------------------------------------------------
-                                        -- process matrix
-                                                                      -----------------------------------------------------
-                        when X"29"         => keys(9)(0) <= release;  -- SPACE
-                        when X"54"         => keys(8)(0) <= release;  -- [       
-                        when X"5D"         => keys(7)(0) <= release;  -- \       
-                        when X"5B"         => keys(6)(0) <= release;  -- ]
-                        when X"0D"         => keys(5)(0) <= release;  -- UP      
-                        when X"58"         => keys(4)(0) <= release;  -- CAPS LOCK                                       
-                        when X"74"         => keys(3)(0) <= release;  -- RIGHT           
-                        when X"75"         => keys(2)(0) <= release;  -- UP
+                        when X"14" => CTRL_OUT   <= release;  -- LEFT/RIGHT CTRL (CTRL) 
+                        -----------------------------------------------------
+                        -- process matrix
+                        -----------------------------------------------------
+                        when X"29" => keys(9)(0) <= release;  -- SPACE
+                        when X"54" => keys(8)(0) <= release;  -- [       
+                        when X"5D" => keys(7)(0) <= release;  -- \       
+                        when X"5B" => keys(6)(0) <= release;  -- ]
+                        when X"0D" => keys(5)(0) <= release;  -- UP      
+                        when X"58" => keys(4)(0) <= release;  -- CAPS LOCK                                       
+                        when X"74" => keys(3)(0) <= release;  -- RIGHT           
+                        when X"75" => keys(2)(0) <= release;  -- UP
 
                         when X"5A" => keys(6)(1) <= release;  -- RETURN
                         when X"69" => keys(5)(1) <= release;  -- END (COPY)
@@ -172,7 +197,7 @@ begin
                         when X"22" => keys(3)(5) <= release;  -- X
                         when X"35" => keys(2)(5) <= release;  -- Y       
                         when X"1A" => keys(1)(5) <= release;  -- Z
-                        when X"76" => keys(0)(5) <= release;  -- ESCAPE
+--                        when X"76" => keys(0)(5) <= release;  -- ESCAPE
 
                         when others => null;
                     end case;
@@ -181,6 +206,8 @@ begin
             end if;
         end if;
     end process;
+    
+    ESC_OUT <= keys(0)(5);
 
 end architecture;
 

@@ -23,8 +23,8 @@ begin
     
     DCM_INST : DCM
         generic map(CLK_FEEDBACK          => "NONE",
-                    CLKDV_DIVIDE          => 4.0,  -- 12.5875 = 32 * 11 / 28
-                    CLKFX_DIVIDE          => 28,
+                    CLKDV_DIVIDE          => 4.0,  -- 25.175 = 32 * 11 / 14
+                    CLKFX_DIVIDE          => 14,
                     CLKFX_MULTIPLY        => 11,
                     CLKIN_DIVIDE_BY_2     => false,
                     CLKIN_PERIOD          => 31.250,

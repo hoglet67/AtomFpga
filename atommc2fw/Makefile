@@ -2,7 +2,7 @@
 
 ATOMFPGA=$(HOME)/atom/AtomFpga
 PAPILIO_LOADER=$(HOME)/papilio/Papilio-Loader/
-XILINX=/opt/Xilinx/14.4
+XILINX=/opt/Xilinx/14.7
 
 # Shouldn't need to make changes below this point
 

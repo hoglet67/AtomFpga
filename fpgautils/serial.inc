@@ -18,6 +18,9 @@ sin:
 	STA rdcvec
 	LDA #>sinhandler
 	STA rdcvec+1
+;; set the UART control bits to allow Break and Escape to be emulated
+	LDA #$C0
+	STA $bdb1
 	RTS
 
 sinhandler:

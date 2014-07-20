@@ -3,7 +3,7 @@
 ; #Axxx command interpreter
 ;=================================================================
 
-.DEFINE NAME_VERSION    "FPGA UTILS V0.17"
+.DEFINE NAME_VERSION    "FPGA UTILS V0.21"
 
 ;=================================================================
 ; Constant DECLARATION
@@ -55,10 +55,10 @@ romstart    	= $A000
 romend      	= $B000
 
 PORTC       	= $b002
-DATA        	= $b500
-STATUS      	= $b501
-DIVIDER_LO  	= $b502
-DIVIDER_HI  	= $b503
+DATA        	= $bdb0
+STATUS      	= $bdb1
+DIVIDER_LO  	= $bdb2
+DIVIDER_HI  	= $bdb3
 romlatch    	= $BFFF
 
 next_param	= $C231		; OS calls
@@ -78,6 +78,44 @@ prtdigit	= $F80B
 OSRDCH          = $FFE3
 OSWRCH		= $FFF4
 OSCRLF          = $FFED
+
+
+;=================================================================
+; Constants used by oswrch80
+;=================================================================
+
+NUMROWS = 40
+NUMCOLS = 80
+
+SCREEN = $8000
+SCREENEND = SCREEN + (NUMROWS - 1) * NUMCOLS
+
+; Send character in accumulator to the VIA
+LFEFB = $FEFB
+
+; Wait 0.1 second for debounce
+LFB8A = $fB8A
+	
+; Scan keyboard	
+LFE71 = $FE71
+
+; Keyboard Control Code Handlers
+; use Kernel for all except cursor handling (FDA2)
+LFD9A = $FD9A
+LFDAE = $FDAE
+LFDC0 = $FDC0
+LFDC2 = $FDC2
+LFDC6 = $FDC6
+LFDC8 = $FDC8
+LFDD2 = $FDD2
+LFDD6 = $FDD6
+LFDD8 = $FDD8
+LFDDF = $FDDF
+LFDE2 = $FDE2
+
+; Flyback
+LFE66 = $FE66
+LFE6B = $FE6B
 
 ;=================================================================
 ; ROM IDENTIFIER
@@ -167,6 +205,9 @@ com_tab:
 	.byte "BEEB"
 	.byte >beeb,<beeb
 
+	.byte "VGA80"
+	.byte >vga80,<vga80
+
 	.byte >no_com,<no_com 	; No command
 
 ;=================================================================
@@ -205,6 +246,9 @@ help_tab:
 	.byte "<START>,<BANK>",0
 
 	; Beeb
+	.byte 0
+
+	; Vga80
 	.byte 0
 
 ;=================================================================

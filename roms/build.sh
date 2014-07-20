@@ -14,7 +14,7 @@ cat sddos-v3.25${AVR}.rom >> ${ROM}
 cat gags_v2.3.rom >> ${ROM}
 cat pcharme_v1.73.rom >> ${ROM}
 cat axr1.rom >> ${ROM}
-cat fpgautils_v0.17.rom >> ${ROM}
+cat fpgautils.rom >> ${ROM}
 cat atomic_windows_v1.1.rom >> ${ROM}
 cat we_rom.rom >> ${ROM}
 cat pp_toolkit.rom >> ${ROM}

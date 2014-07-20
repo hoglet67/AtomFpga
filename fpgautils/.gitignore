@@ -3,4 +3,5 @@
 fpgautils.rom
 fpgautils.lst
 fpgautils.o
+patch.*
 
