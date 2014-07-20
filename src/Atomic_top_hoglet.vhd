@@ -35,10 +35,8 @@ entity Atomic_top_hoglet is
            hsync    : out std_logic;
            audiol   : out std_logic;
            audioR   : out std_logic;
-           RAMCEn   : out std_logic;
            RAMOEn   : out std_logic;
            RAMWRn   : out std_logic;
-           ROMCEn   : out std_logic;
            ROMOEn   : out std_logic;
            ROMWRn   : out std_logic;
            ExternA  : out std_logic_vector (16 downto 0);
@@ -105,6 +103,7 @@ architecture behavioral of Atomic_top_hoglet is
             hsync     : out std_logic;
             RamCE     : out std_logic;
             RomCE     : out std_logic;
+            Phi2      : out   std_logic;
             ExternWE  : out std_logic;
             ExternA   : out std_logic_vector (16 downto 0);
             ExternDin : out std_logic_vector (7 downto 0);
@@ -166,6 +165,7 @@ architecture behavioral of Atomic_top_hoglet is
     signal clk_vga : std_logic;
     signal clk_16M00 : std_logic;
     signal IRSTn     : std_logic;
+    signal Phi2      : std_logic;
 
     signal RamCE     : std_logic;
     signal RomCE     : std_logic;
@@ -253,6 +253,7 @@ begin
         hsync     => hsync,
         RamCE     => open,
         RomCE     => open,
+        Phi2      => Phi2,
         ExternWE  => ExternWE,
         ExternA   => Addr,
         ExternDin => ExternDin,
@@ -347,10 +348,10 @@ begin
     RomCE       <= '1' when Addr(15 downto 14) = "11" or Addr7000ROM = '1' or AddrA000ROM = '1'
                        else '0';
            
-    RAMWRn     <= not (ExternWE and RamCE);
+    RAMWRn     <= not (ExternWE and RamCE and Phi2);
     RAMOEn     <= not ((not ExternWE) and RamCE);
 
-    ROMWRn     <= not (ExternWE and RomCE);
+    ROMWRn     <= not (ExternWE and RomCE and Phi2);
     ROMOEn     <= not ((not ExternWE) and RomCE);
 
     ExternD    <= ExternDin when ExternWE = '1' else "ZZZZZZZZ";

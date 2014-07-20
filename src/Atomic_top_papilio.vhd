@@ -134,6 +134,7 @@ architecture behavioral of Atomic_top_papilio is
             hsync          : out   std_logic;
             RamCE          : out   std_logic;
             RomCE          : out   std_logic;
+            Phi2           : out   std_logic;
             ExternWE       : out   std_logic;
             ExternA        : out   std_logic_vector (16 downto 0);
             ExternDin      : out   std_logic_vector (7 downto 0);
@@ -253,6 +254,7 @@ begin
         blue      => blue,
         vsync     => vsync,
         hsync     => hsync,
+        Phi2      => open,
         RamCE     => RamCE,
         RomCE     => RomCE,
         ExternWE  => ExternWE,

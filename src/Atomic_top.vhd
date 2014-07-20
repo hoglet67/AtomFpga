@@ -99,6 +99,7 @@ architecture behavioral of Atomic_top is
             hsync     : out std_logic;
             RamCE     : out std_logic;
             RomCE     : out std_logic;
+            Phi2      : out std_logic;
             ExternWE  : out std_logic;
             ExternA   : out std_logic_vector (16 downto 0);
             ExternDin : out std_logic_vector (7 downto 0);
@@ -118,6 +119,7 @@ architecture behavioral of Atomic_top is
     signal clk_12M58 : std_logic;
     signal clk_16M00 : std_logic;
     signal clk_32M00 : std_logic;
+    signal Phi2      : std_logic;
 
     signal RomDout      : std_logic_vector (7 downto 0);
     signal RamCE        : std_logic;
@@ -175,9 +177,10 @@ begin
         blue => blue,
         vsync => vsync,
         hsync => hsync,
-        ExternWE => ExternWE,
         RamCE => RamCE,
         RomCE => RomCE,
+        Phi2 => Phi2,
+        ExternWE => ExternWE,
         ExternA => ExternA,
         ExternDin => ExternDin,
         ExternDout => ExternDout,
@@ -194,7 +197,7 @@ begin
     );
  
     CE1        <= not RAMCE;
-    RAMWRn     <= not ExternWE;
+    RAMWRn     <= not (ExternWE and Phi2);
     RAMOEn     <= not RAMCE;
     RamD       <= ExternDin & ExternDin when ExternWE = '1' else "ZZZZZZZZZZZZZZZZ";
 
