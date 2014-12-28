@@ -1,5 +1,8 @@
 #ifndef _IO
 
+// Mask applied to register address bits.
+#define ADDRESS_MASK	0x07
+
 #include "status.h"
 
 #define DEBUG_RESULT	0

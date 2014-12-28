@@ -10,6 +10,7 @@
 #define LATCH_REG			0x01
 #define READ_DATA_REG		0x02
 #define WRITE_DATA_REG		0x03
+#define STATUS_REG			0x04
 
 // DIR_CMD_REG commands
 #define CMD_DIR_OPEN		0x00
@@ -23,6 +24,8 @@
 #define CMD_FILE_OPEN_WRITE	0x13
 #define CMD_FILE_DELETE		0x14
 #define CMD_FILE_GETINFO	0x15
+#define CMD_FILE_SEEK		0x16
+#define CMD_FILE_OPEN_RAF       0x17
 
 #define CMD_INIT_READ		0x20
 #define CMD_INIT_WRITE		0x21
@@ -61,6 +64,7 @@
 // Status codes
 #define STATUS_OK			0x3F
 #define STATUS_COMPLETE		0x40
+#define STATUS_EOF		0x60
 #define	STATUS_BUSY			0x80
 
 #define ERROR_MASK			0x3F
@@ -70,7 +74,20 @@
 #define ERROR_INVALID_DRIVE	0x09
 #define ERROR_READ_ONLY		0x0A
 #define ERROR_ALREADY_MOUNT	0x0A
+#define ERROR_TOO_MANY_OPEN	0x12
 
+// Offset returned file numbers by 0x20, to disambiguate from errors
+#define FILENUM_OFFSET		0x20
+
+// STATUS_REG bit masks
+//
+// MMC_MCU_BUSY set by a write to CMD_REG by the Atom, cleared by a write by the MCU
+// MMC_MCU_READ set by a write by the Atom (to any reg), cleared by a read by the MCU
+// MCU_MMC_WROTE set by a write by the MCU cleared by a read by the Atom (any reg except status).
+//
+#define MMC_MCU_BUSY		0x01
+#define MMC_MCU_READ		0x02
+#define MMC_MCU_WROTE		0x04
 
 
 

@@ -6,11 +6,13 @@ WFUNC(DirectoryRead)
 WFUNC(SetCWDirectory)
 WFUNC(FileOpenRead)
 WFUNC(FileOpenWrite)
+WFUNC(FileOpenRAF)
 WFUNC(FileGetInfo)
 WFUNC(FileRead)
 WFUNC(FileWrite)
 WFUNC(FileClose)
 WFUNC(FileDelete)
+WFUNC(FileSeek)
 WFUNC(ExecuteArbitrary)
 
 #ifdef INCLUDE_SDDOS

@@ -57,11 +57,6 @@ BYTE blVersion;
 
 extern WORD globalAmount;
 
-#ifdef INCLUDE_SDDOS
-unsigned char sectorData[512];
-#endif
-
-
 extern void INIT_SPI(void);
 
 void redSignal(char code)

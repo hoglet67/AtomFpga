@@ -224,7 +224,7 @@ bittoindex:
    ora   #8             ; bit 3 -- 'no card available' - to ensure we stop 
    sta   ZPTW
 
-   lda   #(256-4)            ; spot the bit
+   lda   #$fc           ; spot the bit
    clc
 @add:
    adc   #4
@@ -256,7 +256,7 @@ installhooks2:
 ; !!! this is all you need to call if you're not using IRQs !!!
 ;
 installhooks:
-   ldx   #11
+   ldx   #11+12
 
 @initvectors:
    lda   fullvecdat,x
@@ -451,11 +451,12 @@ comint6:
 .include "info.asm"
 .include "load.asm"
 .include "run.asm"
-.include "urom.asm"
+;.include "urom.asm"
 .include "save.asm"
 .include "file.asm"
 .include "util.asm"
 .include "chain.asm"
+.include "raf.asm"
 
 
 
@@ -466,7 +467,20 @@ cardtypes:
    ;      1111222244448888
 
 fullvecdat:
-   .word irqveccode, osclicode, $fe52, $fe94, osloadcode, ossavecode
+   .word irqveccode	; 204 IRQVEC
+   .word osclicode	; 206 COMVEC
+   .word $fe52		; 208 WRCVEC
+   .word $fe94		; 20A RDCVEC
+   .word osloadcode	; 20C LODVEC
+   .word ossavecode	; 20E SAVVEC
+ 
+rafvecdat:
+   .word osrdarcode	; 210 RDRVEC
+   .word osstarcode	; 212 STRVEC
+   .word osbgetcode	; 214 BGTVEC
+   .word osbputcode	; 216 BPTVEC
+   .word osfindcode	; 218 FNDVEC
+   .word osshutcode	; 21A SHTVEC
 
 fakekeys:
    .byte "*MENU"
@@ -497,14 +511,14 @@ com_tab:
    .byte "LOAD"
    FNADDR STARLOAD
 
-   .byte "RLOAD"        ; in load.asm
-   FNADDR STARRLOAD
+;   .byte "RLOAD"        ; in load.asm
+;   FNADDR STARRLOAD
 
-   .byte "ROMLOAD"      ; in load.asm
-   FNADDR STARROMLOAD
+;   .byte "ROMLOAD"      ; in load.asm
+;   FNADDR STARROMLOAD
 
-   .byte "UROM"
-   FNADDR STARUROM
+;   .byte "UROM"
+;   FNADDR STARUROM
 
    .byte "MON"
    FNADDR $fa1a
@@ -558,7 +572,7 @@ diskerrortab:
    .byte "TIMEOUT",$0d
    .byte "EEPROM ERROR",$0d
    .byte "FAILED",$0d
-   .byte "NOT NOW",$0d
+   .byte "TOO MANY",$0d
    .byte "SILLY",$0d
 
 errorhandler:
@@ -590,7 +604,7 @@ warmstart:
 .SEGMENT "VSN"
 
 version:
-   .byte "ATOMMC2 V2.95"
+   .byte "ATOMMC2 V2.97"
 .IFNDEF EOOO
    .byte "A"
 .ELSE
@@ -599,6 +613,5 @@ version:
    .byte $0d,$0a
    .byte " (C) 2008-2013  "
    .byte "CHARLIE ROBSON. "
-
 
    .end

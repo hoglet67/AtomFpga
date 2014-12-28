@@ -9,7 +9,7 @@
 #endif
 
 #define VSN_MAJ 2
-#define VSN_MIN 9
+#define VSN_MIN 10
 
 #define SECBUFFSIZE 512
 #define GLOBUFFSIZE 256
@@ -50,15 +50,16 @@ typedef void (*WORKERFN)(void);
 
 #ifdef INCLUDE_SDDOS
 
+#define SDOS_SECTOR_SIZE	256
+
 typedef struct
 {
-   unsigned long baseSector;
    char filename[13];
    unsigned char attribs;
 }
 imgInfo;
 
-extern unsigned char sectorData[];
+extern unsigned char *sectorData;
 
 #endif
 

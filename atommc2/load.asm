@@ -50,45 +50,45 @@ osloadcode:
 ; Load specified file to memory starting at the specified address. The file's FAT
 ; file system length is used, and any ATM metadata is read as part of the file.
 ;
-STARRLOAD:
-   jsr   read_filename        ; copy filename into $140
-   jsr   $f844                ; set $c9\a = $140, set x = $c9
-
-   ldx   #$cb                 ; Point to the vector at #CB, #CC
-   jsr   RDOPTAD              ; ..and interpret the load address to store it here
-   beq   rlerr                ; ..can't interpret load address - error
-
-   jsr   COSPOST              ; Do COS interpreter post test
-   ldx   #$c9                 ; File data starts at #C9
-
-   jsr   CHKNAME
-   jsr	open_file_read
-
-   SETRWPTR NAME              ; get the FAT file size - ignore any ATM headers
-
-   SLOWCMDI 	CMD_FILE_GETINFO
-
-   ldx   #13
-   jsr   read_data_buffer 
-
-   lda   NAME                 ; fat file length
-   sta   LLENGTH
-   lda   NAME+1
-   sta   LLENGTH+1
-
-   jmp   read_file
-
-rlerr:
-   jmp   COSSYN
-
-
-nomemerr:
-   REPERROR noramstr
-      
-
-noramstr:
-   .byte "NO RAM"
-   nop
+;STARRLOAD:
+;   jsr   read_filename        ; copy filename into $140
+;   jsr   $f844                ; set $c9\a = $140, set x = $c9
+;
+;   ldx   #$cb                 ; Point to the vector at #CB, #CC
+;   jsr   RDOPTAD              ; ..and interpret the load address to store it here
+;   beq   rlerr                ; ..can't interpret load address - error
+;
+;   jsr   COSPOST              ; Do COS interpreter post test
+;   ldx   #$c9                 ; File data starts at #C9
+;
+;   jsr   CHKNAME
+;   jsr	open_file_read
+;
+;   SETRWPTR NAME              ; get the FAT file size - ignore any ATM headers
+;
+;   SLOWCMDI 	CMD_FILE_GETINFO
+;
+;   ldx   #13
+;   jsr   read_data_buffer 
+;
+;   lda   NAME                 ; fat file length
+;   sta   LLENGTH
+;   lda   NAME+1
+;   sta   LLENGTH+1
+;
+;   jmp   read_file
+;
+;rlerr:
+;   jmp   COSSYN
+;
+;
+;nomemerr:
+;   REPERROR noramstr
+;     
+;
+;noramstr:
+;   .byte "NO RAM"
+;   nop
 
 
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
@@ -104,41 +104,41 @@ STARROMLOAD:
 ;   lda   $bffd                ; map $7000-$7fff to $7000 - needs ramrom with latest CPLD code
 ;   and   #$fe
 
-   lda #0
-
-   sta   $bffe                ; ensure there's RAM at 7000
-   ora   #1                   ; for 'selectrom' code later
-   sta   $cc
-
-   lda   #$55
-   sta   $7000
-   cmp   $7000
-   bne   nomemerr
-   asl   a
-   sta   $7000
-   cmp   $7000
-   bne   nomemerr
-
-   jsr   read_filename        ; copy filename into $140
-   jsr   $f844                ; set $c9\a = $140, set x = $c9
-
-   jsr   CHKNAME
-   jsr	open_file_read
-
-   lda   #0
-   sta   LLOAD
-   sta   LLENGTH
-
-   sta   $cb
-
-   lda   #$10
-   sta   LLENGTH+1
-   lda   #$70
-   sta   LLOAD+1
-
-   jsr   read_file
-
+;   lda #0
+;
+;   sta   $bffe                ; ensure there's RAM at 7000
+ ;  ora   #1                   ; for 'selectrom' code later
+ ;  sta   $cc
+;
+;   lda   #$55
+;   sta   $7000
+;   cmp   $7000
+;   bne   nomemerr
+;   asl   a
+;   sta   $7000
+;   cmp   $7000
+;   bne   nomemerr
+;
+;   jsr   read_filename        ; copy filename into $140
+;   jsr   $f844                ; set $c9\a = $140, set x = $c9
+;
+;   jsr   CHKNAME
+;   jsr	open_file_read
+;
+;   lda   #0
+;   sta   LLOAD
+;   sta   LLENGTH
+;
+;   sta   $cb
+;
+;   lda   #$10
+;   sta   LLENGTH+1
+;   lda   #$70
+;   sta   LLOAD+1
+;
+;   jsr   read_file
+;
    ; cb = rom num for bfff
    ; cc = option latch at bffe
    ;
-   jmp   selectrom
+;   jmp   selectrom

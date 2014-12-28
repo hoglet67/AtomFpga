@@ -87,12 +87,12 @@ component XDM4Kx8	port(
 					   );
 end component;
 
---component XPM10Kx16 port(
-component XPM8Kx16 port(
+component XPM10Kx16 port(
+--component XPM8Kx16 port(
 	                  cp2     : in  std_logic;
 					  ce      : in  std_logic;
---	                  address : in  std_logic_vector(13 downto 0); 
-	                  address : in  std_logic_vector(CPROGMEMSIZE downto 0); 
+	                  address : in  std_logic_vector(13 downto 0); 
+--	                  address : in  std_logic_vector(CPROGMEMSIZE downto 0); 
 					  din     : in  std_logic_vector(15 downto 0);		                
 					  dout    : out std_logic_vector(15 downto 0);
 					  we     : in  std_logic
@@ -785,13 +785,13 @@ port map(
 					   );
 
 -- Program memory					   
---PM_Inst:component XPM10Kx16
-PM_Inst:component XPM8Kx16 
+PM_Inst:component XPM10Kx16
+--PM_Inst:component XPM8Kx16 
 port map(
 	                  cp2     => ram_cp2_n, 
 					  ce      => vcc,
---	                  address => pm_adr(13 downto 0),
-	                  address => pm_adr(CPROGMEMSIZE downto 0),
+	                  address => pm_adr(13 downto 0),
+--	                  address => pm_adr(CPROGMEMSIZE downto 0),
 					  din     => pm_din,
 					  dout    => pm_dout,
 					  we     => pm_l_we

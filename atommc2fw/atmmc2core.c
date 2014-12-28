@@ -5,9 +5,10 @@
 #include "atmmc2def.h"
 #include "ff.h"
 
-#include "status.h"
+//#include "status.h"
 
 #include <string.h>
+
 
 extern unsigned char configByte;
 extern unsigned char blVersion;
@@ -16,6 +17,7 @@ extern unsigned char portBVal;
 extern BYTE globalIndex;
 extern WORD globalAmount;
 extern BYTE globalDataPresent;
+extern int filenum;
 
 #if (PLATFORM==PLATFORM_PIC)
 #define LatchedData		PORTD
@@ -58,16 +60,12 @@ void at_process(void)
    // port a holds the latched contents of the address bus a0-a3
    //
    LatchAddressIn();
-   
- 
    if (WASWRITE)
 		LatchedAddress=LatchedAddressLast;
-
-   if (DEBUG_CMD) {
-	 log0("LaL=%02X, La=%02X ",LatchedAddressLast,LatchedAddress);
-   }
-
-   switch (LatchedAddress & 0x03)
+		
+   //log0("%02X\n",LatchedAddress & ADDRESS_MASK);
+			
+   switch (LatchedAddress & ADDRESS_MASK)
    {
    case CMD_REG:
       {
@@ -75,14 +73,28 @@ void at_process(void)
          {
 			ReadDataPort();
             received = LatchedData;
+	    // File Group 0x10-0x17, 0x30-0x37, 0x50-0x57, 0x70-0x77
+	    // filenum = bits 6,5
+	    // mask1 = 10011000 (test for file group command)
+	    // mask2 = 10011111 (remove file number)
+	    if ((received & 0x98) == 0x10) {
+	      filenum = (received >> 5) & 3;
+	      received &= 0x9F;
+	    }
+	    
+	    // Data Group 0x20-0x23, 0x24-0x27, 0x28-0x2B, 0x2C-0x2F
+	    // filenum = bits 3,2
+	    // mask1 = 11110000 (test for data group command)
+	    // mask2 = 11110011 (remove file number)
+	    if ((received & 0xf0) == 0x20) {
+	      filenum = (received >> 2) & 3;
+	      received &= 0xF3;
+	    }
 #if (PLATFORM!=PLATFORM_AVR)
             WriteDataPort(STATUS_BUSY);		// Busy handled in CPLD.
 #endif
-
-			if (DEBUG_CMD) {
-			  log0("cmd=%02X ",received);
-			}
-
+			//log0("%02X\n",LatchedData);
+			
 			// Directory group, moved here 2011-05-29 PHS.
 			//
             if (received == CMD_DIR_OPEN)
@@ -136,6 +148,12 @@ void at_process(void)
                //
                worker = WFN_FileOpenWrite;
             }
+            else if (received == CMD_FILE_OPEN_RAF)
+            {
+               // open the file with name in global data buffer for write/append
+               //
+               worker = WFN_FileOpenRAF;
+            }
             else if (received == CMD_FILE_DELETE)
             {
                // delete the file with name in global data buffer
@@ -148,16 +166,22 @@ void at_process(void)
                //
                worker = WFN_FileGetInfo;
             }
+            else if (received == CMD_FILE_SEEK)
+            {
+               // seek to a location within the file
+               //
+               worker = WFN_FileSeek;
+            }
             else if (received == CMD_INIT_READ)
             {
 			   // All data read requests must send CMD_INIT_READ before beggining reading
 			   // data from READ_DATA_PORT. After execution of this command the first byte 
 			   // of data may be read from the READ_DATA_PORT.
 			   //
-               globalIndex = 1;
+               WriteDataPort(globalData[0]);
+			   globalIndex = 1;
 			   LatchedAddress=READ_DATA_REG;
-			   WriteResult(globalData[0]);
-			}
+            }
 			else if (received == CMD_INIT_WRITE)
             {
                // all data write requests must send CMD_INIT_WRITE here before poking data at 
@@ -166,7 +190,6 @@ void at_process(void)
                //
                globalIndex = 0;
                globalDataPresent = 0;
-			   //WriteDataPort(STATUS_OK);
             }
 			else if (received == CMD_READ_BYTES)
 			{	
@@ -200,13 +223,12 @@ void at_process(void)
                // globalData[1..4 incl] = 256 byte sector number
                globalCurDrive = globalData[0] & 3;
                globalLBAOffset = LD_DWORD(&globalData[1]);
-			   WriteResult(STATUS_OK);
             }
             if (received == CMD_GET_IMG_STATUS)
             {
                // retrieve sddos image status
                // globalData[0] = img num
-               WriteResult(driveInfo[byteValueLatch & 3].attribs);
+               WriteDataPort(driveInfo[byteValueLatch & 3].attribs);
             }
             if (received == CMD_GET_IMG_NAME)
             {
@@ -253,55 +275,55 @@ void at_process(void)
             {
                // get card type - it's a slowcmd despite appearance
                disk_initialize(0);
-               WriteResult(CardType);
-		    }
+               WriteDataPort(CardType);
+            }
 #if (PLATFORM!=PLATFORM_AVR)
 // AVR doesn't currently have spare port so don't compile it !
             else if (received == CMD_GET_PORT_DDR) // get portb direction register
             {
-				WriteResult(TRISB);
+				WriteDataPort(TRISB);
             }
             else if (received == CMD_SET_PORT_DDR) // set portb direction register
             {
                TRISB = byteValueLatch;
 
                WriteEEPROM(EE_PORTBTRIS, byteValueLatch);
-               WriteResult(STATUS_OK);
+               WriteDataPort(STATUS_OK);
             }
             else if (received == CMD_READ_PORT) // read portb
             {
-               WriteResult(PORTB);
+               WriteDataPort(PORTB);
             }
             else if (received == CMD_WRITE_PORT) // write port B value
             {
                LATB = byteValueLatch;
 
                WriteEEPROM(EE_PORTBVALU, byteValueLatch);
-               WriteResult(STATUS_OK);
+               WriteDataPort(STATUS_OK);
             }
 #endif
             else if (received == CMD_GET_FW_VER) // read firmware version
             {
-               WriteResult(VSN_MAJ<<4|VSN_MIN);
+               WriteDataPort(VSN_MAJ<<4|VSN_MIN);
             }
             else if (received == CMD_GET_BL_VER) // read bootloader version
             {
-               WriteResult(blVersion);
+               WriteDataPort(blVersion);
             }
             else if (received == CMD_GET_CFG_BYTE) // read config byte
             {
-               WriteResult(configByte);
+               WriteDataPort(configByte);
             }
             else if (received == CMD_SET_CFG_BYTE) // write config byte
             {
                configByte = byteValueLatch;
 
                WriteEEPROM(EE_SYSFLAGS, configByte);
-               WriteResult(STATUS_OK);
+               WriteDataPort(STATUS_OK);
             }
             else if (received == CMD_READ_AUX) // read porta - latch & aux pin on dongle
             {
-               WriteResult(LatchedAddress);
+               WriteDataPort(LatchedAddress);
             }
             else if (received == CMD_GET_HEARTBEAT)
             {
@@ -310,25 +332,73 @@ void at_process(void)
                // osrdch call. the psp may not be enabled by that point,
                // so we have to wait till it is.
                //
-               WriteResult(heartbeat);
-			   heartbeat ^= 0xff;
+               WriteDataPort(heartbeat);
+               heartbeat ^= 0xff;
             }
          }
       }
       break;
 
+#if 0
+   case READ_BYTES_REG:
+      {
+         if (WASWRITE)
+         {
+			ReadDataPort();
+            received = LatchedData;
+            WriteDataPort(STATUS_BUSY);
+
+            // read the next N (received) bytes into the data buffer
+            // received=0 = 256 to read.
+            //
+            globalAmount = received;
+            worker = WFN_FileRead;
+         }
+      }
+      break;
+
+   case WRITE_BYTES_REG:
+      {
+         // write the next N bytes from the global data buffer
+         // received=0 = 256 to write.
+         //
+         if (WASWRITE)
+         {
+			ReadDataPort();
+            received = LatchedData;
+            WriteDataPort(STATUS_BUSY);
+
+            globalAmount = received;
+            worker = WFN_FileWrite;
+         }
+      }
+      break;
+#endif 
 
    case READ_DATA_REG:
       {
          // read data port.
          //
-         // any data read requests must be primed by writing CMD_INIT_READ (0x20) 
+         // any data read requests must be primed by writing CMD_INIT_READ (0x3f) here
          // before the 1st read.
          //
 		 // this has to be done this way as the PIC hardware only latches the address 
 		 // on a WRITE.
-		WriteDataPort((globalData[(int)globalIndex]));
-        ++globalIndex;
+//         if (WASWRITE)
+//         {
+//			ReadDataPort();
+//            received = LatchedData;
+//            if (received == CMD_INIT_READ)
+//            {
+//               WriteDataPort(globalData[0]);
+//               globalIndex = 1;
+//            }
+//         }
+//         else
+//         {
+            WriteDataPort((globalData[(int)globalIndex]));
+            ++globalIndex;
+//         }
       }
       break;
 
@@ -342,11 +412,9 @@ void at_process(void)
 			ReadDataPort();
             received = LatchedData;
 
-//log0("wb=%02X ",received);
-
             globalData[globalIndex] = received;
             ++globalIndex;
-//log0("index=%d \n",globalIndex);
+
             globalDataPresent = 1;
          }
       }
@@ -370,19 +438,4 @@ void at_process(void)
    {
       worker();
    }
-
-   if (DEBUG_GLOBAL) {
-	 if ((LatchedAddress & 0x03) == CMD_REG) {
-	   unsigned char *ptr;
-	   int i;
-	   ptr=globalData;
-	   for (i=0; i<256;i++) {
-		 log0("%02x ", *ptr++);
-		 if (i%16 == 15) {
-		   log0("\n");
-		 }
-	   }
-	 }
-   }
-
 }

@@ -15,6 +15,9 @@ STATUS_REG                      =   $04
 CMD_DIR_OPEN                    =   $00
 CMD_DIR_READ                    =   $01
 CMD_DIR_CWD                     =   $02
+CMD_DIR_GETCWD                  =   $03
+CMD_DIR_MKDIR                   =   $04
+CMD_DIR_RMDIR                   =   $05
 
 ; // CMD_REG_COMMANDS
 CMD_FILE_CLOSE                  =   $10
