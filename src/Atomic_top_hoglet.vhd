@@ -54,114 +54,6 @@ end Atomic_top_hoglet;
 
 architecture behavioral of Atomic_top_hoglet is
 
-    component dcm4
-        port (
-            CLKIN_IN   : in  std_logic;
-            CLK0_OUT  : out std_logic;
-            CLK0_OUT1 : out std_logic;
-            CLK2X_OUT : out std_logic
-        ); 
-    end component;
-
-    component dcm5
-        port (
-            CLKIN_IN   : in  std_logic;
-            CLK0_OUT  : out std_logic;
-            CLK0_OUT1 : out std_logic;
-            CLK2X_OUT : out std_logic
-        ); 
-    end component;
- 
-    component Atomic_core
-        generic (
-            CImplSDDOS       : boolean;
-            CImplGraphicsExt : boolean;
-            CImplSoftChar    : boolean;
-            CImplSID         : boolean;
-            CImplVGA80x40    : boolean;
-            CImplHWScrolling : boolean;
-            CImplMouse       : boolean;
-            CImplUart        : boolean;
-            MainClockSpeed   : integer;
-            DefaultBaud      : integer
-        );
-        port (
-            clk_vga : in  std_logic;
-            clk_16M00 : in  std_logic;
-            clk_32M00 : in  std_logic;
-            ps2_clk   : in  std_logic;
-            ps2_data  : in  std_logic;
-            ps2_mouse_clk : inout    std_logic;
-            ps2_mouse_data : inout    std_logic;
-            ERSTn     : in  std_logic;
-            IRSTn     : out std_logic;
-            SDMISO    : in  std_logic;
-            red       : out std_logic_vector(2 downto 0);
-            green     : out std_logic_vector(2 downto 0);
-            blue      : out std_logic_vector(2 downto 0);
-            vsync     : out std_logic;
-            hsync     : out std_logic;
-            RamCE     : out std_logic;
-            RomCE     : out std_logic;
-            Phi2      : out   std_logic;
-            ExternWE  : out std_logic;
-            ExternA   : out std_logic_vector (16 downto 0);
-            ExternDin : out std_logic_vector (7 downto 0);
-            ExternDout: in  std_logic_vector (7 downto 0);
-            audiol    : out std_logic;
-            audioR    : out std_logic;
-            SDSS      : out std_logic;
-            SDCLK     : out std_logic;
-            SDMOSI    : out std_logic;
-            uart_RxD  : in  std_logic;
-            uart_TxD  : out std_logic;
-            LED1      : out   std_logic;        
-            LED2      : out   std_logic
-            );
-    end component;
-   
-    component AtomPL8
-        port (
-            clk         : in std_logic;
-            enable      : in std_logic;
-            nRST        : in std_logic;
-            RW          : in std_logic;
-            Addr        : in std_logic_vector(2 downto 0);
-            DataIn      : in std_logic_vector(7 downto 0);
-            nARD        : in std_logic;
-            nAWR        : in std_logic;
-            AVRA0       : in std_logic;    
-            AVRDataIn   : in std_logic_vector(7 downto 0);      
-            AVRDataOut  : OUT std_logic_vector(7 downto 0);      
-            DataOut     : OUT std_logic_vector(7 downto 0);
-            AVRINTOut   : OUT std_logic;
-            AtomIORDOut : out std_logic;
-            AtomIOWROut : out std_logic
-        );
-    end component;
-
-    component AVR8
-        port(
-            clk16M    : in std_logic;
-            nrst      : in std_logic;
-            portain   : in std_logic_vector(7 downto 0);
-            portaout  : out std_logic_vector(7 downto 0);
-            portbin   : in std_logic_vector(7 downto 0);
-            portbout  : out std_logic_vector(7 downto 0);
-            portc     : inout std_logic_vector(7 downto 0);
-            portdin   : in std_logic_vector(7 downto 0);
-            portdout  : out std_logic_vector(7 downto 0);
-            porte     : inout std_logic_vector(7 downto 0);
-            portf     : inout std_logic_vector(7 downto 0);
-            spi_mosio : out std_logic;
-            spi_scko  : out std_logic;
-            spi_cs_n  : out std_logic;
-            spi_misoi : in std_logic;
-            rxd       : in std_logic;    
-            txd       : out std_logic
-        );
-    end component;
-
     signal clk_vga : std_logic;
     signal clk_16M00 : std_logic;
     signal IRSTn     : std_logic;
@@ -211,19 +103,19 @@ architecture behavioral of Atomic_top_hoglet is
     
 begin
 
-    inst_dcm4 : dcm4 port map(
+    inst_dcm4 : entity work.dcm4 port map(
         CLKIN_IN  => clk_32M00,
         CLK0_OUT  => clk_vga,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
 
-    inst_dcm5 : dcm5 port map(
+    inst_dcm5 : entity work.dcm5 port map(
         CLKIN_IN  => clk_32M00,
         CLK0_OUT  => clk_16M00,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
     
-    inst_Atomic_core : Atomic_core
+    inst_Atomic_core : entity work.Atomic_core
     generic map (
         CImplSDDOS => false,
         CImplGraphicsExt => true,
@@ -233,6 +125,7 @@ begin
         CImplHWScrolling => true,
         CImplMouse       => true,
         CImplUart        => true,
+        CImplDoubleVideo => false,
         MainClockSpeed   => 16000000,
         DefaultBaud      => 115200          
      )
@@ -270,10 +163,11 @@ begin
         uart_RxD  => uart_RxD,
         uart_TxD  => uart_TxD,
         LED1      => open,
-        LED2      => open
+        LED2      => open,
+        charSet   => '0'
         );  
 
-    Inst_AVR8: AVR8 PORT MAP(
+    Inst_AVR8: entity work.AVR8 port map(
         clk16M      => clk_16M00,
         nrst        => IRSTn,
         portain     => AVRDataOut,
@@ -315,7 +209,7 @@ begin
         txd          => avr_TxR
     );
     
-    Inst_AtomPL8: AtomPL8 port map(
+    Inst_AtomPL8: entity work.AtomPL8 port map(
         clk => clk_16M00,
         enable => PL8Enable,
         nRST => IRSTn,

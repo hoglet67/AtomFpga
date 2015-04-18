@@ -42,79 +42,6 @@ entity Atomic_top is
 end Atomic_top;
 
 architecture behavioral of Atomic_top is
-
-    component dcm2
-        port (
-            CLKIN_IN  : in  std_logic;
-            CLK0_OUT  : out std_logic;
-            CLK0_OUT1 : out std_logic;
-            CLK2X_OUT : out std_logic
-        ); 
-    end component;
-
-    component dcm3
-        port (CLKIN_IN  : in  std_logic;
-              CLK0_OUT  : out std_logic;
-              CLK0_OUT1 : out std_logic;
-              CLK2X_OUT : out std_logic
-         ); 
-    end component;
-    
-    component InternalROM
-        port (
-            CLK  : in  std_logic;
-            ADDR : in  std_logic_vector(16 downto 0);
-            DATA : out std_logic_vector(7 downto 0)
-        );
-    end component; 
-
-    component Atomic_core
-        generic (
-            CImplSDDOS       : boolean;
-            CImplGraphicsExt : boolean;
-            CImplSoftChar    : boolean;
-            CImplSID         : boolean;
-            CImplVGA80x40    : boolean;
-            CImplHWScrolling : boolean;
-            CImplMouse       : boolean;
-            CImplUart        : boolean;
-            MainClockSpeed   : integer;
-            DefaultBaud      : integer
-        );
-        port (
-            clk_vga : in  std_logic;
-            clk_16M00 : in  std_logic;
-            clk_32M00 : in  std_logic;
-            ps2_clk   : in  std_logic;
-            ps2_data  : in  std_logic;
-            ps2_mouse_clk : inout    std_logic;
-            ps2_mouse_data : inout    std_logic;
-            ERSTn     : in  std_logic;
-            IRSTn     : out std_logic;
-            SDMISO    : in  std_logic;
-            red       : out std_logic_vector(2 downto 0);
-            green     : out std_logic_vector(2 downto 0);
-            blue      : out std_logic_vector(2 downto 0);
-            vsync     : out std_logic;
-            hsync     : out std_logic;
-            RamCE     : out std_logic;
-            RomCE     : out std_logic;
-            Phi2      : out std_logic;
-            ExternWE  : out std_logic;
-            ExternA   : out std_logic_vector (16 downto 0);
-            ExternDin : out std_logic_vector (7 downto 0);
-            ExternDout: in  std_logic_vector (7 downto 0);
-            audiol    : out std_logic;
-            audioR    : out std_logic;
-            SDSS      : out std_logic;
-            SDCLK     : out std_logic;
-            SDMOSI    : out std_logic;
-            uart_RxD  : in  std_logic;
-            uart_TxD  : out std_logic;
-            LED1      : out   std_logic;        
-            LED2      : out   std_logic
-            );
-    end component;
     
     signal clk_12M58 : std_logic;
     signal clk_16M00 : std_logic;
@@ -131,25 +58,25 @@ architecture behavioral of Atomic_top is
 
 begin
 
-    inst_dcm2 : dcm2 port map(
+    inst_dcm2 : entity work.dcm2 port map(
         CLKIN_IN  => clk_25M00,
         CLK0_OUT  => clk_16M00,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
 
-    inst_dcm3 : dcm3 port map (
+    inst_dcm3 : entity work.dcm3 port map (
         CLKIN_IN  => clk_16M00,
         CLK0_OUT  => clk_32M00,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
 
-    rom_c000_ffff : InternalROM port map(
+    rom_c000_ffff : entity work.InternalROM port map(
         CLK     => clk_16M00,
         ADDR    => ExternA,
         DATA    => RomDout
         );
     
-    inst_Atomic_core : Atomic_core
+    inst_Atomic_core : entity work.Atomic_core
     generic map (
         CImplSDDOS       => true,
         CImplGraphicsExt => false,
@@ -159,6 +86,7 @@ begin
         CImplHWScrolling => false,
         CImplMouse       => false,
         CImplUart        => false,
+        CImplDoubleVideo => false,        
         MainClockSpeed   => 16000000,
         DefaultBaud      => 115200          
     )
@@ -193,7 +121,8 @@ begin
         uart_RxD  => '1',
         uart_TxD  => open,
         LED1      => open,
-        LED2      => open
+        LED2      => open,
+        charSet   => '0'
     );
  
     CE1        <= not RAMCE;

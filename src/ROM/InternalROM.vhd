@@ -16,7 +16,7 @@ end;
 
 architecture BEHAVIORAL of InternalROM is
 
-    component SDROM is
+    component e000 is
         port (
             CLK  : in  std_logic;
             ADDR : in  std_logic_vector(11 downto 0);
@@ -66,7 +66,7 @@ begin
         ADDR => ADDR(11 downto 0),
         DATA => float_data);
 
-    rome000 : SDROM port map(
+    rome000 : e000 port map(
         CLK  => CLK,
         ADDR => ADDR(11 downto 0),
         DATA => sddos_data);

@@ -28,6 +28,7 @@ entity Atomic_core is
        CImplHWScrolling : boolean;
        CImplMouse       : boolean;
        CImplUart        : boolean;
+       CImplDoubleVideo : boolean;
        MainClockSpeed   : integer;
        DefaultBaud      : integer
     );
@@ -47,7 +48,7 @@ entity Atomic_core is
         hsync     : out   std_logic;
         RamCE     : out   std_logic;
         RomCE     : out   std_logic;
-        Phi2      : out   std_logic;
+        phi2      : out   std_logic;
         ExternWE  : out   std_logic;
         ExternA   : out   std_logic_vector (16 downto 0);
         ExternDin : out   std_logic_vector (7 downto 0);
@@ -61,193 +62,12 @@ entity Atomic_core is
         uart_RxD  : in    std_logic;
         uart_TxD  : out   std_logic;
         LED1      : out   std_logic;        
-        LED2      : out   std_logic
+        LED2      : out   std_logic;
+        charSet   : in    std_logic
         );
 end Atomic_core;
 
 architecture BEHAVIORAL of Atomic_core is
- 
-    component T65
-        port(
-            Mode    : in  std_logic_vector(1 downto 0);
-            Res_n   : in  std_logic;
-            Enable  : in  std_logic;
-            Clk     : in  std_logic;
-            Rdy     : in  std_logic;
-            Abort_n : in  std_logic;
-            IRQ_n   : in  std_logic;
-            NMI_n   : in  std_logic;
-            SO_n    : in  std_logic;
-            DI      : in  std_logic_vector(7 downto 0);          
-            R_W_n   : out std_logic;
-            Sync    : out std_logic;
-            EF      : out std_logic;
-            MF      : out std_logic;
-            XF      : out std_logic;
-            ML_n    : out std_logic;
-            VP_n    : out std_logic;
-            VDA     : out std_logic;
-            VPA     : out std_logic;
-            A       : out std_logic_vector(23 downto 0);
-            DO      : out std_logic_vector(7 downto 0));
-	end component;
-
-
-    component I82C55
-        port (
-            I_ADDR : in  std_logic_vector(1 downto 0);  -- A1-A0
-            I_DATA : in  std_logic_vector(7 downto 0);  -- D7-D0
-            O_DATA : out std_logic_vector(7 downto 0);
-            CS_H   : in  std_logic;
-            WR_L   : in  std_logic;
-            O_PA   : out std_logic_vector(7 downto 0);
-            I_PB   : in  std_logic_vector(7 downto 0);
-            I_PC   : in  std_logic_vector(3 downto 0);
-            O_PC   : out std_logic_vector(3 downto 0);
-            RESET  : in  std_logic;
-            ENA    : in  std_logic;
-            CLK    : in  std_logic
-            );
-    end component;
-
-    component keyboard
-        port (
-            CLOCK      : in  std_logic;
-            nRESET     : in  std_logic;
-            CLKEN_1MHZ : in  std_logic;
-            PS2_CLK    : in  std_logic;
-            PS2_DATA   : in  std_logic;
-            KEYOUT     : out std_logic_vector(5 downto 0);
-            ROW        : in  std_logic_vector(3 downto 0);
-            ESC_IN     : in  std_logic;
-            BREAK_IN   : in  std_logic;
-            SHIFT_OUT  : out std_logic;
-            CTRL_OUT   : out std_logic;
-            REPEAT_OUT : out std_logic;
-            BREAK_OUT  : out std_logic;
-            TURBO      : out std_logic_vector(1 downto 0);
-            ESC_OUT    : out std_logic);
-    end component;
-
-    component M6522
-        port (
-            I_RS    : in  std_logic_vector(3 downto 0);
-            I_DATA  : in  std_logic_vector(7 downto 0);
-            O_DATA  : out std_logic_vector(7 downto 0);
-            I_RW_L  : in  std_logic;
-            I_CS1   : in  std_logic;
-            I_CS2_L : in  std_logic;
-            O_IRQ_L : out std_logic;
-            I_CA1   : in  std_logic;
-            I_CA2   : in  std_logic;
-            O_CA2   : out std_logic;
-            I_PA    : in  std_logic_vector(7 downto 0);
-            O_PA    : out std_logic_vector(7 downto 0);
-            I_CB1   : in  std_logic;
-            O_CB1   : out std_logic;
-            I_CB2   : in  std_logic;
-            O_CB2   : out std_logic;
-            I_PB    : in  std_logic_vector(7 downto 0);
-            O_PB    : out std_logic_vector(7 downto 0);
-            I_P2_H  : in  std_logic_vector(1 downto 0);
-            RESET_L : in  std_logic;
-            ENA_4   : in  std_logic;
-            CLK     : in  std_logic
-            );
-    end component;
-
-    component SPI_Port
-        port (
-            nRST    : in  std_logic;
-            clk     : in  std_logic;
-            enable  : in  std_logic;
-            nwe     : in  std_logic;
-            address : in  std_logic_vector (2 downto 0);
-            datain  : in  std_logic_vector (7 downto 0);
-            dataout : out std_logic_vector (7 downto 0);
-            MISO    : in  std_logic;
-            MOSI    : out std_logic;
-            NSS     : out std_logic;
-            SPICLK  : out std_logic
-            );
-    end component;
-
-    component AtomGodilVideo
-        generic (
-           CImplGraphicsExt : boolean;
-           CImplSoftChar    : boolean;
-           CImplSID         : boolean;
-           CImplVGA80x40    : boolean;
-           CImplHWScrolling : boolean;
-           CImplMouse       : boolean;
-           CImplUart        : boolean;
-           MainClockSpeed   : integer;
-           DefaultBaud      : integer
-        );
-        port (
-            -- clock_vga is a full speed VGA clock (25MHz ish)      
-            clock_vga      : in    std_logic;
-    
-            -- clock_main is the main clock    
-            clock_main      : in    std_logic;
-        
-            -- A fixed 32MHz clock for the SID
-            clock_sid_32MHz  : in    std_logic;
-    
-            -- As fast a clock as possible for the SID DAC
-            clock_sid_dac  : in    std_logic;
-    
-            -- Reset signal (active high)
-            reset        : in    std_logic;
-    
-            -- Reset signal to 6847 (active high), not currently used
-            reset_vid    : in    std_logic;
-            
-            -- Main Address / Data Bus
-            din          : in    std_logic_vector (7 downto 0);
-            dout         : out   std_logic_vector (7 downto 0);
-            addr         : in    std_logic_vector (12 downto 0);
-    
-            -- 6847 Control Signals
-            CSS          : in    std_logic;
-            AG           : in    std_logic;
-            GM           : in    std_logic_vector (2 downto 0);
-            nFS          : out   std_logic;
-    
-            -- RAM signals
-            ram_we       : in    std_logic;
-    
-            -- SID signals
-            reg_cs       : in    std_logic;
-            reg_we       : in    std_logic;
-    
-            -- SID signals
-            sid_cs       : in    std_logic;
-            sid_we       : in    std_logic;
-            sid_audio    : out   std_logic;
-            
-            -- PS/2 Mouse
-            PS2_CLK      : inout std_logic;
-            PS2_DATA     : inout std_logic;
-
-            -- UART signals
-            uart_cs      : in    std_logic;
-            uart_we      : in    std_logic;
-            uart_RxD     : in    std_logic;
-            uart_TxD     : out   std_logic;     
-            uart_escape  : out   std_logic;
-            uart_break   : out   std_logic;  
-            
-            -- VGA Signals
-            final_red    : out   std_logic;
-            final_green1 : out   std_logic;
-            final_green0 : out   std_logic;
-            final_blue   : out   std_logic;
-            final_vsync  : out   std_logic;
-            final_hsync  : out   std_logic
-    
-            );
-    end component;
     
 -------------------------------------------------
 -- cpu signals names
@@ -351,7 +171,7 @@ begin
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------
-    cpu : T65 port map (
+    cpu : entity work.T65 port map (
    		Mode           => "00",
 		Abort_n        => '1',
 		SO_n           => '1',
@@ -370,7 +190,7 @@ begin
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------                           
-    Inst_AtomGodilVideo : AtomGodilVideo
+    Inst_AtomGodilVideo : entity work.AtomGodilVideo
         generic map (
            CImplGraphicsExt => CImplGraphicsExt,
            CImplSoftChar    => CImplSoftChar,
@@ -379,10 +199,10 @@ begin
            CImplHWScrolling => CImplHWScrolling,
            CImplMouse       => CImplMouse,
            CImplUart        => CImplUart,
+           CImplDoubleVideo => CImplDoubleVideo,
            MainClockSpeed   => MainClockSpeed,
            DefaultBaud      => DefaultBaud
-        )
-      
+        )     
         port map (
             clock_vga => clk_vga,
             clock_main => clk_16M00,
@@ -416,12 +236,13 @@ begin
             final_green0 => vdg_green0,
             final_blue => vdg_blue,
             final_vsync => vdg_vsync,
-            final_hsync => vdg_hsync
+            final_hsync => vdg_hsync,
+            charSet => charSet
             );
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------                   
-    pia : I82C55 port map(
+    pia : entity work.I82C55 port map(
         I_ADDR => cpu_addr(1 downto 0),  -- A1-A0
         I_DATA => cpu_dout(7 downto 0),  -- D7-D0
         O_DATA => i8255_data,
@@ -437,7 +258,7 @@ begin
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------                           
-    input : keyboard port map(
+    input : entity work.keyboard port map(
         CLOCK      => clk_16M00,
         nRESET     => ERSTn,
         CLKEN_1MHZ => cpu_clken,
@@ -457,7 +278,7 @@ begin
 ---------------------------------------------------------------------
 --  
 ---------------------------------------------------------------------
-    via : M6522 port map(
+    via : entity work.M6522 port map(
         I_RS    => cpu_addr(3 downto 0),
         I_DATA  => cpu_dout(7 downto 0),
         O_DATA  => mc6522_data(7 downto 0),
@@ -482,7 +303,7 @@ begin
         CLK     => via_clk);                                      
 
     Inst_spi: if (CImplSDDOS) generate
-        Inst_spi_comp : component SPI_Port
+        Inst_spi_comp : entity work.SPI_Port
             port map (
                 nRST    => RSTn,
                 clk     => clk_16M00,
@@ -654,7 +475,7 @@ begin
             phi2 <= phi;
         end if;
     end process;
-
+    
     cpu_phase  <= clken_counter(3) & clken_counter(2);
     via4_clken <= not (clken_counter(0) or clken_counter(1));
     via_clk    <= clk_16M00;

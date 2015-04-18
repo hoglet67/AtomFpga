@@ -7,7 +7,7 @@ use ieee.numeric_std.all;
 library UNISIM;
 use UNISIM.Vcomponents.all;
 
-entity SDROM is
+entity e000 is
   port (
     CLK  : in  std_logic;
     ADDR : in  std_logic_vector(11 downto 0);
@@ -15,7 +15,7 @@ entity SDROM is
     );
 end;
 
-architecture RTL of SDROM is
+architecture RTL of e000 is
 
   signal rom_addr : std_logic_vector(11 downto 0);
 
