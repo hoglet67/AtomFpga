@@ -33,7 +33,7 @@ OBJECTS=atom-kbdio.o status.o atomio.o ff.o diskio.o mmcio.o atmmc2core.o atmmc2
 
 load: avr.bit
 #	sudo $(PROG) -v -f avr.bit
-	sudo $(PROG) -v -b $(BSCAN) -f avr.bit -sa
+	sudo $(PROG) -v -b $(BSCAN) -f avr.bit -sa -r
 
 avr.bit: avr_progmem.mem
 	$(DATA2MEM) -bm $(BMM_FILE) -bd avr_progmem.mem -bt $(BIT_FILE) -o b avr.bit

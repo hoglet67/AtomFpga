@@ -50,7 +50,9 @@ entity Atomic_top_duo is
            uart_TxD       : out   std_logic;
            LED1           : out   std_logic;
            LED2           : out   std_logic;
-           charSet        : in    std_logic
+           charSet        : in    std_logic;
+           ARDUINO_RESET  : out   std_logic;
+           SW1            : in    std_logic
            );
 end Atomic_top_duo;
 
@@ -94,7 +96,7 @@ architecture behavioral of Atomic_top_duo is
     signal OSInRam    : std_logic;                     -- #C000-#FFFF in RAM
     signal ExRamBank  : std_logic_vector (1 downto 0); -- #4000-#7FFF bank select
     signal RomLatch   : std_logic_vector (3 downto 0); -- #A000-#AFFF bank select
-
+    
 begin
 
     inst_dcm4 : entity work.dcm4 port map(
@@ -300,7 +302,7 @@ begin
     LED1       <= not LED1n;
     LED2       <= not LED2n;
 
-
+    ARDUINO_RESET <= SW1;
     
 end behavioral;
 
