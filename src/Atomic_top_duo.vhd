@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- Copyright (c) 2014 David Banks
+-- Copyright (c) 2015 David Banks
 --
 -- based on work by Alan Daly. Copyright(c) 2009. All rights reserved.
 --------------------------------------------------------------------------------
@@ -9,7 +9,7 @@
 -- \   \   \/    
 --  \   \         
 --  /   /         Filename  : Atomic_top_duo.vhf
--- /___/   /\     Timestamp : 03/04/2014 19:27:00
+-- /___/   /\     Timestamp : 19/04/2015
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
@@ -63,11 +63,9 @@ architecture behavioral of Atomic_top_duo is
     signal phi2       : std_logic;
 
     signal RamCE      : std_logic;
+    signal RamWR      : std_logic;
     signal RomCE      : std_logic;
-    signal RomCE1     : std_logic;
-    signal RomCE2     : std_logic;
-    signal RomDout1   : std_logic_vector (7 downto 0);
-    signal RomDout2   : std_logic_vector (7 downto 0);
+    signal RomDout    : std_logic_vector (7 downto 0);
     signal ExternWE   : std_logic;
     signal ExternA    : std_logic_vector (16 downto 0);
     signal ExternDin  : std_logic_vector (7 downto 0);
@@ -85,6 +83,17 @@ architecture behavioral of Atomic_top_duo is
 
     signal LED1n      : std_logic;
     signal LED2n      : std_logic;
+
+    signal SelectBFFE : std_logic;
+    signal SelectBFFF : std_logic;
+    
+    signal RegBFFE    : std_logic_vector (7 downto 0);
+    signal RegBFFF    : std_logic_vector (7 downto 0);
+
+    signal WriteProt  : std_logic;                     -- Write protects #A000, #C000-#FFFF
+    signal OSInRam    : std_logic;                     -- #C000-#FFFF in RAM
+    signal ExRamBank  : std_logic_vector (1 downto 0); -- #4000-#7FFF bank select
+    signal RomLatch   : std_logic_vector (3 downto 0); -- #A000-#AFFF bank select
 
 begin
 
@@ -131,8 +140,8 @@ begin
         blue              => blue(3 downto 1),
         vsync             => vsync,
         hsync             => hsync,
-        RamCE             => RamCE,
-        RomCE             => RomCE,
+        RamCE             => open,
+        RomCE             => open,
         phi2              => phi2,
         ExternWE          => ExternWE,
         ExternA           => ExternA,
@@ -214,32 +223,75 @@ begin
     rom_c000_ffff : entity work.InternalROM port map(
         CLK               => clk_16M00,
         ADDR              => ExternA,
-        DATA              => RomDout1
-    );
-
-    rom_a000 : entity work.fpgautils port map(
-        CLK               => clk_16M00,
-        ADDR              => ExternA(11 downto 0),
-        DATA              => RomDout2
+        DATA              => RomDout
     );
     
     ERSTn      <= not ERST;
 
-    RomCE1     <= '1' when RomCE = '1' and ExternA(15 downto 14) = "11"   else '0';
-    RomCE2     <= '1' when RomCE = '1' and ExternA(15 downto 12) = "1010" else '0';
+    RomCE      <= '1' when ExternA(15 downto 14) = "11" and OsInRam = '0' else
+                  '0';
 
+    RamCE      <= '1' when ExternA(15 downto 14) = "11" and OsInRam = '1' else
+                  '1' when ExternA(15 downto 12) = "1010"                 else
+                  '1' when ExternA(15) = '0'                              else
+                  '0';
+
+    RamWR      <= '0' when ExternA(15) = '1' and WriteProt = '1' else ExternWE;
+    
     RAMCEn     <= not RamCE;
-    RAMOEn     <= not ((not ExternWE) and RamCE);
-    RAMWRn     <= not (ExternWE and RamCE and phi2);
-    SRAM_DATA  <= ExternDin when ExternWE = '1' else "ZZZZZZZZ";
-    SRAM_ADDR  <= "0000" & ExternA;
+    RAMOEn     <= not ((not RamWR) and RamCE);
+    RAMWRn     <= not (RamWR and RamCE and phi2);
+    SRAM_DATA  <= ExternDin when RamWR = '1' and RamCE = '1' else "ZZZZZZZZ";
+
+    SRAM_ADDR  <= "00010" & ExRamBank & ExternA(13 downto 0) when ExternA(15 downto 14) = "01"   else
+                  "00011" & RomLatch  & ExternA(11 downto 0) when ExternA(15 downto 12) = "1010" else
+                  "0000"  & ExternA;
 
     PL8Enable  <= '1' when ExternA(15 downto 8) = "10110100" else '0';
     
-    ExternDout <= PL8Data when PL8Enable = '1' else
-                  RomDout1 when RomCE1 = '1' else
-                  RomDout2 when RomCE2 = '1' else
+    ExternDout <= PL8Data  when PL8Enable  = '1' else
+                  RomDout  when RomCE      = '1' else
+                  RegBFFE  when SelectBFFE = '1' else 
+                  RegBFFF  when SelectBFFF = '1' else 
                   SRAM_DATA;
+
+    -------------------------------------------------
+    -- BFFE and BFFF registers
+    --
+    -- See http://stardot.org.uk/forums/viewtopic.php?f=44&t=9341
+    --
+    -- The following are currently un-implemented:
+    --
+    -- - BFFE bit 6 (turbo mode)
+    --   as F1..F4 already allow 1/2/4/8MHz to be selected
+    --
+    -- - BFFE bit 3 (#C000-#FFFF bank select)
+    --   as there is insufficient space for a second ROM bank
+    --   unless switch from the SoftAVR to the real AVR
+    --
+    -------------------------------------------------
+    SelectBFFE <= '1' when ExternA(15 downto 0) = "1011111111111110" else '0';
+    SelectBFFF <= '1' when ExternA(15 downto 0) = "1011111111111111" else '0';
+    
+    RomLatchProcess : process (ERSTn, IRSTn, clk_16M00)
+    begin
+        if ERSTn = '0' OR IRSTn = '0' then
+            RegBFFE(3 downto 0) <= "0000";
+            RegBFFF(7 downto 0) <= "00000000";
+        elsif rising_edge(clk_16M00) then
+            if SelectBFFE = '1' and ExternWE = '1' then
+                RegBFFE <= ExternDin;
+            end if;
+            if SelectBFFF = '1' and ExternWE = '1' then
+                RegBFFF <= ExternDin;
+            end if;
+        end if;
+    end process;
+
+    WriteProt  <= RegBFFE(7);
+    OSInRam    <= RegBFFE(2);
+    ExRamBank  <= RegBFFE(1 downto 0);
+    RomLatch   <= RegBFFF(3 downto 0);
     
     red(0)     <= '0';
     green(0)   <= '0';
@@ -247,7 +299,9 @@ begin
     
     LED1       <= not LED1n;
     LED2       <= not LED2n;
-        
+
+
+    
 end behavioral;
 
 

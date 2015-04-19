@@ -162,6 +162,8 @@ architecture BEHAVIORAL of Atomic_core is
 
     signal uart_escape : std_logic;
     signal uart_break : std_logic;
+
+    signal extern_reg_enable : std_logic;
      
 --------------------------------------------------------------------
 --                   here it begin :)
@@ -367,6 +369,7 @@ begin
         spi_enable        <= '0'; 
         reg_enable        <= '0';
         uart_enable       <= '0';
+        extern_reg_enable <= '0';
         
         case cpu_addr(15 downto 12) is
             when x"0" => extern_ram_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
@@ -393,6 +396,8 @@ begin
                     sid_enable <= '1';  -- 0xbdc0-0xbddf SID
                 elsif cpu_addr(11 downto 5) = "1101111" then
                     reg_enable <= '1';  -- 0xbde0-0xbdff GODIL Registers
+                elsif cpu_addr(11 downto 4) = "11111111" then
+                    extern_reg_enable <= '1';  -- 0xbff0-0xbfff RomLatch
                 end if;
                 
             when x"C"   => extern_rom_enable <= '1';
@@ -415,6 +420,7 @@ begin
         spi_data        when spi_enable = '1'  and CImplSDDOS      else
         extern_data     when spi_enable = '1'  and not CImplSDDOS  else
         extern_data     when extern_rom_enable = '1'               else
+        extern_data     when extern_reg_enable = '1'               else
         x"f1";          -- un-decoded locations
         
     ExternWE        <= not_cpu_R_W_n;
