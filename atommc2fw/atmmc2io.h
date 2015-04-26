@@ -29,6 +29,10 @@
 #define ReadDataPort()
 #define WriteDataPort(value)	{ LATD=value; }	
 
+#define IODDR TRISB
+#define IOPORT_R PORTB
+#define IOPORT_W LATB
+
 extern void redSignal(unsigned char);
 
 #elif (PLATFORM==PLATFORM_AVR)
@@ -104,6 +108,10 @@ extern void redSignal(unsigned char);
 
 #define ReadEEPROM(addr)		eeprom_read_byte ((const uint8_t *)(addr))	
 #define WriteEEPROM(addr, val)	eeprom_write_byte ((uint8_t *)(addr), (uint8_t)(val))
+
+#define IODDR DDRE
+#define IOPORT_R PINE
+#define IOPORT_W PORTE
 
 #elif (PLATFORM==PLATFORM_EMU)
 

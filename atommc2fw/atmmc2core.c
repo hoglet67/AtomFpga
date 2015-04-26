@@ -277,31 +277,28 @@ void at_process(void)
                disk_initialize(0);
                WriteDataPort(CardType);
             }
-#if (PLATFORM!=PLATFORM_AVR)
-// AVR doesn't currently have spare port so don't compile it !
             else if (received == CMD_GET_PORT_DDR) // get portb direction register
             {
-				WriteDataPort(TRISB);
+				WriteDataPort(IODDR);
             }
             else if (received == CMD_SET_PORT_DDR) // set portb direction register
             {
-               TRISB = byteValueLatch;
+               IODDR = byteValueLatch;
 
                WriteEEPROM(EE_PORTBTRIS, byteValueLatch);
                WriteDataPort(STATUS_OK);
             }
             else if (received == CMD_READ_PORT) // read portb
             {
-               WriteDataPort(PORTB);
+               WriteDataPort(IOPORT_R);
             }
             else if (received == CMD_WRITE_PORT) // write port B value
             {
-               LATB = byteValueLatch;
+               IOPORT_W = byteValueLatch;
 
                WriteEEPROM(EE_PORTBVALU, byteValueLatch);
                WriteDataPort(STATUS_OK);
             }
-#endif
             else if (received == CMD_GET_FW_VER) // read firmware version
             {
                WriteDataPort(VSN_MAJ<<4|VSN_MIN);

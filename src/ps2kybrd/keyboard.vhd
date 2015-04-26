@@ -19,7 +19,10 @@ entity keyboard is
         REPEAT_OUT : out std_logic;
         BREAK_OUT  : out std_logic;
         TURBO      : out std_logic_vector(1 downto 0);
-        ESC_OUT    : out std_logic);
+        ESC_OUT    : out std_logic;
+        Joystick1  : in  std_logic_vector (7 downto 0); 
+        Joystick2  : in  std_logic_vector (7 downto 0)        
+        );
 end entity;
 
 architecture rtl of keyboard is
@@ -61,7 +64,16 @@ begin
     process(keys, ROW)
     begin
         key_data <= keys(conv_integer(ROW(3 downto 0)));
-        KEYOUT   <= key_data(5 downto 0);
+        -- 0 U R D L F
+        if (ROW = "0000") then
+            KEYOUT <= key_data(5 downto 0) and
+                ('1' & Joystick1(0) & Joystick1(3) & Joystick1(1) & Joystick1(2) & Joystick1(5));
+        elsif (ROW = "0001") then
+            KEYOUT <= key_data(5 downto 0) and
+                ('1' & Joystick2(0) & Joystick2(3) & Joystick2(1) & Joystick2(2) & Joystick2(5));
+        else
+            KEYOUT <= key_data(5 downto 0);
+        end if;
     end process;
 
     process(CLOCK, nRESET)

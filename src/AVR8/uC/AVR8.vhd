@@ -47,7 +47,8 @@ entity AVR8 is port(
 	 portc  : inout std_logic_vector(7 downto 0);
 	 portdin  : in std_logic_vector(7 downto 0);
 	 portdout  : out std_logic_vector(7 downto 0);
-	 porte  : inout std_logic_vector(7 downto 0);
+	 portein  : in std_logic_vector(7 downto 0);
+	 porteout  : out std_logic_vector(7 downto 0);
 	 portf  : inout std_logic_vector(7 downto 0);
 
 	 spi_mosio : out std_logic;
@@ -70,7 +71,7 @@ constant CImplPORTA			            : boolean := TRUE; -- set to false here for po
 constant CImplPORTB			            : boolean := TRUE;
 constant CImplPORTC							: boolean := FALSE;
 constant CImplPORTD    			         : boolean := TRUE;
-constant CImplPORTE      			      : boolean := FALSE;
+constant CImplPORTE      			      : boolean := TRUE;
 constant CImplPORTF           			: boolean := FALSE;
 constant CImplUART      			      : boolean := TRUE;	--AVR8 UART peripheral
 constant CImplSPI            				: boolean := TRUE;   -- adding SPI master
@@ -163,8 +164,8 @@ signal DDRCReg  : std_logic_vector(portc'range);
 signal PortDReg : std_logic_vector(portdin'range);
 signal DDRDReg  : std_logic_vector(portdin'range);
 
-signal PortEReg : std_logic_vector(porte'range);
-signal DDREReg  : std_logic_vector(porte'range);
+signal PortEReg : std_logic_vector(portein'range);
+signal DDREReg  : std_logic_vector(portein'range);
 
 signal PortFReg : std_logic_vector(portf'range);
 signal DDRFReg  : std_logic_vector(portf'range);
@@ -608,7 +609,7 @@ PORTE_COMP:component pport
 			            -- External connection					
 			   portx      => PortEReg,
 			   ddrx       => DDREReg,
-			   pinx       => porte,
+			   pinx       => portein,
                irqlines   => open);
 
 -- PORTE connection to the external multiplexer
@@ -621,14 +622,14 @@ io_port_out_en(7) <= porte_out_en;
 --end generate;
 
 -- Tri-state control for PORTE
-PortEZCtrl:for i in porte'range generate
-porte(i) <= PortEReg(i) when DDREReg(i)='1' else 'Z';
+PortEZCtrl:for i in porteout'range generate
+porteout(i) <= PortEReg(i) when DDREReg(i)='1' else 'Z';
 end generate;
 
 end generate;
 
 PORTE_Not_Impl:if not CImplPORTE generate
- porte <= (others => 'Z');	
+ porteout <= (others => 'Z');	
 end generate; 
 
 -- ******************  PORTF **************************		

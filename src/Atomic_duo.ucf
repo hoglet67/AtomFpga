@@ -76,15 +76,25 @@ NET RAMOEn          LOC="P26"  | IOSTANDARD=LVTTL | DRIVE=2 | SLEW=SLOW; # SRAM_
 NET ARDUINO_RESET   LOC="P139" | IOSTANDARD=LVTTL | DRIVE=2 | SLEW=SLOW; # ARDUINO_RESET
 NET SW1             LOC="P104" | IOSTANDARD=LVTTL;                       # SW1
 
+NET JOYSTICK1<0>    LOC="P134" | IOSTANDARD=LVTTL;                       # A13
+NET JOYSTICK1<1>    LOC="P132" | IOSTANDARD=LVTTL;                       # A11
+NET JOYSTICK1<2>    LOC="P127" | IOSTANDARD=LVTTL;                       # A9
+NET JOYSTICK1<3>    LOC="P126" | IOSTANDARD=LVTTL;                       # A8
+NET JOYSTICK1<4>    LOC="P123" | IOSTANDARD=LVTTL;                       # A6
+NET JOYSTICK1<5>    LOC="P133" | IOSTANDARD=LVTTL;                       # A12
+NET JOYSTICK1<6>    LOC="P131" | IOSTANDARD=LVTTL;                       # A10
+NET JOYSTICK1<7>    LOC="P124" | IOSTANDARD=LVTTL;                       # A7
+
+NET JOYSTICK2<0>    LOC="P84"  | IOSTANDARD=LVTTL;                       # D4
+NET JOYSTICK2<1>    LOC="P87"  | IOSTANDARD=LVTTL;                       # D3
+NET JOYSTICK2<2>    LOC="P92"  | IOSTANDARD=LVTTL;                       # D2
+NET JOYSTICK2<3>    LOC="P95"  | IOSTANDARD=LVTTL;                       # D1
+NET JOYSTICK2<4>    LOC="P98"  | IOSTANDARD=LVTTL;                       # D0
+NET JOYSTICK2<5>    LOC="P82"  | IOSTANDARD=LVTTL;                       # D5
+NET JOYSTICK2<6>    LOC="P80"  | IOSTANDARD=LVTTL;                       # D6
+NET JOYSTICK2<7>    LOC="P78"  | IOSTANDARD=LVTTL;                       # D7
+
 #NET SD_CD           LOC="P119" | IOSTANDARD=LVTTL;                       # A3
-#NET JOYSTICK1_5     LOC="P123" | IOSTANDARD=LVTTL;                       # A6
-#NET JOYSTICK1_9     LOC="P124" | IOSTANDARD=LVTTL;                       # A7
-#NET JOYSTICK1_4     LOC="P126" | IOSTANDARD=LVTTL;                       # A8
-#NET JOYSTICK1_3     LOC="P127" | IOSTANDARD=LVTTL;                       # A9
-#NET JOYSTICK1_7     LOC="P131" | IOSTANDARD=LVTTL;                       # A10
-#NET JOYSTICK1_2     LOC="P132" | IOSTANDARD=LVTTL;                       # A11
-#NET JOYSTICK1_6     LOC="P133" | IOSTANDARD=LVTTL;                       # A12
-#NET JOYSTICK1_1     LOC="P134" | IOSTANDARD=LVTTL;                       # A13
 #NET SW_LEFT         LOC="P111" | IOSTANDARD=LVTTL | DRIVE=2 | SLEW=SLOW; # B3
 #NET SW_UP           LOC="P105" | IOSTANDARD=LVTTL | DRIVE=2 | SLEW=SLOW; # B4
 #NET SW_DOWN         LOC="P101" | IOSTANDARD=LVTTL | DRIVE=2 | SLEW=SLOW; # B6

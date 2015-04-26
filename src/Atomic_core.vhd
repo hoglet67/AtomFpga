@@ -63,7 +63,9 @@ entity Atomic_core is
         uart_TxD  : out   std_logic;
         LED1      : out   std_logic;        
         LED2      : out   std_logic;
-        charSet   : in    std_logic
+        charSet   : in    std_logic;
+        Joystick1 : in    std_logic_vector (7 downto 0) := (others => '1'); 
+        Joystick2 : in    std_logic_vector (7 downto 0) := (others => '1')
         );
 end Atomic_core;
 
@@ -275,7 +277,10 @@ begin
         REPEAT_OUT => key_repeat,
         BREAK_OUT  => key_break,
         TURBO      => key_turbo,
-        ESC_OUT    => key_escape);
+        ESC_OUT    => key_escape,
+        Joystick1  => Joystick1,
+        Joystick2  => Joystick2
+        );
       
 ---------------------------------------------------------------------
 --  

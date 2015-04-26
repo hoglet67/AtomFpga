@@ -200,6 +200,10 @@ begin
         portdout(5)  => open,
         portdout(6)  => open,
         portdout(7)  => open,
+        
+        -- AtoMMC IO Port (Joystick)
+        portein      => (others => '1'),
+        porteout     => open,
 
         spi_mosio    => SDMOSI,
         spi_scko     => SDCLK,

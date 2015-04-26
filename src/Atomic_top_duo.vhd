@@ -52,7 +52,9 @@ entity Atomic_top_duo is
            LED2           : out   std_logic;
            charSet        : in    std_logic;
            ARDUINO_RESET  : out   std_logic;
-           SW1            : in    std_logic
+           SW1            : in    std_logic;
+           JOYSTICK1      : in    std_logic_vector (7 downto 0);
+           JOYSTICK2      : in    std_logic_vector (7 downto 0)
            );
 end Atomic_top_duo;
 
@@ -96,6 +98,8 @@ architecture behavioral of Atomic_top_duo is
     signal OSInRam    : std_logic;                     -- #C000-#FFFF in RAM
     signal ExRamBank  : std_logic_vector (1 downto 0); -- #4000-#7FFF bank select
     signal RomLatch   : std_logic_vector (3 downto 0); -- #A000-#AFFF bank select
+
+    signal ioport     : std_logic_vector (7 downto 0);
     
 begin
 
@@ -159,7 +163,9 @@ begin
         uart_TxD          => uart_TxD,
         LED1              => open,
         LED2              => open,
-        charSet           => charSet
+        charSet           => charSet,
+        Joystick1         => JOYSTICK1,
+        Joystick2         => JOYSTICK2
     );  
 
     Inst_AVR8: entity work.AVR8 port map(
@@ -196,6 +202,10 @@ begin
         portdout(6)       => open,
         portdout(7)       => open,
 
+        -- FUDLR
+        portein           => ioport,
+        porteout          => open,
+                
         spi_mosio         => SDMOSI,
         spi_scko          => SDCLK,
         spi_misoi         => SDMISO,
@@ -203,6 +213,8 @@ begin
         rxd               => avr_RxD,
         txd               => avr_TxD
     );
+    
+    ioport <= "111" & Joystick1(5) & Joystick1(0) & Joystick1(1) & Joystick1(2) & Joystick1(3);
     
     Inst_AtomPL8: entity work.AtomPL8 port map(
         clk               => clk_16M00,
