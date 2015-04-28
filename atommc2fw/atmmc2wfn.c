@@ -188,7 +188,7 @@ void wfnDirectoryRead(void)
 			// just for giggles put the attribute & filesize in the buffer
 			//
 			globalData[len+1] = filinfo->fattrib;
-			memcpy(&globalData[len+2], (void*)(filinfo->fsize), sizeof(DWORD));
+			memcpy(&globalData[len+2], (void*)&(filinfo->fsize), sizeof(DWORD));
 
 			WriteDataPort(STATUS_OK);
 			return;
