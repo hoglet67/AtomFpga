@@ -100,6 +100,10 @@ architecture behavioral of Atomic_top_duo is
     signal RomLatch   : std_logic_vector (3 downto 0); -- #A000-#AFFF bank select
 
     signal ioport     : std_logic_vector (7 downto 0);
+
+    signal pwrup_RSTn : std_logic;
+    signal reset_ctr  : std_logic_vector (7 downto 0) := (others => '0');
+
     
 begin
 
@@ -240,7 +244,7 @@ begin
         DATA              => RomDout
     );
     
-    ERSTn      <= not ERST;
+    ERSTn      <= pwrup_RSTn and not ERST;
 
     RomCE      <= '1' when ExternA(15 downto 14) = "11" and OsInRam = '0' else
                   '0';
@@ -315,6 +319,19 @@ begin
     LED2       <= not LED2n;
 
     ARDUINO_RESET <= SW1;
+
+    -- On the Duo the external reset signal is not asserted on power up
+    -- This internal counter forces power up reset to happen
+    -- This is needed by the GODIL to initialize some of the registers
+    ResetProcess : process (clk_16M00)
+    begin
+        if rising_edge(clk_16M00) then
+            if (pwrup_RSTn = '0') then
+                reset_ctr <= reset_ctr + 1;
+            end if;
+        end if;
+    end process;
+    pwrup_RSTn <= reset_ctr(7);
     
 end behavioral;
 
