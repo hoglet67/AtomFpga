@@ -126,10 +126,8 @@ architecture BEHAVIORAL of Atomic_core is
 ----------------------------------------------------
 --
 ----------------------------------------------------
-    signal via_clk           : std_logic;
     signal via4_clken        : std_logic;
     signal via1_clken        : std_logic;
-    signal cpu_phase         : std_logic_vector(1 downto 0);
     signal mc6522_data       : std_logic_vector(7 downto 0);
     signal mc6522_irq        : std_logic;
     signal mc6522_ca1        : std_logic;
@@ -305,9 +303,9 @@ begin
         I_PB    => mc6522_portb(7 downto 0),
         O_PB    => mc6522_portb(7 downto 0),
         RESET_L => RSTn,
-        I_P2_H  => cpu_phase,
+        I_P2_H  => via1_clken,
         ENA_4   => via4_clken,
-        CLK     => via_clk);                                      
+        CLK     => clk_16M00);                                      
 
     Inst_spi: if (CImplSDDOS) generate
         Inst_spi_comp : entity work.SPI_Port
@@ -455,6 +453,8 @@ begin
                     -- phi2 active on cycle 2..5, 10..13
                     cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);  -- on cycles 0, 8
                     phi <= not clken_counter(2);
+                    via1_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);
+                    via4_clken <= clken_counter(0);
                 when "10" =>
                     -- 4MHz
                     -- cpu_clken active on cycle 0, 4, 8, 12
@@ -462,6 +462,8 @@ begin
                     -- phi2 active on cycle 2..3, 6..7 10..11 14..15
                     cpu_clken <= clken_counter(0) and clken_counter(1);
                     phi <= not clken_counter(1);
+                    via1_clken <= clken_counter(0) and clken_counter(1);
+                    via4_clken <= '1';
                 when "11" =>
                     -- 8MHz
                     -- cpu_clken active on cycle 0, 2, 4, 6, 8, 10, 12, 14
@@ -474,6 +476,8 @@ begin
                     -- For now we will optimise for (2)
                     cpu_clken <= clken_counter(0);
                     phi <= clken_counter(0); -- not negated, see note above
+                    via1_clken <= clken_counter(0);
+                    via4_clken <= '1';
                 when others =>
                     -- 1MHz
                     -- cpu_clken active on cycle 0
@@ -481,16 +485,14 @@ begin
                     -- phi2 active on cycle 2..9
                     cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);
                     phi <= not clken_counter(3);
+                    via1_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);
+                    via4_clken <= clken_counter(0) and clken_counter(1);
             end case;
             -- delay by 1 cycle so address and data will be stable for 62.5ns before phi2
             phi2 <= phi;
         end if;
     end process;
-    
-    cpu_phase  <= clken_counter(3) & clken_counter(2);
-    via4_clken <= not (clken_counter(0) or clken_counter(1));
-    via_clk    <= clk_16M00;
-    
+        
     LED1 <= '0';
     LED2 <= '0';
  
