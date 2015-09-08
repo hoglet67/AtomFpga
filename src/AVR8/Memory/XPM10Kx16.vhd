@@ -11,7 +11,8 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.all;
 
 use WORK.SynthCtrlPack.all; -- Synthesis control
-use WORK.prog_mem_init_pkg.all; -- Init file for program memory.
+-- use WORK.prog_mem_init_pkg_normal.all; -- Init file for program memory (serial debugging off).
+use WORK.prog_mem_init_pkg_debug.all; -- Init file for program memory (serial debugging on).
 
 -- For Synplicity Synplify
 --library virtexe;

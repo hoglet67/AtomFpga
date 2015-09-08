@@ -17,7 +17,7 @@
 library ieee;
 use ieee.std_logic_1164;
 
-package prog_mem_init_pkg is
+package prog_mem_init_pkg_normal is
 
 -- BRAM 0 in address space [0x00000000:0x000007FF], bit lane [15:0]
 -- INST Inst_AVR8/PM_Inst/RAM_Word0 LOC = RAMB16_X0Y28;
@@ -689,4 +689,4 @@ package prog_mem_init_pkg is
 	constant Inst_AVR8_PM_Inst_RAM_Word9_INIT_3E  : bit_vector(0 to 255) := x"0000000000000000000000000000000000000000000000000000000000000000";
 	constant Inst_AVR8_PM_Inst_RAM_Word9_INIT_3F  : bit_vector(0 to 255) := x"0000000000000000000000000000000000000000000000000000000000000000";
 
-end prog_mem_init_pkg;
+end prog_mem_init_pkg_normal;
