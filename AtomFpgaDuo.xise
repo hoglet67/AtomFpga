@@ -182,7 +182,6 @@
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="105"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="78"/>
     </file>
-    <file xil_pn:name="src/AVR8/Memory/prog_mem_init.vhd" xil_pn:type="FILE_VHDL"/>
     <file xil_pn:name="src/AVR8/Memory/XDM4Kx8.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="107"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="77"/>
