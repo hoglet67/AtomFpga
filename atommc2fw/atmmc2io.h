@@ -8,6 +8,7 @@
 #define DEBUG_RESULT	0
 #define DEBUG_CMD       0
 #define DEBUG_GLOBAL    0
+#define DEBUG_MMC       0
 
 #if (PLATFORM==PLATFORM_PIC)
 
@@ -102,6 +103,7 @@ extern void redSignal(unsigned char);
 #define LatchAddressIn()			{ SelectAddr(); SetIORead(); AssertOE(); NOPDelay(); LatchedAddressLast=DATAPIN; ClearOE(); }
 #define ReadDataPort()				{ SelectData(); SetIORead(); AssertOE(); NOPDelay(); LatchedData=DATAPIN; ClearOE(); }
 #define WriteDataPort(value)		{ SelectData(); SetIOWrite(); DATAPORT=value; AssertLE(); ClearLE(); }	
+
 #define AddressPORT	
 
 #define WASWRITE		((LatchedAddressLast & AtomRWMask)==0) 

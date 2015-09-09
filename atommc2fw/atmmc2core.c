@@ -73,6 +73,9 @@ void at_process(void)
          {
 			ReadDataPort();
             received = LatchedData;
+#if (DEBUG_CMD)
+	    log0("AVR CMD=0x%02x\n", received);
+#endif
 	    // File Group 0x10-0x17, 0x30-0x37, 0x50-0x57, 0x70-0x77
 	    // filenum = bits 6,5
 	    // mask1 = 10011000 (test for file group command)

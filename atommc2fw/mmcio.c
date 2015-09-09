@@ -162,11 +162,17 @@ BYTE send_cmd (
    argbroke;
    argbroke.d = arg;
 
+
    if (cmd & 0x80) { /* ACMD<n> is the command sequense of CMD55-CMD<n> */
       cmd &= 0x7F;
       res = send_cmd(CMD55, 0);
-      if (res > 1) return res;
+      if (res > 1) {
+	return res;
+      }
    }
+#if DEBUG_MMC
+   log0("send_cmd cmd=0x%02x, arg=0x%08lx\n", cmd, arg); 
+#endif
 
    /* Select the card */
    DESELECT();
@@ -190,6 +196,10 @@ BYTE send_cmd (
    do {
       res = XFER_SPI(0xff);
    } while ((res & 0x80) && --n);
+
+#if DEBUG_MMC
+   log0("send_cmd ret=0x%02x\n", res); 
+#endif
 
    return res;       /* Return with the response value */
 }
@@ -224,6 +234,9 @@ DSTATUS mmc_initialize (void)
    BYTE n, cmd, ty, ocr[4];
    WORD tmr;
 
+#if DEBUG_MMC
+   log0("mmc_initialize\n");
+#endif
    GREENLEDON();
 
    INIT_SPI();
@@ -253,6 +266,9 @@ DSTATUS mmc_initialize (void)
                /* Check CCS bit in the OCR */
                for (n = 0; n < 4; n++) ocr[n] = XFER_SPI(0xff);
                ty = (ocr[0] & 0x40) ? CT_SD2 | CT_BLOCK : CT_SD2; /* SDv2 (HC or SC) */
+#if DEBUG_MMC
+	       log0("detected SDv2\n");
+#endif
             }
          }
       }
@@ -261,16 +277,25 @@ DSTATUS mmc_initialize (void)
          if (send_cmd(ACMD41, 0) <= 1)
          {
             ty = CT_SD1; cmd = ACMD41; /* SDv1 */
+#if DEBUG_MMC
+	    log0("detected SDv1\n");
+#endif
          }
          else
          {
             ty = CT_MMC; cmd = CMD1;   /* MMCv3 */
+#if DEBUG_MMC
+	    log0("detected MMCv3\n");
+#endif
          }
          for (tmr = 25000; tmr && send_cmd(cmd, 0); tmr--) ;   /* Wait for leaving idle state */
 
          if (!tmr || send_cmd(CMD16, 512) != 0)       /* Set R/W block length to 512 */
          {
             ty = 0;
+#if DEBUG_MMC
+	    log0("Failed to set R/W block length to 512\n");
+#endif
          }
       }
    }
@@ -279,6 +304,9 @@ DSTATUS mmc_initialize (void)
 
    GREENLEDOFF();
 
+#if DEBUG_MMC
+   log0("mmc_initialize set CardType to 0x%02x\n", CardType);
+#endif
    return ty ? 0 : STA_NOINIT;
 }
 
