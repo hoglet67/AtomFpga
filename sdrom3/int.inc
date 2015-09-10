@@ -1715,7 +1715,7 @@ dhelp:
 				JSR chk_end_command
                 JSR OSCRLF 
                 JSR prttxt                      ; Print header
-                .byte 	"SDDOS V3.26 [TURBO]  (C)KC 2015"
+                .byte 	"SDDOS V3.27 [TURBO]  (C)KC 2015"
 .ifdef AVR
 				.byte	" AVR"
 .endif
