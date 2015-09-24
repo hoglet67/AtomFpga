@@ -88,8 +88,7 @@ LFD29:  cmp     #$20		; Is the character a control code ?
         adc     #$1F		; )
         bmi     LFD33		; )
         eor     #$60		; ) Convert to screen character
-LFD33:  jsr     LFE6B		; Wait for the next or current flyback
-        sta     ($DE),y		; Store character at current print position
+LFD33:  sta     ($DE),y		; Store character at current print position
 LFD38:  iny			; Increment cursor position
         cpy     #NUMCOLS	; Reached end of the current print line ?
         bcc     LFD42		; ..no, update cursor position and invert
@@ -109,7 +108,13 @@ LFD42:  sty     $E0		; Update current cursor position register
 ;    ?#E1.
 ;  - A, X, Y registers preserved.
 
-LFD44:	jmp	 $fd44
+LFD44:	
+        pha                     ; Save character in accumulator
+        lda ($DE),Y             ; Get character at current print position
+        eor $E1                 ; Mask it
+        sta ($DE),Y             ; ..and return it to the screen
+        pla                     ; Restore character to accumulator
+        rts
 
 ;    Handle <DEL> subroutine
 ;    -----------------------
@@ -117,7 +122,6 @@ LFD44:	jmp	 $fd44
 LFD50:  jsr     LFE35		; Move cursor back one position if possible, otherwise 
 				; invert character at current cursor position and return
         lda     #$20		; Get <SPC>
-        jsr     LFE6B		; Wait for the next or current flyback
         sta     ($DE),y		; Blank character at previous cursor pos'n
         bpl     LFD42		; Update cursor position and invert cursor
 
@@ -236,12 +240,10 @@ LFE08:  ldy     #NUMCOLS	; Shift screen up 32 characters = 1 line
 ;  
 ;  - For every #20 in Y a top line of the screen is not scrolled.
 
-        jsr     LFE66		; Wait for the start of the next flyback
 LFE0D:  lda     SCREEN,y	; Get byte from upper text page
         sta     SCREEN-NUMCOLS,y		; ..and store it a line higher
         iny			; Point to next screen byte
         bne     LFE0D		; ..and shift up all the upper text page
-        jsr     LFE6B		; Wait for the next or current flyback
 LFE19:  lda     SCREEN+$100,y		; Get byte from lower text page
         sta     SCREEN+$100-NUMCOLS,y		; ..and store it a line higher
         iny			; Point to next screen byte
