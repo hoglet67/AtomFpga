@@ -85,9 +85,16 @@ LFD1A:	jmp	$fd1a
 
 LFD29:  cmp     #$20		; Is the character a control code ?
         bcc     LFD44		; ..yes, so don't print it
-        adc     #$1F		; )
-        bmi     LFD33		; )
-        eor     #$60		; ) Convert to screen character
+
+;        adc     #$1F		; )
+;        bmi     LFD33		; )
+;        eor     #$60		; ) Convert to screen character
+
+	 cmp     #$40
+	 bcc     LFD33
+	 sbc	 #$20
+	 and	 #$5f
+
 LFD33:  sta     ($DE),y		; Store character at current print position
 LFD38:  iny			; Increment cursor position
         cpy     #NUMCOLS	; Reached end of the current print line ?
