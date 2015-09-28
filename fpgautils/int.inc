@@ -3,7 +3,7 @@
 ; #Axxx command interpreter
 ;=================================================================
 
-.DEFINE NAME_VERSION    "FPGA UTILS V0.23"
+.DEFINE NAME_VERSION    "FPGA UTILS V0.24"
 
 ;=================================================================
 ; Constant DECLARATION
@@ -102,7 +102,6 @@ LFE71 = $FE71
 ; Keyboard Control Code Handlers
 ; use Kernel for all except cursor handling (FDA2)
 LFD9A = $FD9A
-LFDAE = $FDAE
 LFDC0 = $FDC0
 LFDC2 = $FDC2
 LFDC6 = $FDC6
