@@ -3,13 +3,15 @@
 ; #Axxx command interpreter
 ;=================================================================
 
-.DEFINE NAME_VERSION    "FPGA UTILS V0.25/RL"
+.DEFINE NAME_VERSION    "FPGA UTILS V0.26"
 
 ;=================================================================
 ; Constant DECLARATION
 ;=================================================================
 
-CLOCK		= 16000000
+; Value now correct for the new atom
+; It will be incorrect for AtomFpga, but we should try to fix that
+CLOCK		= 32000000
 
 ;=================================================================
 ; VARIABLE DECLARATION
