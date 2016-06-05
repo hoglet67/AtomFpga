@@ -39,12 +39,12 @@ cat blankshort.rom >> ${ROM}
 
 cat abasic.rom >> ${ROM}
 cat afloat_patched.rom >> ${ROM}
-cat atommc2${AVR}.rom >> ${ROM}
+cat atommc3${AVR}.rom >> ${ROM}
 cat akernel_patched.rom >> ${ROM}
 
 cat abasic.rom >> ${ROM}
 cat afloat_patched.rom >> ${ROM}
-cat atommc2${AVR}.rom >> ${ROM}
+cat atommc3${AVR}.rom >> ${ROM}
 cat akernel_patched.rom >> ${ROM}
 
 cat blank.rom >> ${ROM}
