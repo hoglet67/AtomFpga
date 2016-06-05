@@ -5,7 +5,8 @@
 ;----------------------------------------------
 	.DEFINE asm_code $A000
 	.DEFINE header   0		; Header Atomulator
-	.DEFINE filenaam "DEMOROM"
+	.DEFINE Atom15k  1      ; Assemble for Atom15k or for AtomFpga
+	.DEFINE filenaam "FPGAUTIL.ROM"
 
 .org asm_code-22*header
 
@@ -33,13 +34,18 @@ start_asm:
 	.include "int.inc"
 	.include "fastCRC.inc"
 	.include "serial.inc"
+	.include "fpgahelp.inc"
+	.include "constants.inc"
+    .include "man.inc"
+	
+.IF Atom15k
+	.include "vga80.inc"
+.ELSE
+	.include "roms.inc"
 	.include "flash.inc"
 	.include "beeb.inc"
-	.include "fpgahelp.inc"
-	.include "roms.inc"
-	.include "vga80.inc"
-
-.data
+	.include "vga80tiny.inc"
+.ENDIF
 	
 	.byte <sinout, >sinout	
 	

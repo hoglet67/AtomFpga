@@ -1,25 +1,24 @@
-        GODIL = $BDE0
-
-        ModeExtension = GODIL + 0
-        CursorCol = GODIL + 2
-        CursorRow = GODIL + 3
-        VgaCtrl = GODIL + 4
-
-
 vga80:
         LDA    #<wrch80
-        STA     wrcvec
+        STA     WRCVEC
         LDA    #>wrch80
-        STA     wrcvec+1
+        STA     WRCVEC+1
         LDA    #<rdch80
-        STA     rdcvec
+        STA     RDCVEC
         LDA    #>rdch80
-        STA     rdcvec+1
+        STA     RDCVEC+1
 
+        LDA     #0
+        STA     ctrlcode
+        STA     quelen
         LDA     #$80
         STA     ModeExtension
-        LDA     #$B2
+        LDA     #$BA
         STA     VgaCtrl
+        LDA     #DefaultAttrib
+        STA     attrib
+        JSR     exevdu26
+vga80l1:
         LDA     #12
         JMP     $FFF4
 
@@ -35,8 +34,56 @@ vga80:
 ;      0    6    7   8   9   #A  #B  #C  #D  #E  #F  #15  #1B
 
         ; TEST FOR CONTROL CODES
+LFCEA:          ldx     quelen          ; check if queue should be filled
+                beq     notque          ; no, continue with printing
+                sta     queue,x         ; store in queue (stores in backward direction, so last param is first in queue!)
+                dec     quelen          ; decrement queue counter       
+                beq     exequete        ; queue is full, execute the command
+                rts                     ; otherwise end routine
 
-LFCEA:  cmp     #$06            ; Is it <ACK> ?
+exequete:       lda     ctrlcode        ; load the code to execute
+                cmp     #31             ; is it 31,x,y (goto x,y)
+                bne     exe1            ; no, test next
+                jmp     exevdu31
+exe1:           cmp     #17             ; is it 17,c (colour c)
+                bne     exe2            ; no, test next
+                jmp     exevdu17
+exe2:           cmp     #28             ; is it 28,x,y,h,w (define text window)
+                bne     exe3            ; no, next test
+                jmp     exevdu28        
+exe3:           cmp     #22             ; is it 22,m (set graphics mode)
+                bne     exe4            ; no, next test
+                jmp     exevdu22        
+exe4:           cmp     #25             ; is it 25,m,x,y (plot command)
+                bne     exe5            ; no, next test
+                jmp     exevdu25        
+exe5:           cmp     #18             ; is it 18,m,c (set graphics colour)
+                bne     exe6
+                jmp     exevdu18
+exe6:           lda     #0              ; no code? strange
+                sta     ctrlcode        ; clear queue
+                rts                     ; end routine
+                
+notque:         cmp     #22             ; is it vdu 22
+                beq     q17             ; why not? It's also 1 byte queue length :-)
+                cmp     #25             ; is it vdu 25
+                beq     q25
+                cmp     #31             ; is it vdu 31
+                beq     q31
+                cmp     #17             ; is it vdu 17
+                beq     q17
+                cmp     #18             ; is it vdu 18
+                beq     q31             ; also two parameter bytes
+                cmp     #28             ; is it vdu 28
+                beq     q28
+                cmp     #26             ; is it vdu 26
+                bne     t16
+                jmp     exevdu26
+t16:            cmp     #16
+                bne     t06
+                jmp     exevdu16
+
+t06:    cmp     #$06            ; Is it <ACK> ?
         beq     LFD0B           ; ..yes, reset the 6847 VDG to alphanumeric
                                 ; mode and clear the NAK flag
         cmp     #$15            ; Is it <NAK> ?
@@ -54,6 +101,27 @@ LFCEA:  cmp     #$06            ; Is it <ACK> ?
                                 ; so print it if >#1F, otherwise return
         jmp     LFEB7           ; ..executable control code - get the code's
                                 ; execution address and jump to it
+
+;               initialize the vdu queues
+q25:            sta     ctrlcode        ; save the code
+                lda     #5              ; load queue length
+                bne     setquelen       ; set queue length and continue
+
+q28:            sta     ctrlcode        ; could be the start of text window code
+                lda     #4
+                bne     setquelen       ; set number of parameters
+
+q31:            sta     ctrlcode
+                lda     #2              ; number of parameters
+                bne     setquelen
+
+q17:            sta     ctrlcode
+                lda     #1
+setquelen:      sta     quelen
+                lda     ctrlcode
+                rts
+
+
 
 ;    Handle <ESC> subroutine
 ;    -----------------------
@@ -105,6 +173,27 @@ LFD29:  cmp     #$20            ; Is the character a control code ?
          and     #$5f
 
 LFD33:  sta     ($DE),y         ; Store character at current print position
+
+        ; set character attribute
+        pha
+        clc
+        lda     $de             ; add 3200 to character positions
+        pha
+        adc     #<3200
+        sta     $de
+        lda     $df
+        pha
+        adc     #>3200
+        sta     $df
+        lda     attrib
+        sta     ($de),y
+        pla     
+        sta     $df
+        pla     
+        sta     $de
+        pla
+
+
 LFD38:  iny                     ; Increment cursor position
         cpy     #NUMCOLS        ; Reached end of the current print line ?
         bcc     LFD42           ; ..no, update cursor position and invert
@@ -173,10 +262,10 @@ LFD69:  ldy     #$80            ;
         sty     $E1             ; Set the cursor mask to default
         ldy     #$00            ; Clear screen memory index
         sty     $B000           ; Set 6847 VDG to alphanumeric mode
+        lda     #$80            ; set Godil to VGA80
+        sta     ModeExtension
         lda     #$20            ; Get <SPC>
-LFD74:  sta     SCREEN,y        ; Clear byte of upper page of screen
-        sta     SCREEN+$100,y   ; Clear byte of lower page of screen
-        jsr     CLEARMORE
+LFD74:  jsr     CLEARMORE
         iny                     ; Point to the next byte
         bne     LFD74           ; ..and clear both complete pages
 
@@ -394,12 +483,10 @@ LFE08:  ldy     #NUMCOLS        ; Shift screen up 32 characters = 1 line
 
 LFE0D:  lda     SCREEN,y        ; Get byte from upper text page
         sta     SCREEN-NUMCOLS,y                ; ..and store it a line higher
+        lda     SCREEN+$C80,y                   ; scroll attribute
+        sta     SCREEN+$C80-NUMCOLS,y
         iny                     ; Point to next screen byte
         bne     LFE0D           ; ..and shift up all the upper text page
-LFE19:  lda     SCREEN+$100,y           ; Get byte from lower text page
-        sta     SCREEN+$100-NUMCOLS,y           ; ..and store it a line higher
-        iny                     ; Point to next screen byte
-        bne     LFE19           ; ..and shift up all the lower text page
         JSR     SCROLLMORE
 
 ;    Delete Current Line subroutine
@@ -412,6 +499,12 @@ LFE19:  lda     SCREEN+$100,y           ; Get byte from lower text page
 LFE26:  sta     ($DE),y         ; Clear the character to black
         dey                     ; Point to the next character
         bpl     LFE26           ; ..and clear the entire print line
+        
+        ldy     #NUMCOLS-1      ; Set character pointer to end of line
+        lda     attrib          ; Get attribute
+LFE26a: sta     $98B0,y         ; Set the current attribute
+        dey                     ; Point to the next character
+        bpl     LFE26a          ; ..and clear the entire print line        
         rts                     ;
 
 ;    Add One Line to the Cursor Position subroutine
@@ -472,7 +565,9 @@ LFE51:  rts                     ;
 ;
 ;  - Preserves all registers.
 
-wrch80: jsr     LFEFB           ; Send character in accumulator to the VIA
+wrch80: 
+        ; jsr     LFEFB           ; Send character in accumulator to the VIA, disabled, see http://stardot.org.uk/forums/viewtopic.php?p=135913#p135912
+        
 
 ;    Send Character to Screen subroutine
 ;    -----------------------------------
@@ -549,6 +644,15 @@ LFEC5:  cmp     LFECB, x        ; Is it this control code ?
         bcc     LFEC4           ; ..no, table value too large - try the next code
         rts                     ;
 
+LKEY0:  php
+        bit     $b001
+        bmi     LKEY1
+        lda     #63
+LKEY1:  plp
+        jmp     LFDDF
+
+
+
 ;    WRCHAR Control Code Data Lookup Table
 ;    -------------------------------------
 
@@ -587,7 +691,7 @@ tablelo:
         .byte <LFDE2            ;
         .byte <copy             ; handle COPY
         .byte <LFDC0            ; handle DEL
-        .byte <LFDDF            ;
+        .byte <LKEY0            ; handle key 0 (was LFDDF)
         .byte <LFDD8            ;
         .byte <LFDD6            ;
         .byte <LFDC8            ;
@@ -622,7 +726,7 @@ tablehi:
         .byte >LFDE2            ;
         .byte >copy             ; handle COPY
         .byte >LFDC0            ; handle DEL
-        .byte >LFDDF            ;
+        .byte >LKEY0            ; handle key 0 (was LFDDF)
         .byte >LFDD8            ;
         .byte >LFDD6            ;
         .byte >LFDC8            ;
@@ -631,76 +735,459 @@ tablehi:
 
 
 CLEARMORE:
-        sta     SCREEN+$200,Y
-        sta     SCREEN+$300,Y
-        sta     SCREEN+$400,Y
-        sta     SCREEN+$500,Y
-        sta     SCREEN+$600,Y
-        sta     SCREEN+$700,Y
-        sta     SCREEN+$800,Y
-        sta     SCREEN+$900,Y
-        sta     SCREEN+$a00,Y
-        sta     SCREEN+$b00,Y
-        sta     SCREEN+$c00,Y
+        sta     SCREEN+$000,y
+        sta     SCREEN+$100,y
+        sta     SCREEN+$200,y
+        sta     SCREEN+$300,y
+        sta     SCREEN+$400,y
+        sta     SCREEN+$500,y
+        sta     SCREEN+$600,y
+        sta     SCREEN+$700,y
+        sta     SCREEN+$800,y
+        sta     SCREEN+$900,y
+        sta     SCREEN+$a00,y
+        sta     SCREEN+$b00,y
+        cpy     #$80
+        bpl     CLEARATTR
+        sta     SCREEN+$c00,y
+
+CLEARATTR:
+        lda     attrib          ; set attribute 
+        sta     SCREEN+$000+$C80,y
+        sta     SCREEN+$100+$C80,y
+        sta     SCREEN+$200+$C80,y
+        sta     SCREEN+$300+$C80,y
+        sta     SCREEN+$400+$C80,y
+        sta     SCREEN+$500+$C80,y
+        sta     SCREEN+$600+$C80,y
+        sta     SCREEN+$700+$C80,y
+        sta     SCREEN+$800+$C80,y
+        sta     SCREEN+$900+$C80,y
+        sta     SCREEN+$a00+$C80,y
+        sta     SCREEN+$b00+$C80,y
+        cpy     #$80
+        bpl     CLEAREND
+        sta     SCREEN+$c00+$C80,y
+CLEAREND:
+        lda     #$20
         rts
 
 
 SCROLLMORE:
 
+LFDF29:
+        LDA     SCREEN+$100,Y
+        STA     SCREEN+$100-NUMCOLS,Y
+        LDA     SCREEN+$100+$C80,Y
+        STA     SCREEN+$100+$C80-NUMCOLS,Y
+        INY
+        BNE     LFDF29
 LFDF2A:
         LDA     SCREEN+$200,Y
         STA     SCREEN+$200-NUMCOLS,Y
+        LDA     SCREEN+$200+$C80,Y
+        STA     SCREEN+$200+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2A
 LFDF2B:
         LDA     SCREEN+$300,Y
         STA     SCREEN+$300-NUMCOLS,Y
+        LDA     SCREEN+$300+$C80,Y
+        STA     SCREEN+$300+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2B
 LFDF2C:
         LDA     SCREEN+$400,Y
         STA     SCREEN+$400-NUMCOLS,Y
+        LDA     SCREEN+$400+$C80,Y
+        STA     SCREEN+$400+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2C
 LFDF2D:
         LDA     SCREEN+$500,Y
         STA     SCREEN+$500-NUMCOLS,Y
+        LDA     SCREEN+$500+$C80,Y
+        STA     SCREEN+$500+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2D
 LFDF2E:
         LDA     SCREEN+$600,Y
         STA     SCREEN+$600-NUMCOLS,Y
+        LDA     SCREEN+$600+$C80,Y
+        STA     SCREEN+$600+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2E
 LFDF2F:
         LDA     SCREEN+$700,Y
         STA     SCREEN+$700-NUMCOLS,Y
+        LDA     SCREEN+$700+$C80,Y
+        STA     SCREEN+$700+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2F
 LFDF2G:
         LDA     SCREEN+$800,Y
         STA     SCREEN+$800-NUMCOLS,Y
+        LDA     SCREEN+$800+$C80,Y
+        STA     SCREEN+$800+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2G
 LFDF2H:
         LDA     SCREEN+$900,Y
         STA     SCREEN+$900-NUMCOLS,Y
+        LDA     SCREEN+$900+$C80,Y
+        STA     SCREEN+$900+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2H
 LFDF2I:
         LDA     SCREEN+$a00,Y
         STA     SCREEN+$a00-NUMCOLS,Y
+        LDA     SCREEN+$a00+$C80,Y
+        STA     SCREEN+$a00+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2I
 LFDF2J:
         LDA     SCREEN+$b00,Y
         STA     SCREEN+$b00-NUMCOLS,Y
+        LDA     SCREEN+$b00+$C80,Y
+        STA     SCREEN+$b00+$C80-NUMCOLS,Y
         INY
         BNE     LFDF2J
 LFDF2K:
         LDA     SCREEN+$c00,Y
         STA     SCREEN+$c00-NUMCOLS,Y
+        LDA     SCREEN+$c00+$C80,Y
+        STA     SCREEN+$c00+$C80-NUMCOLS,Y
         INY
-        BNE     LFDF2K
+        BPL     LFDF2K
 
         RTS
+
+;               Execute the extended VDU codes
+
+; set cursor position to x (queue+2) , y (queue+1)
+exevdu31:       ldy     #0              ; cursor off at old position
+                lda     ($de),y
+                and     #$7f
+                sta     ($de),y         
+                lda     #$80            ; cursor position to y
+                sta     $df
+                lda     #$00
+                sta     $de
+                ldy     queue+1
+                beq     vdu31l2         ; jump if y=0 (upper row)
+vdu31l1:        clc
+                lda     $de
+                adc     #NUMCOLS
+                sta     $de
+                lda     $df
+                adc     #0
+                sta     $df
+                dey
+                bne     vdu31l1
+vdu31l2:        lda     queue+2         ; cursor position to x
+                sta     $e0
+                ; jsr     lfd44         ; invert char at current cursor position
+                rts
+
+exevdu17:       ; set foreground colour, actual setting of attribute should be handled by print routine
+                lda     queue+1         ; load the colour
+                sta     attrib          ; store in memory
+                rts                     ; end
+
+
+exevdu16:       ; clear text window
+                lda     $de             ; save workspace addresses
+                pha
+                lda     $df
+                pha
+                lda     $e0
+                pha
+                lda     $e1
+                pha
+                lda     #$00            ; calculate start address of topY
+                sta     queue
+                lda     #$80
+                sta     queue+1
+                ldy     topY            ; load counter
+vdu16l1:        clc
+                lda     queue
+                adc     #NUMCOLS
+                sta     queue
+                lda     queue+1
+                adc     #0
+                sta     queue+1
+                dey
+                bne     vdu16l1
+                ; now queue, queue+1 contains first address of line     
+                ; just fill this area with spaces from left to right
+                ; for the correct number of lines
+                ldx     topY
+vdu16l2:        lda     queue
+                sta     $9e
+                clc
+                adc     #<3200
+                sta     $a0
+                lda     queue+1
+                sta     $9f
+                adc     #>3200
+                sta     $a1
+                ldy     leftX
+vdu16l3:        lda     #32             ; clear character
+                sta     ($9e),y
+                lda     attrib          ; set background attrib
+                sta     ($a0),y         
+                iny
+                cpy     rightX
+                bcc     vdu16l3         ; branch if smaller
+                beq     vdu16l3         ; branch if equal
+                clc
+                lda     queue           ; increment row
+                adc     #NUMCOLS
+                sta     queue
+                lda     queue+1
+                adc     #0
+                sta     queue+1
+                inx
+                cpx     bottomY
+                bcc     vdu16l2
+                beq     vdu16l2
+                pla
+                sta     $e1
+                pla
+                sta     $e0
+                pla
+                sta     $df
+                pla
+                sta     $de
+                rts
+
+
+exevdu26:       ; reset text window
+                lda     #0
+                sta     leftX
+                sta     topY
+                lda     #79
+                sta     rightX
+                lda     #39
+                sta     bottomY
+                rts
+
+exevdu28:       ; set textwindow (VDU 28,leftX,bottomY,rightX,topY)
+                ldx     #4
+vdu28l1:        lda     queue,x
+                sta     topY-1,x
+                dex
+                bne     vdu28l1
+                rts
+
+exevdu22:       ldy     #0              ; reset y register
+                lda     queue+1         ; load mode
+                sta     $52             ; save graphics mode
+                beq     LF6C2           ; clear 0
+                cmp		#8				; mode 8 tweak (dumped by Z80 Tube client)
+                bne		notmode8
+                lda		#7				; if mode = 8 then mode = 7
+notmode8:       cmp     #7              ; mode 7 (VGA80)
+                bne     LF684
+mode7:          jmp     LFD69           ; clear the screen and end
+LF684:          cmp     #5              ; test for mode > 4
+                bcc     LF68A
+                lda     #4              ; force mode 4
+LF68A:          ldx     #$80            ; reset x register
+                stx     $54             ; set pointer to start of video memory
+                sty     $53
+                tax                     ; load pointer to end of video memory
+                lda     $F6CE,x
+                tax
+                tya                     ; reset accu
+LF6A0:          sta     ($53),y         ; reset video memory
+                dey                     ; decrement index
+                bne     LF6A0
+                inc     $54             ; increment hi byte video pointer
+                cpx     $54             ; test for end of memory
+                bne     LF6A0
+LF6AB:          ldy     $52             ; load video mode
+                lda     $F6D8,y         ; set plot vector
+                sta     $03FF
+                lda     $F6D3,y
+                sta     $03FE
+                lda     $F6DD,y         ; set video controller
+                sta     $B000
+                lda     #$00            ; set Godil
+                sta     ModeExtension
+                rts
+LF6C2:          lda     #$40            ; clear video memory for mode 0
+LF6C4:          sta     $8000,y
+                sta     $8100,y
+                dey
+                bne     LF6C4
+                beq     LF6AB
+
+
+exevdu18:       lda     queue+2         ; load mode (I use it for palette)
+                bne     palette1        ; jmp if non-zero (i.e. palette 1)
+                lda     $B002           ; load current video controller setting
+                and     #$F7            ; reset bit 4
+                jmp     palette2        ; continue
+palette1:       lda     $B002           ; same procedure to set bit 4
+                ora     #$08
+palette2:       sta     $B002           ; write to video controller setting
+LDF05:          lda     queue+1         ; load colour number
+                and     #$03            ; use only lower two bits
+                tay                     ; transfer to Y reg
+                lda     $DF4E,y         ; read colour byte pixel mask
+                sta     $3FD            ; store in workspace
+                lda     $B000           ; load video mode setting
+                and     #$F0            ; mask lower bits
+                cmp     #$70            ; test for mode (clear) 1
+                bne     LDF25           ; jump if not
+                lda     #$00            ; reset accu
+                tay                     ; transfer to index
+LDF1C:          sta     $8600,y         ; clear additional video memory
+                sta     $8700,y
+                dey                     ; decrement pointer
+                bne     LDF1C           ; jump if not all cleared
+LDF25:          lda     $B000           ; reload video mode setting
+                and     #$DF            ; change mode to colour
+                sta     $B000
+                rol     a               ; determine current video mode
+                rol     a
+                rol     a
+                and     #$03            ; only lower two bits are needed
+                tay                     ; transfer to index
+                lda     $DF42,y         ; read low byte of new plot vector
+                sta     $3FE            ; store in workspace
+                lda     $DF46,y         ; read high byte of new plot vector
+                sta     $3FF            ; store in workspace
+                rts                     ; that's it, end of routine
+
+exevdu25:       
+                lda     queue+1         ; copy coordinates
+                sta     $5D             ; set in zeropage/workspace
+                lda     queue+2         ; copy coordinates
+                sta     $5C             ; set in zeropage/workspace
+                lda     queue+3         ; copy coordinates
+                sta     $5B             ; set in zeropage/workspace
+                lda     queue+4         ; copy coordinates
+                sta     $5A             ; set in zeropage/workspace
+                lda     queue+5         ; set plot mode
+                sta     $5E
+                
+                ldx     #3              ; load pointer
+LF576:          lda     $03C1,x         ; load previous coordinate
+                sta     $52,x           ; copy to zeropage/workspace
+                dex
+                bpl     LF576
+                lda     $5E             ; load plot mode
+                and     #4              ; test absolute/relative
+                bne     LF597           ; jmp if absolute
+                ldx     #2              ; calculate relative coordinates
+LF586:          clc
+                lda     $5A,x
+                adc     $52,x
+                sta     $5A,x
+                lda     $5B,x
+                adc     $53,x
+                sta     $5B,x
+                dex
+                dex
+                bpl     LF586
+LF597:          ldx     #3              ; load new index
+LF599:          lda     $5A,x           ; save new coordinates
+                sta     $03C1,x
+                dex
+                bpl     LF599
+                lda     $5E             ; load plot mode
+                and     #3              ; test for move mode
+                beq     LF5B2           ; if move then done
+                sta     $5E             ; save the result of the test
+                lda     queue+5         ; load the plot mode
+                and     #8              ; test plot mode
+                beq     LF5B5           ; jmp if draw mode
+                jsr     $F678           ; plot the pixel
+LF5B2:          rts                     ; end of routine
+        
+
+LF5B5:          ldx     #2              ; load x reg as index
+LF5B7:          sec                     ; set carry for subtraction
+                lda     $5A,x           ; load low byte of new coordinate
+                sbc     $52,x           ; subtract low byte of previous coordinate
+                ldy     $52,x           ; load low byte of previous coordinate
+                sty     $5A,x           ; set as first plot coordinate
+                sta     $52,x           ; set length of plot coordinate
+                ldy     $53,x           
+                lda     $5B,x           ; same procedure for high byte
+                sbc     $53,x
+                sty     $5B,x
+                sta     $53,x
+                sta     $56,x
+                bpl     LF5DD           ; jump on positive length of plot
+                lda     #0              ; reset accu
+                sec                     ; set carry for subtraction
+                sbc     $52,x           ; subtract negative value
+                sta     $52,x           ; write positive value back
+                lda     #0              ; same for high byte
+                sbc     $53,x
+                sta     $53,x
+LF5DD:          dex                     ; decrement index
+                dex
+                bpl     LF5B7
+
+LF5E1:          lda     $54             ; load low byte y coordinate
+                cmp     $52             ; compare with low byte x
+                lda     $55             ; load high byte y 
+                sbc     $53             ; subtract from high byte x
+                bcc     LF61C           ; jump if x is larger
+
+LF5EB:          lda     #0              ; reset accu
+                sbc     $54             ; subtract low byte y coordinate
+                sta     $57             ; store negative value in pointer
+                lda     #0              ; reset accu
+                sbc     $55             ; subtract high byte y coordinate
+                sec                     ; set carry for division
+                ror     a               ; divide by 2
+                sta     $59             ; set negative value in pointer
+                ror     $57             ; divide low byte of pointer by 2
+LF5FB:          jsr     $F678           ; plot a pixel
+                lda     $5C             ; load low byte of plotted pixel y coordinate
+                cmp     $03C3           ; compare with end value
+                bne     LF60F           ; if not equal then continue
+                lda     $5D             ; same for high byte
+                cmp     $03C4
+                bne     LF60F
+LF60C:          jmp     LF5B2           ; end of routine
+LF60F:          jsr     $F655           ; adjust test pointer and y coordinate
+                lda     $59             ; load high byte of test pointer
+                bmi     LF5FB           ; if negative, don't change x coordinate
+                jsr     $F644           ; adjust test pointer and x coordinate
+                jmp     LF5FB           ; plot the coordinate
+
+LF61C:          lda     $53             ; divide x coordinate by 2
+                lsr     a
+                sta     $59             ; store in pointer
+                lda     $52
+                ror     a
+                sta     $57
+LF626:          jsr     $F678           ; plot pixel
+                lda     $5A             ; load low byte plotted x coordinate
+                cmp     $03C1           ; compare to end value
+                bne     LF637
+                lda     $5B             ; load high byte plotted x coordinate
+                cmp     $03C2
+                beq     LF60C           ; end of routine
+LF637:          jsr     $F644           ; adjust test pointer x coordinate
+                lda     $59             ; load high byte of testbyte
+                bpl     LF626           ; if pointer still positive then plot next
+                jsr     $F655           ; adjust test pointer y coordinate
+                jmp     LF626
+
+vga32:
+                LDY     #3
+vga32l1:        LDA     $FF9E,Y
+                STA     WRCVEC,Y
+                DEY
+                BPL     vga32l1
+                LDA     #$00
+                STA     ModeExtension
+                STA     VgaCtrl
+                JMP     vga80l1

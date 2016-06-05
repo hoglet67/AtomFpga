@@ -3,7 +3,7 @@
 ; #Axxx command interpreter
 ;=================================================================
 
-.DEFINE NAME_VERSION    "FPGA UTILS V0.24"
+.DEFINE NAME_VERSION    "FPGA UTILS V0.25/RL"
 
 ;=================================================================
 ; Constant DECLARATION
@@ -15,7 +15,9 @@ CLOCK		= 16000000
 ; VARIABLE DECLARATION
 ;=================================================================
 
-stackpointer	= $4		; Standard Atom address
+stackpointer	= $4           ; Standard Atom address
+cmdpointer     = $5           ; Standard Atom address to statement pointer
+cmdindex       = $3           ; Standard Atom address with statement index
 stack1		= $16
 stack2		= $25
 stack3		= $34
@@ -23,8 +25,9 @@ stack4		= $43
 tmp_ptr3	= $D5
 tmp_ptr5	= $D6
 tmp_ptr6	= $D7
-cursor_hpos     = $E0		; Cursor horizontal position
+cursor_hpos    = $E0		; Cursor horizontal position
 shadowl     	= $FD		; Shadow ROM Latch
+pmflag         = $E6
 
 
 ; Used by FLASH command
@@ -32,14 +35,18 @@ src         	= $80
 dst         	= $82
 bank        	= $84
 
-; Used by UPLOAD/DNLOAD/CRC commands
+; Used by UPLOAD/DNLOAD/CRC commands (also abused by MAN command)
 
-start           = $80
+start          = $80
 mem         	= $82
-ptr		= $84
+attribSave     = $83
+ptr            = $84
+pmsave		= $85
 mycrc         	= $86
 fcrc	    	= $88
 tmpa        	= $8a
+GodilFlag	= $8e
+ScreenWidth	= $8f
 
 dlg_buffer	= $140
 
@@ -76,45 +83,13 @@ prthex		= $F802
 prtdigit	= $F80B
 
 OSRDCH          = $FFE3
-OSWRCH		= $FFF4
+OSWRCH          = $FFF4
 OSCRLF          = $FFED
-
-
-;=================================================================
-; Constants used by oswrch80
-;=================================================================
-
-NUMROWS = 40
-NUMCOLS = 80
-
-SCREEN = $8000
-SCREENEND = SCREEN + (NUMROWS - 1) * NUMCOLS
-
-; Send character in accumulator to the VIA
-LFEFB = $FEFB
-
-; Wait 0.1 second for debounce
-LFB8A = $fB8A
-	
-; Scan keyboard	
-LFE71 = $FE71
-
-; Keyboard Control Code Handlers
-; use Kernel for all except cursor handling (FDA2)
-LFD9A = $FD9A
-LFDC0 = $FDC0
-LFDC2 = $FDC2
-LFDC6 = $FDC6
-LFDC8 = $FDC8
-LFDD2 = $FDD2
-LFDD6 = $FDD6
-LFDD8 = $FDD8
-LFDDF = $FDDF
-LFDE2 = $FDE2
-
-; Flyback
-LFE66 = $FE66
-LFE6B = $FE6B
+OSFIND          = $FFCE
+OSBGET          = $FFD4
+OSSHUT          = $FFCB
+OSARG           = $FFDA
+OSPTR           = $FFD7
 
 ;=================================================================
 ; ROM IDENTIFIER
@@ -195,6 +170,7 @@ com_tab:
 	.byte "CRC"
 	.byte >atomCRC,<atomCRC
 
+.IF Atom15k = 0
 	.byte "RLIST"
 	.byte >roms,<roms
 
@@ -203,9 +179,17 @@ com_tab:
 
 	.byte "BEEB"
 	.byte >beeb,<beeb
+.ENDIF
 
 	.byte "VGA80"
 	.byte >vga80,<vga80
+
+	.byte "VGA32"
+	.byte >vga32,<vga32
+
+
+	.byte "MAN"
+	.byte >man,<man
 
 	.byte >no_com,<no_com 	; No command
 
