@@ -8,12 +8,12 @@
 -- /___/  \  /    
 -- \   \   \/    
 --  \   \         
---  /   /         Filename  : Atomic_top_duo.vhf
+--  /   /         Filename  : AtomFpga_PapilioDuo.vhd
 -- /___/   /\     Timestamp : 19/04/2015
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
---Design Name: Atomic_top_duo
+--Design Name: AtomFpga_PapilioDuo
 --Device: Spartan6 LX9
 
 library ieee;
@@ -21,7 +21,7 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
-entity Atomic_top_duo is
+entity AtomFpga_PapilioDuo is
     port (clk_32M00       : in    std_logic;
            ps2_clk        : in    std_logic;
            ps2_data       : in    std_logic;
@@ -56,9 +56,9 @@ entity Atomic_top_duo is
            JOYSTICK1      : in    std_logic_vector (7 downto 0);
            JOYSTICK2      : in    std_logic_vector (7 downto 0)
            );
-end Atomic_top_duo;
+end AtomFpga_PapilioDuo;
 
-architecture behavioral of Atomic_top_duo is
+architecture behavioral of AtomFpga_PapilioDuo is
 
     signal clk_vga    : std_logic;
     signal clk_16M00  : std_logic;
@@ -121,7 +121,7 @@ begin
         CLK2X_OUT         => open
     );
     
-    inst_Atomic_core : entity work.Atomic_core
+    inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplSDDOS        => false,
         CImplGraphicsExt  => true,

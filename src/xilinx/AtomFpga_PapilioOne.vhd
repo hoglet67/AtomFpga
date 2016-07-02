@@ -6,12 +6,12 @@
 -- /___/  \  /    
 -- \   \   \/    
 --  \   \         
---  /   /         Filename  : Atomic_top.vhf
+--  /   /         Filename  : AtomFpga_PapilioOne.vhd
 -- /___/   /\     Timestamp : 02/03/2013 06:17:50
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
---Design Name: Atomic_top
+--Design Name: AtomFpga_PapilioOne
 --Device: spartan3E
 
 library ieee;
@@ -19,7 +19,7 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
-entity Atomic_top_papilio is
+entity AtomFpga_PapilioOne is
     port (clk_32M00 : in  std_logic;
            ps2_clk  : in  std_logic;
            ps2_data : in  std_logic;
@@ -44,9 +44,9 @@ entity Atomic_top_papilio is
            LED3     : out std_logic;
            LED4     : out std_logic
           );
-end Atomic_top_papilio;
+end AtomFpga_PapilioOne;
 
-architecture behavioral of Atomic_top_papilio is
+architecture behavioral of AtomFpga_PapilioOne is
    
     signal clk_vga   : std_logic;
     signal clk_16M00 : std_logic;
@@ -126,7 +126,7 @@ begin
                               "11110001";                
     ERSTn <= not ERST;
 
-    inst_Atomic_core : entity work.Atomic_core
+    inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplSDDOS       => true,
         CImplGraphicsExt => true,

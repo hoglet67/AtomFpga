@@ -6,19 +6,19 @@
 -- /___/  \  /    
 -- \   \   \/    
 --  \   \         
---  /   /         Filename  : Atomic_top.vhf
+--  /   /         Filename  : AtomFpga_OlimexModVGA.vhd
 -- /___/   /\     Timestamp : 02/03/2013 06:17:50
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
---Design Name: Atomic_top
+--Design Name: AtomFpga_OlimexModVGA
 --Device: spartan3A
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
-entity Atomic_top is
+entity AtomFpga_OlimexModVGA is
     port (clk_25M00 : in    std_logic;
           ps2_clk   : in    std_logic;
           ps2_data  : in    std_logic;
@@ -39,9 +39,9 @@ entity Atomic_top is
           SDSS      : out   std_logic;
           SDCLK     : out   std_logic;
           SDMOSI    : out   std_logic);
-end Atomic_top;
+end AtomFpga_OlimexModVGA;
 
-architecture behavioral of Atomic_top is
+architecture behavioral of AtomFpga_OlimexModVGA is
     
     signal clk_12M58 : std_logic;
     signal clk_16M00 : std_logic;
@@ -76,7 +76,7 @@ begin
         DATA    => RomDout
         );
     
-    inst_Atomic_core : entity work.Atomic_core
+    inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplSDDOS       => true,
         CImplGraphicsExt => false,

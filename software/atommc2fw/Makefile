@@ -6,8 +6,8 @@ XILINX=/opt/Xilinx/14.7
 
 # Shouldn't need to make changes below this point
 
-BIT_FILE=$(ATOMFPGA)/working/Atomic_top_hoglet.bit
-BMM_FILE=$(ATOMFPGA)/src/Atomic_hoglet_bd.bmm
+BIT_FILE=$(ATOMFPGA)/xilinx/working/AtomFpga_Hoglet.bit
+BMM_FILE=$(ATOMFPGA)/xilinx/AtomFpga_Hoglet_bd.bmm
 
 
 # Papilio dev environment

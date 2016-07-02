@@ -1,10 +1,10 @@
-iseconfig/
-working/
+not_in_git/
 nohup.out
-Atomic_top_guide.ncd
-Atomic_top_summary.html
-src/Atomic_hoglet_bd.bmm
-src/Atomic_papilio_bd.bmm
-src/Atomic_duo_bd.bmm
 *~
 #*
+xilinx/build.log
+xilinx/iseconfig/
+xilinx/working/
+xilinx/AtomFpga_Hoglet_bd.bmm
+xilinx/AtomFpga_PapilioOne_bd.bmm
+xilinx/AtomFpga_PapilioDuo_bd.bmm

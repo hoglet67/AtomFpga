@@ -6,19 +6,18 @@
 -- /___/  \  /    
 -- \   \   \/    
 --  \   \         
---  /   /         Filename  : Atomic_top.vhf
+--  /   /         Filename  : AtomFpga_Core
 -- /___/   /\     Timestamp : 02/03/2013 06:17:50
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
---Design Name: Atomic_top
---Device: spartan3A
+--Design Name: Atomic_top.vhf
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
-entity Atomic_core is
+entity AtomFpga_Core is
     generic (
        CImplSDDOS       : boolean;
        CImplGraphicsExt : boolean;
@@ -67,9 +66,9 @@ entity Atomic_core is
         Joystick1 : in    std_logic_vector (7 downto 0) := (others => '1'); 
         Joystick2 : in    std_logic_vector (7 downto 0) := (others => '1')
         );
-end Atomic_core;
+end AtomFpga_Core;
 
-architecture BEHAVIORAL of Atomic_core is
+architecture BEHAVIORAL of AtomFpga_Core is
     
 -------------------------------------------------
 -- cpu signals names

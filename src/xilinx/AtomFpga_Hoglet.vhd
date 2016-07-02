@@ -8,12 +8,12 @@
 -- /___/  \  /    
 -- \   \   \/    
 --  \   \         
---  /   /         Filename  : Atomic_top_hoglet.vhf
+--  /   /         Filename  : AtomFpga_Hoglet.vhd
 -- /___/   /\     Timestamp : 03/04/2014 19:27:00
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
---Design Name: Atomic_top_hoglet
+--Design Name: AtomFpga_Hoglet
 --Device: spartan3E
 
 library ieee;
@@ -21,7 +21,7 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
-entity Atomic_top_hoglet is
+entity AtomFpga_Hoglet is
     port (clk_32M00 : in  std_logic;
            ps2_clk  : in  std_logic;
            ps2_data : in  std_logic;
@@ -50,9 +50,9 @@ entity Atomic_top_hoglet is
            LED1     : out std_logic;
            LED2     : out std_logic
            );
-end Atomic_top_hoglet;
+end AtomFpga_Hoglet;
 
-architecture behavioral of Atomic_top_hoglet is
+architecture behavioral of AtomFpga_Hoglet is
 
     signal clk_vga : std_logic;
     signal clk_16M00 : std_logic;
@@ -115,7 +115,7 @@ begin
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
     
-    inst_Atomic_core : entity work.Atomic_core
+    inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplSDDOS => false,
         CImplGraphicsExt => true,
