@@ -105,15 +105,14 @@ begin
 
     inst_dcm4 : entity work.dcm4 port map(
         CLKIN_IN  => clk_32M00,
-        CLK0_OUT  => clk_vga,
-        CLK0_OUT1 => open,
-        CLK2X_OUT => open);
+        CLK0_OUT  => open,
+        CLKFX_OUT => clk_vga
+    );
 
     inst_dcm5 : entity work.dcm5 port map(
         CLKIN_IN  => clk_32M00,
-        CLK0_OUT  => clk_16M00,
-        CLK0_OUT1 => open,
-        CLK2X_OUT => open);
+        CLKFX_OUT => clk_16M00
+    );
     
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
