@@ -67,7 +67,7 @@ architecture behavioral of AtomFpga_PapilioDuo is
     signal clock_16        : std_logic;
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
-    signal IRSTn           : std_logic;
+    signal reset_n           : std_logic;
     signal powerup_reset_n : std_logic;
     signal hard_reset_n    : std_logic;     
     signal reset_counter   : std_logic_vector(9 downto 0);
@@ -82,11 +82,14 @@ architecture behavioral of AtomFpga_PapilioDuo is
     
     signal RamA            : std_logic_vector(18 downto 0);
     signal RamCE           : std_logic;
-    signal RamWR           : std_logic;
+    signal RamWE           : std_logic;
+    signal RamDin            : std_logic_vector(7 downto 0);
     signal ExternWE        : std_logic;
     signal ExternA         : std_logic_vector (16 downto 0);
     signal ExternDin       : std_logic_vector (7 downto 0);
     signal ExternDout      : std_logic_vector (7 downto 0);
+
+    signal RamRomData      : std_logic_vector (7 downto 0);
     
     signal nARD            : std_logic;
     signal nAWR            : std_logic;
@@ -101,19 +104,7 @@ architecture behavioral of AtomFpga_PapilioDuo is
     signal LED1n           : std_logic;
     signal LED2n           : std_logic;
 
-    signal SelectBFFE      : std_logic;
-    signal SelectBFFF      : std_logic;
-    
-    signal RegBFFE         : std_logic_vector (7 downto 0);
-    signal RegBFFF         : std_logic_vector (7 downto 0);
-
-    signal WriteProt       : std_logic;                     -- Write protects #A000, #C000-#FFFF
-    signal OSInRam         : std_logic;                     -- #C000-#FFFF in RAM
-    signal ExRamBank       : std_logic_vector (1 downto 0); -- #4000-#7FFF bank select
-    signal RomLatch        : std_logic_vector (3 downto 0); -- #A000-#AFFF bank select
-
     signal ioport          : std_logic_vector (7 downto 0);
-
 
 -----------------------------------------------
 -- Bootstrap ROM Image from SPI FLASH into SRAM
@@ -158,7 +149,7 @@ begin
         ps2_mouse_clk     => ps2_mse_clk,
         ps2_mouse_data    => ps2_mse_data,
         ERSTn             => hard_reset_n,
-        IRSTn             => IRSTn,
+        IRSTn             => reset_n,
         red               => red(3 downto 1),
         green             => green(3 downto 1),
         blue              => blue(3 downto 1),
@@ -192,56 +183,14 @@ begin
     
     LED1       <= not LED1n;
     LED2       <= not LED2n;
-
---------------------------------------------------------
--- RAM/ROM
---------------------------------------------------------
-    
-    -------------------------------------------------
-    -- BFFE and BFFF registers
-    --
-    -- See http://stardot.org.uk/forums/viewtopic.php?f=44&t=9341
-    --
-    -- The following are currently un-implemented:
-    --
-    -- - BFFE bit 6 (turbo mode)
-    --   as F1..F4 already allow 1/2/4/8MHz to be selected
-    --
-    -- - BFFE bit 3 (#C000-#FFFF bank select)
-    --   as there is insufficient space for a second ROM bank
-    --   unless switch from the SoftAVR to the real AVR
-    --
-    -------------------------------------------------
-    SelectBFFE <= '1' when ExternA(15 downto 0) = "1011111111111110" else '0';
-    SelectBFFF <= '1' when ExternA(15 downto 0) = "1011111111111111" else '0';
-    
-    RomLatchProcess : process (hard_reset_n, IRSTn, clock_16)
-    begin
-        if hard_reset_n = '0' OR IRSTn = '0' then
-            RegBFFE(7 downto 0) <= "10000000";
-            RegBFFF(7 downto 0) <= "00000000";
-        elsif rising_edge(clock_16) then
-            if SelectBFFE = '1' and ExternWE = '1' then
-                RegBFFE <= ExternDin;
-            end if;
-            if SelectBFFF = '1' and ExternWE = '1' then
-                RegBFFF <= ExternDin;
-            end if;
-        end if;
-    end process;
-
-    WriteProt  <= RegBFFE(7);
-    OSInRam    <= RegBFFE(2);
-    ExRamBank  <= RegBFFE(1 downto 0);
-    RomLatch   <= RegBFFF(3 downto 0);
-    
+        
 --------------------------------------------------------
 -- AtomMMC (maybe push down into core?)
 --------------------------------------------------------
 
     Inst_AVR8: entity work.AVR8 port map(
         clk16M            => clock_16,
-        nrst              => IRSTn,
+        nrst              => reset_n,
         portain           => AVRDataOut,
         portaout          => AVRDataIn,
 
@@ -290,7 +239,7 @@ begin
     Inst_AtomPL8: entity work.AtomPL8 port map(
         clk               => clock_16,
         enable            => PL8Enable,
-        nRST              => IRSTn,
+        nRST              => reset_n,
         RW                => not ExternWE,
         Addr              => ExternA(2 downto 0),
         DataIn            => ExternDin,
@@ -376,74 +325,42 @@ begin
         FLASH_SO        => FLASH_SO
     );
 
-    -- Mapping to External SRAM...
+--------------------------------------------------------
+-- RAM/ROM board
+--------------------------------------------------------
+
+    inst_ramrom: entity work.RamRom_Phill
+    port map(
+        clock        => clock_16,
+        reset_n      => reset_n,
+        -- signals from/to 6502
+        cpu_addr     => ExternA(15 downto 0),
+        cpu_we       => ExternWE,
+        cpu_dout     => ExternDin,
+        cpu_din      => RamRomData,
+        -- signals from/to external memory system
+        ExternCE     => RamCE,
+        ExternWE     => RamWE,
+        ExternA      => RamA,
+        ExternDin    => RamDin,
+        ExternDout   => RAM_Dout
+    );
     
-    -- 0x00000 - Atom #A000 Bank 0
-    -- 0x01000 - Atom #A000 Bank 1
-    -- 0x02000 - Atom #A000 Bank 2
-    -- 0x03000 - Atom #A000 Bank 3
-    -- 0x04000 - Atom #A000 Bank 4
-    -- 0x05000 - Atom #A000 Bank 5
-    -- 0x06000 - Atom #A000 Bank 6
-    -- 0x07000 - Atom #A000 Bank 7
-    -- 0x08000 - BBC #6000 Bank 0 (ExtROM1)
-    -- 0x09000 - BBC #6000 Bank 1 (ExtROM1)
-    -- 0x0A000 - BBC #6000 Bank 2 (ExtROM1)
-    -- 0x0B000 - BBC #6000 Bank 3 (ExtROM1)
-    -- 0x0C000 - BBC #6000 Bank 4 (ExtROM1)
-    -- 0x0D000 - BBC #6000 Bank 5 (ExtROM1)
-    -- 0x0E000 - BBC #6000 Bank 6 (ExtROM1)
-    -- 0x0F000 - BBC #6000 Bank 7 (ExtROM1)
-    -- 0x10000 - Atom Basic (DskRomEn=1)
-    -- 0x11000 - Atom FP (DskRomEn=1)
-    -- 0x12000 - Atom MMC (DskRomEn=1)
-    -- 0x13000 - Atom Kernel (DskRomEn=1)
-    -- 0x14000 - Atom Basic (DskRomEn=0)
-    -- 0x15000 - Atom FP (DskRomEn=0)
-    -- 0x16000 - unused
-    -- 0x17000 - Atom Kernel (DskRomEn=0)
-    -- 0x18000 - unused
-    -- 0x19000 - BBC #7000 (ExtROM2)
-    -- 0x1A000 - BBC Basic 1/4
-    -- 0x1B000 - unused
-    -- 0x1C000 - BBC Basic 2/4
-    -- 0x1D000 - BBC Basic 3/4
-    -- 0x1E000 - BBC Basic 4/4
-    -- 0x1F000 - BBC MOS 3.0
-
-    -- currently only the following are implemented:
-    -- Atom #A000 banks 0..7
-    -- Atom Basic, FP, MMC, Kernel (DskRomEn=1)
-    
-    RamCE      <= '1' when ExternA(15 downto 14) = "11"                   else
-                  '1' when ExternA(15 downto 12) = "1010"                 else
-                  '1' when ExternA(15) = '0'                              else
-                  '0';
-
-    RamWR      <= '0' when ExternA(15) = '1' and WriteProt = '1' else ExternWE;
-
-    RamA       <= "000" & RomLatch  & ExternA(11 downto 0) when ExternA(15 downto 12) = "1010" else
-                  "001" & "00"      & ExternA(13 downto 0) when ExternA(15 downto 14) = "11"   else
-                  "100" & ExRamBank & ExternA(13 downto 0) when ExternA(15 downto 14) = "01"   else                  
-                  "101" & ExternA(15 downto 0);        
-
     MemProcess : process (clock_16)
     begin
         if rising_edge(clock_16) then
             RAM_A      <= RamA;
             RAM_nCS    <= not RamCE;
-            RAM_nOE    <= not ((not RamWR) and RamCE);
-            RAM_nWE    <= not (RamWR and RamCE and phi2);
-            RAM_Din    <= ExternDin;
+            RAM_nOE    <= not ((not RamWE) and RamCE);
+            RAM_nWE    <= not (RamWE and RamCE and phi2);
+            RAM_Din    <= RamDin;
        end if;
     end process;            
     
     PL8Enable  <= '1' when ExternA(15 downto 8) = "10110100" else '0';
     
     ExternDout <= PL8Data  when PL8Enable  = '1' else
-                  RegBFFE  when SelectBFFE = '1' else 
-                  RegBFFF  when SelectBFFF = '1' else 
-                  RAM_Dout;
+                  RamRomData;
 
 end behavioral;
 
