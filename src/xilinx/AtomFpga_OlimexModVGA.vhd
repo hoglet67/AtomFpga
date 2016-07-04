@@ -43,16 +43,17 @@ end AtomFpga_OlimexModVGA;
 
 architecture behavioral of AtomFpga_OlimexModVGA is
     
-    signal clk_12M58 : std_logic;
-    signal clk_16M00 : std_logic;
-    signal clk_32M00 : std_logic;
+    signal clock_16 : std_logic;
+    signal clock_25 : std_logic;
+    signal clock_32 : std_logic;
     signal Phi2      : std_logic;
 
     signal RomDout      : std_logic_vector (7 downto 0);
     signal RamCE        : std_logic;
     signal RomCE        : std_logic;
-    signal ExternA      : std_logic_vector (16 downto 0);
+    signal ExternCE     : std_logic;
     signal ExternWE     : std_logic;
+    signal ExternA      : std_logic_vector (18 downto 0);
     signal ExternDin    : std_logic_vector (7 downto 0);
     signal ExternDout   : std_logic_vector (7 downto 0);
 
@@ -60,74 +61,83 @@ begin
 
     inst_dcm2 : entity work.dcm2 port map(
         CLKIN_IN  => clk_25M00,
-        CLK0_OUT  => clk_16M00,
+        CLK0_OUT  => clock_16,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
 
     inst_dcm3 : entity work.dcm3 port map (
-        CLKIN_IN  => clk_16M00,
-        CLK0_OUT  => clk_32M00,
+        CLKIN_IN  => clock_16,
+        CLK0_OUT  => clock_32,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
 
     rom_c000_ffff : entity work.InternalROM port map(
-        CLK     => clk_16M00,
-        ADDR    => ExternA,
+        CLK     => clock_16,
+        ADDR    => ExternA(16 downto 0),
         DATA    => RomDout
         );
     
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
-        CImplSDDOS       => true,
-        CImplGraphicsExt => false,
-        CImplSoftChar    => false,
-        CImplSID         => true,
-        CImplVGA80x40    => false,
-        CImplHWScrolling => false,
-        CImplMouse       => false,
-        CImplUart        => false,
-        CImplDoubleVideo => false,        
-        MainClockSpeed   => 16000000,
-        DefaultBaud      => 115200          
+        CImplSDDOS          => true,
+        CImplAtoMMC2        => false,
+        CImplGraphicsExt    => false,
+        CImplSoftChar       => false,
+        CImplSID            => true,
+        CImplVGA80x40       => false,
+        CImplHWScrolling    => false,
+        CImplMouse          => false,
+        CImplUart           => false,
+        CImplDoubleVideo    => false,        
+        CImplRamRomNone     => true,
+        CImplRamRomPhill    => false,
+        CImplRamRomAtom2015 => false,
+        MainClockSpeed      => 16000000,
+        DefaultBaud         => 115200          
     )
     port map(
-        clk_vga   => clk_25M00,
-        clk_16M00 => clk_16M00,
-        clk_32M00 => clk_32M00,
-        ps2_clk => ps2_clk,
-        ps2_data => ps2_data,
-        ps2_mouse_clk   => open,
-        ps2_mouse_data  => open,
-        ERSTn => ERSTn,
-        IRSTn => open,
-        red => red,
-        green => green,
-        blue => blue,
-        vsync => vsync,
-        hsync => hsync,
-        RamCE => RamCE,
-        RomCE => RomCE,
-        Phi2 => Phi2,
-        ExternWE => ExternWE,
-        ExternA => ExternA,
-        ExternDin => ExternDin,
-        ExternDout => ExternDout,
-        audiol => audiol,
-        audioR => audioR,
-        SDMISO => SDMISO,
-        SDSS => SDSS,
-        SDCLK => SDCLK,
-        SDMOSI => SDMOSI,
-        uart_RxD  => '1',
-        uart_TxD  => open,
-        LED1      => open,
-        LED2      => open,
-        charSet   => '0'
+        clk_vga             => clk_25M00,
+        clk_16M00           => clock_16,
+        clk_32M00           => clock_32,
+        ps2_clk             => ps2_clk,
+        ps2_data            => ps2_data,
+        ps2_mouse_clk       => open,
+        ps2_mouse_data      => open,
+        ERSTn               => ERSTn,
+        IRSTn               => open,
+        red                 => red,
+        green               => green,
+        blue                => blue,
+        vsync               => vsync,
+        hsync               => hsync,
+        Phi2                => Phi2,
+        ExternCE            => ExternCE,
+        ExternWE            => ExternWE,
+        ExternA             => ExternA,
+        ExternDin           => ExternDin,
+        ExternDout          => ExternDout,
+        audiol              => audiol,
+        audioR              => audioR,
+        SDMISO              => SDMISO,
+        SDSS                => SDSS,
+        SDCLK               => SDCLK,
+        SDMOSI              => SDMOSI,
+        uart_RxD            => '1',
+        uart_TxD            => open,
+        avr_RxD             => '1',
+        avr_TxD             => open,
+        LED1                => open,
+        LED2                => open,
+        charSet             => '0'
     );
- 
-    CE1        <= not RAMCE;
-    RAMWRn     <= not (ExternWE and Phi2);
-    RAMOEn     <= not RAMCE;
+
+    RamCE      <= ExternCE and not ExternA(15);
+    RomCE      <= ExternCE and ExternA(15);
+    
+    CE1        <= not RamCE;
+    
+    RAMWRn     <= not (ExternWE and RamCE and Phi2);
+    RAMOEn     <= not ((not ExternWE) and RamCE);
     RamD       <= ExternDin & ExternDin when ExternWE = '1' else "ZZZZZZZZZZZZZZZZ";
 
     ExternDout <= RamD(7 downto 0) when RamCE = '1' else

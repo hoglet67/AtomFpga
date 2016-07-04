@@ -21,18 +21,7 @@ architecture BEHAVIORAL of dcm4 is
 begin
 
     GND_BIT <= '0';
-    
-    -- This DCM completely de-skews the clock network wrt the input pin
-    -- Note: the BUFIO2 instance needed manually placing in the .ucf file
-    
-    -- Clock input io2 buffer
-    CLKIN_BUFIO2_INST : BUFIO2
-        port map (I => CLKIN_IN, DIVCLK => CLKIN);
         
-    -- Clock feedback io2 buffer
-    CLKFB_BUFIO2FB_INST : BUFIO2FB
-        port map (I => CLK0_BUF, O => CLKFB);
-    
     -- CLK0 output buffer
     CLK0_BUFG_INST : BUFG
         port map (I => CLK0, O => CLK0_BUF);
@@ -58,8 +47,8 @@ begin
                     FACTORY_JF            => x"C080",
                     PHASE_SHIFT           => 0,
                     STARTUP_WAIT          => false)
-        port map (CLKFB    => CLKFB,
-                  CLKIN    => CLKIN,
+        port map (CLKFB    => CLK0_BUF,
+                  CLKIN    => CLKIN_IN,
                   DSSEN    => GND_BIT,
                   PSCLK    => GND_BIT,
                   PSEN     => GND_BIT,

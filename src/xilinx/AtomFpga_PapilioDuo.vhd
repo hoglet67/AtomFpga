@@ -67,7 +67,7 @@ architecture behavioral of AtomFpga_PapilioDuo is
     signal clock_16        : std_logic;
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
-    signal reset_n           : std_logic;
+    signal reset_n         : std_logic;
     signal powerup_reset_n : std_logic;
     signal hard_reset_n    : std_logic;     
     signal reset_counter   : std_logic_vector(9 downto 0);
@@ -80,31 +80,11 @@ architecture behavioral of AtomFpga_PapilioDuo is
     signal RAM_nOE         : std_logic;
     signal RAM_nCS         : std_logic;
     
-    signal RamA            : std_logic_vector(18 downto 0);
-    signal RamCE           : std_logic;
-    signal RamWE           : std_logic;
-    signal RamDin            : std_logic_vector(7 downto 0);
+    signal ExternCE        : std_logic;
     signal ExternWE        : std_logic;
-    signal ExternA         : std_logic_vector (16 downto 0);
+    signal ExternA         : std_logic_vector (18 downto 0);
     signal ExternDin       : std_logic_vector (7 downto 0);
     signal ExternDout      : std_logic_vector (7 downto 0);
-
-    signal RamRomData      : std_logic_vector (7 downto 0);
-    
-    signal nARD            : std_logic;
-    signal nAWR            : std_logic;
-    signal AVRA0           : std_logic;
-    signal AVRInt          : std_logic;
-    signal AVRDataIn       : std_logic_vector (7 downto 0);
-    signal AVRDataOut      : std_logic_vector (7 downto 0);
-
-    signal PL8Data         : std_logic_vector (7 downto 0);
-    signal PL8Enable       : std_logic;
-
-    signal LED1n           : std_logic;
-    signal LED2n           : std_logic;
-
-    signal ioport          : std_logic_vector (7 downto 0);
 
 -----------------------------------------------
 -- Bootstrap ROM Image from SPI FLASH into SRAM
@@ -128,132 +108,64 @@ begin
     
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
-        CImplSDDOS        => false,
-        CImplGraphicsExt  => true,
-        CImplSoftChar     => true,
-        CImplSID          => true,
-        CImplVGA80x40     => true,
-        CImplHWScrolling  => true,
-        CImplMouse        => true,
-        CImplUart         => true,
-        CImplDoubleVideo  => true,
-        MainClockSpeed    => 16000000,
-        DefaultBaud       => 115200          
+        CImplSDDOS          => false,
+        CImplAtoMMC2        => true,
+        CImplGraphicsExt    => true,
+        CImplSoftChar       => true,
+        CImplSID            => true,
+        CImplVGA80x40       => true,
+        CImplHWScrolling    => true,
+        CImplMouse          => true,
+        CImplUart           => true,
+        CImplDoubleVideo    => true,
+        CImplRamRomNone     => false,
+        CImplRamRomPhill    => true,
+        CImplRamRomAtom2015 => false,
+        MainClockSpeed      => 16000000,
+        DefaultBaud         => 115200          
      )
      port map (
-        clk_vga           => clock_25,
-        clk_16M00         => clock_16,
-        clk_32M00         => clock_32,
-        ps2_clk           => ps2_kbd_clk,
-        ps2_data          => ps2_kbd_data,
-        ps2_mouse_clk     => ps2_mse_clk,
-        ps2_mouse_data    => ps2_mse_data,
-        ERSTn             => hard_reset_n,
-        IRSTn             => reset_n,
-        red               => red(3 downto 1),
-        green             => green(3 downto 1),
-        blue              => blue(3 downto 1),
-        vsync             => vsync,
-        hsync             => hsync,
-        RamCE             => open,
-        RomCE             => open,
-        phi2              => phi2,
-        ExternWE          => ExternWE,
-        ExternA           => ExternA,
-        ExternDin         => ExternDin,
-        ExternDout        => ExternDout,        
-        audiol            => audioL,
-        audioR            => audioR,
-        SDMISO            => '0',
-        SDSS              => open,
-        SDCLK             => open,
-        SDMOSI            => open,
-        uart_RxD          => uart_RxD,
-        uart_TxD          => uart_TxD,
-        LED1              => open,
-        LED2              => open,
-        charSet           => DIP(0),
-        Joystick1         => JOYSTICK1,
-        Joystick2         => JOYSTICK2
+        clk_vga             => clock_25,
+        clk_16M00           => clock_16,
+        clk_32M00           => clock_32,
+        ps2_clk             => ps2_kbd_clk,
+        ps2_data            => ps2_kbd_data,
+        ps2_mouse_clk       => ps2_mse_clk,
+        ps2_mouse_data      => ps2_mse_data,
+        ERSTn               => hard_reset_n,
+        IRSTn               => reset_n,
+        red                 => red(3 downto 1),
+        green               => green(3 downto 1),
+        blue                => blue(3 downto 1),
+        vsync               => vsync,
+        hsync               => hsync,
+        phi2                => phi2,
+        ExternCE            => ExternCE,
+        ExternWE            => ExternWE,
+        ExternA             => ExternA,
+        ExternDin           => ExternDin,
+        ExternDout          => ExternDout,        
+        audiol              => audioL,
+        audioR              => audioR,
+        SDMISO              => SDMISO,
+        SDSS                => SDSS,
+        SDCLK               => SDCLK,
+        SDMOSI              => SDMOSI,
+        uart_RxD            => uart_RxD,
+        uart_TxD            => uart_TxD,
+        avr_RxD             => avr_RxD,
+        avr_TxD             => avr_TxD,
+        LED1                => LED1,
+        LED2                => LED2,
+        charSet             => DIP(0),
+        Joystick1           => JOYSTICK1,
+        Joystick2           => JOYSTICK2
     );  
 
     red(0)     <= '0';
     green(0)   <= '0';
     blue(0)    <= '0';
-    
-    LED1       <= not LED1n;
-    LED2       <= not LED2n;
         
---------------------------------------------------------
--- AtomMMC (maybe push down into core?)
---------------------------------------------------------
-
-    Inst_AVR8: entity work.AVR8 port map(
-        clk16M            => clock_16,
-        nrst              => reset_n,
-        portain           => AVRDataOut,
-        portaout          => AVRDataIn,
-
-        portbin(0)        => '0',
-        portbin(1)        => '0',
-        portbin(2)        => '0',
-        portbin(3)        => '0',
-        portbin(4)        => AVRInt,
-        portbin(5)        => '0',
-        portbin(6)        => '0',
-        portbin(7)        => '0',
-        
-        portbout(0)       => nARD,
-        portbout(1)       => nAWR,
-        portbout(2)       => open,
-        portbout(3)       => AVRA0,
-        portbout(4)       => open,
-        portbout(5)       => open,
-        portbout(6)       => LED1n,
-        portbout(7)       => LED2n,
-
-        portdin           => (others => '0'),
-        portdout(0)       => open,
-        portdout(1)       => open,
-        portdout(2)       => open,
-        portdout(3)       => open,
-        portdout(4)       => SDSS,
-        portdout(5)       => open,
-        portdout(6)       => open,
-        portdout(7)       => open,
-
-        -- FUDLR
-        portein           => ioport,
-        porteout          => open,
-                
-        spi_mosio         => SDMOSI,
-        spi_scko          => SDCLK,
-        spi_misoi         => SDMISO,
-     
-        rxd               => avr_RxD,
-        txd               => avr_TxD
-    );
-    
-    ioport <= "111" & Joystick1(5) & Joystick1(0) & Joystick1(1) & Joystick1(2) & Joystick1(3);
-    
-    Inst_AtomPL8: entity work.AtomPL8 port map(
-        clk               => clock_16,
-        enable            => PL8Enable,
-        nRST              => reset_n,
-        RW                => not ExternWE,
-        Addr              => ExternA(2 downto 0),
-        DataIn            => ExternDin,
-        DataOut           => PL8Data,
-        AVRDataIn         => AVRDataIn,
-        AVRDataOut        => AVRDataOut,
-        nARD              => nARD,
-        nAWR              => nAWR,
-        AVRA0             => AVRA0,
-        AVRINTOut         => AVRInt,
-        AtomIORDOut       => open,
-        AtomIOWROut       => open
-    );
-    
 --------------------------------------------------------
 -- Clock Generation
 --------------------------------------------------------
@@ -324,44 +236,20 @@ begin
         FLASH_CK        => FLASH_CK,
         FLASH_SO        => FLASH_SO
     );
-
---------------------------------------------------------
--- RAM/ROM board
---------------------------------------------------------
-
-    inst_ramrom: entity work.RamRom_Phill
-    port map(
-        clock        => clock_16,
-        reset_n      => reset_n,
-        -- signals from/to 6502
-        cpu_addr     => ExternA(15 downto 0),
-        cpu_we       => ExternWE,
-        cpu_dout     => ExternDin,
-        cpu_din      => RamRomData,
-        -- signals from/to external memory system
-        ExternCE     => RamCE,
-        ExternWE     => RamWE,
-        ExternA      => RamA,
-        ExternDin    => RamDin,
-        ExternDout   => RAM_Dout
-    );
     
     MemProcess : process (clock_16)
     begin
         if rising_edge(clock_16) then
-            RAM_A      <= RamA;
-            RAM_nCS    <= not RamCE;
-            RAM_nOE    <= not ((not RamWE) and RamCE);
-            RAM_nWE    <= not (RamWE and RamCE and phi2);
-            RAM_Din    <= RamDin;
+            RAM_A      <= ExternA;
+            RAM_nCS    <= not ExternCE;
+            RAM_nOE    <= not ((not ExternWE) and ExternCE);
+            RAM_nWE    <= not (ExternWE and ExternCE and phi2);
+            RAM_Din    <= ExternDin;
        end if;
     end process;            
-    
-    PL8Enable  <= '1' when ExternA(15 downto 8) = "10110100" else '0';
-    
-    ExternDout <= PL8Data  when PL8Enable  = '1' else
-                  RamRomData;
 
+    ExternDout <= RAM_Dout;
+    
 end behavioral;
 
 

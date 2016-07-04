@@ -19,17 +19,21 @@ use ieee.numeric_std.all;
 
 entity AtomFpga_Core is
     generic (
-       CImplSDDOS       : boolean;
-       CImplGraphicsExt : boolean;
-       CImplSoftChar    : boolean;
-       CImplSID         : boolean;
-       CImplVGA80x40    : boolean;
-       CImplHWScrolling : boolean;
-       CImplMouse       : boolean;
-       CImplUart        : boolean;
-       CImplDoubleVideo : boolean;
-       MainClockSpeed   : integer;
-       DefaultBaud      : integer
+       CImplSDDOS          : boolean;
+       CImplAtoMMC2        : boolean;
+       CImplGraphicsExt    : boolean;
+       CImplSoftChar       : boolean;
+       CImplSID            : boolean;
+       CImplVGA80x40       : boolean;
+       CImplHWScrolling    : boolean;
+       CImplMouse          : boolean;
+       CImplUart           : boolean;
+       CImplDoubleVideo    : boolean;
+       CImplRamRomNone     : boolean;
+       CImplRamRomPhill    : boolean;
+       CImplRamRomAtom2015 : boolean;
+       MainClockSpeed      : integer;
+       DefaultBaud         : integer
     );
     port (clk_vga : in    std_logic;
         clk_16M00 : in    std_logic;
@@ -45,11 +49,10 @@ entity AtomFpga_Core is
         blue      : out   std_logic_vector (2 downto 0);
         vsync     : out   std_logic;
         hsync     : out   std_logic;
-        RamCE     : out   std_logic;
-        RomCE     : out   std_logic;
         phi2      : out   std_logic;
+        ExternCE  : out   std_logic;
         ExternWE  : out   std_logic;
-        ExternA   : out   std_logic_vector (16 downto 0);
+        ExternA   : out   std_logic_vector (18 downto 0);
         ExternDin : out   std_logic_vector (7 downto 0);
         ExternDout: in    std_logic_vector (7 downto 0);
         audiol    : out   std_logic;
@@ -60,6 +63,8 @@ entity AtomFpga_Core is
         SDMOSI    : out   std_logic;
         uart_RxD  : in    std_logic;
         uart_TxD  : out   std_logic;
+        avr_RxD   : in    std_logic;
+        avr_TxD   : out   std_logic;
         LED1      : out   std_logic;        
         LED2      : out   std_logic;
         charSet   : in    std_logic;
@@ -106,8 +111,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
 ----------------------------------------------------
     signal mc6522_enable     : std_logic;
     signal i8255_enable      : std_logic;
-    signal extern_rom_enable : std_logic;
-    signal extern_ram_enable : std_logic;
+    signal extern_enable     : std_logic;
     signal video_ram_enable  : std_logic;
     signal reg_enable        : std_logic;
     signal sid_enable        : std_logic;
@@ -156,14 +160,27 @@ architecture BEHAVIORAL of AtomFpga_Core is
 
     signal sid_audio  : std_logic;
 
-    signal spi_enable : std_logic;
-    signal spi_data   : std_logic_vector (7 downto 0);
+    signal pl8_enable : std_logic;
+    signal pl8_data   : std_logic_vector (7 downto 0);
 
     signal uart_escape : std_logic;
     signal uart_break : std_logic;
 
-    signal extern_reg_enable : std_logic;
-     
+    signal nARD            : std_logic;
+    signal nAWR            : std_logic;
+    signal AVRA0           : std_logic;
+    signal AVRInt          : std_logic;
+    signal AVRDataIn       : std_logic_vector (7 downto 0);
+    signal AVRDataOut      : std_logic_vector (7 downto 0);
+
+    signal PL8Data         : std_logic_vector (7 downto 0);
+    signal PL8Enable       : std_logic;
+
+    signal ioport          : std_logic_vector (7 downto 0);
+
+    signal LED1n           : std_logic;
+    signal LED2n           : std_logic;
+    
 --------------------------------------------------------------------
 --                   here it begin :)
 --------------------------------------------------------------------
@@ -173,9 +190,9 @@ begin
 --
 ---------------------------------------------------------------------
     cpu : entity work.T65 port map (
-   		Mode           => "00",
-		Abort_n        => '1',
-		SO_n           => '1',
+        Mode           => "00",
+        Abort_n        => '1',
+        SO_n           => '1',
         Res_n          => RSTn,
         Enable         => cpu_clken,
         Clk            => clk_16M00,
@@ -245,7 +262,7 @@ begin
 ---------------------------------------------------------------------                   
     pia : entity work.I82C55 port map(
         I_ADDR => cpu_addr(1 downto 0),  -- A1-A0
-        I_DATA => cpu_dout(7 downto 0),  -- D7-D0
+        I_DATA => cpu_dout,  -- D7-D0
         O_DATA => i8255_data,
         CS_H   => i8255_enable,
         WR_L   => cpu_R_W_n,
@@ -284,7 +301,7 @@ begin
 ---------------------------------------------------------------------
     via : entity work.M6522 port map(
         I_RS    => cpu_addr(3 downto 0),
-        I_DATA  => cpu_dout(7 downto 0),
+        I_DATA  => cpu_dout,
         O_DATA  => mc6522_data(7 downto 0),
         I_RW_L  => cpu_R_W_n,
         I_CS1   => mc6522_enable,
@@ -306,23 +323,167 @@ begin
         ENA_4   => via4_clken,
         CLK     => clk_16M00);                                      
 
+--------------------------------------------------------
+-- SDDOS
+--------------------------------------------------------
+
     Inst_spi: if (CImplSDDOS) generate
         Inst_spi_comp : entity work.SPI_Port
             port map (
                 nRST    => RSTn,
                 clk     => clk_16M00,
-                enable  => spi_enable,
+                enable  => pl8_enable,
                 nwe     => cpu_R_W_n,
                 address => cpu_addr(2 downto 0),
-                datain  => cpu_dout(7 downto 0),
-                dataout => spi_data,
+                datain  => cpu_dout,
+                dataout => pl8_data,
                 MISO    => SDMISO,
                 MOSI    => SDMOSI,
                 NSS     => SDSS,
                 SPICLK  => SDCLK
             );
+        LED1 <= '0';
+        LED2 <= '0';        
     end generate;
 
+--------------------------------------------------------
+-- AtomMMC 
+--------------------------------------------------------
+
+    Inst_atommc2: if (CImplAtoMMC2) generate
+    
+        Inst_AVR8: entity work.AVR8 port map(
+            clk16M            => clk_16M00,
+            nrst              => RSTn,
+            portain           => AVRDataOut,
+            portaout          => AVRDataIn,
+            
+            portbin(0)        => '0',
+            portbin(1)        => '0',
+            portbin(2)        => '0',
+            portbin(3)        => '0',
+            portbin(4)        => AVRInt,
+            portbin(5)        => '0',
+            portbin(6)        => '0',
+            portbin(7)        => '0',
+            
+            portbout(0)       => nARD,
+            portbout(1)       => nAWR,
+            portbout(2)       => open,
+            portbout(3)       => AVRA0,
+            portbout(4)       => open,
+            portbout(5)       => open,
+            portbout(6)       => LED1n,
+            portbout(7)       => LED2n,
+            
+            portdin           => (others => '0'),
+            portdout(0)       => open,
+            portdout(1)       => open,
+            portdout(2)       => open,
+            portdout(3)       => open,
+            portdout(4)       => SDSS,
+            portdout(5)       => open,
+            portdout(6)       => open,
+            portdout(7)       => open,
+            
+            -- FUDLR
+            portein           => ioport,
+            porteout          => open,
+            
+            spi_mosio         => SDMOSI,
+            spi_scko          => SDCLK,
+            spi_misoi         => SDMISO,
+            
+            rxd               => avr_RxD,
+            txd               => avr_TxD
+            );
+        
+        ioport <= "111" & Joystick1(5) & Joystick1(0) & Joystick1(1) & Joystick1(2) & Joystick1(3);
+        
+        Inst_AtomPL8: entity work.AtomPL8 port map(
+            clk               => clk_16M00,
+            enable            => pl8_enable,
+            nRST              => RSTn,
+            RW                => cpu_R_W_n,
+            Addr              => cpu_addr(2 downto 0),
+            DataIn            => cpu_dout,
+            DataOut           => pl8_data,
+            AVRDataIn         => AVRDataIn,
+            AVRDataOut        => AVRDataOut,
+            nARD              => nARD,
+            nAWR              => nAWR,
+            AVRA0             => AVRA0,
+            AVRINTOut         => AVRInt,
+            AtomIORDOut       => open,
+            AtomIOWROut       => open
+            );
+                
+        LED1       <= not LED1n;
+        LED2       <= not LED2n;
+        
+    end generate;
+
+---------------------------------------------------------------------
+-- Ram Rom board functionality
+---------------------------------------------------------------------
+
+    Inst_RamRomNone: if (CImplRamRomNone) generate
+        Inst_RamRomNone_comp: entity work.RamRom_None
+            port map(
+                clock        => clk_16M00,
+                reset_n      => RSTn,
+                -- signals from/to 6502
+                cpu_addr     => cpu_addr,
+                cpu_we       => not_cpu_R_W_n,
+                cpu_dout     => cpu_dout,
+                cpu_din      => extern_data,
+                -- signals from/to external memory system
+                ExternCE     => ExternCE,
+                ExternWE     => ExternWE,
+                ExternA      => ExternA,
+                ExternDin    => ExternDin,
+                ExternDout   => ExternDout
+                );
+    end generate;
+
+    Inst_RamRomPhill: if (CImplRamRomPhill) generate
+        Inst_RamRomPhill_comp: entity work.RamRom_Phill
+            port map(
+                clock        => clk_16M00,
+                reset_n      => RSTn,
+                -- signals from/to 6502
+                cpu_addr     => cpu_addr,
+                cpu_we       => not_cpu_R_W_n,
+                cpu_dout     => cpu_dout,
+                cpu_din      => extern_data,
+                -- signals from/to external memory system
+                ExternCE     => ExternCE,
+                ExternWE     => ExternWE,
+                ExternA      => ExternA,
+                ExternDin    => ExternDin,
+                ExternDout   => ExternDout
+                );
+    end generate;
+
+    Inst_RamRomAtom2015: if (CImplRamRomAtom2015) generate
+        Inst_RamRomAtom2015_comp: entity work.RamRom_Atom2015
+            port map(
+                clock        => clk_16M00,
+                reset_n      => RSTn,
+                -- signals from/to 6502
+                cpu_addr     => cpu_addr,
+                cpu_we       => not_cpu_R_W_n,
+                cpu_dout     => cpu_dout,
+                cpu_din      => extern_data,
+                -- signals from/to external memory system
+                ExternCE     => ExternCE,
+                ExternWE     => ExternWE,
+                ExternA      => ExternA,
+                ExternDin    => ExternDin,
+                ExternDout   => ExternDout
+                );
+    end generate;
+    
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------
@@ -364,34 +525,32 @@ begin
         -- All regions normally de-selected
         mc6522_enable     <= '0';
         i8255_enable      <= '0';
-        extern_ram_enable <= '0';
-        extern_rom_enable <= '0';
         video_ram_enable  <= '0';
         sid_enable        <= '0'; 
-        spi_enable        <= '0'; 
+        pl8_enable        <= '0'; 
         reg_enable        <= '0';
         uart_enable       <= '0';
-        extern_reg_enable <= '0';
+        extern_enable     <= '0';
         
         case cpu_addr(15 downto 12) is
-            when x"0" => extern_ram_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
-            when x"1" => extern_ram_enable <= '1';
-            when x"2" => extern_ram_enable <= '1';
-            when x"3" => extern_ram_enable <= '1';
-            when x"4" => extern_ram_enable <= '1';
-            when x"5" => extern_ram_enable <= '1';
-            when x"6" => extern_ram_enable <= '1';
-            when x"7" => extern_ram_enable <= '1';
+            when x"0" => extern_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
+            when x"1" => extern_enable <= '1';
+            when x"2" => extern_enable <= '1';
+            when x"3" => extern_enable <= '1';
+            when x"4" => extern_enable <= '1';
+            when x"5" => extern_enable <= '1';
+            when x"6" => extern_enable <= '1';
+            when x"7" => extern_enable <= '1';
             when x"8" => video_ram_enable  <= '1';  -- 0x8000 -- 0x9fff is RAM
             when x"9" => video_ram_enable  <= '1';
-            when x"A" => extern_rom_enable <= '1';
+            when x"A" => extern_enable <= '1';
             when x"B" =>
                 if cpu_addr(11 downto 8) = "0000" then     -- 0xb000 8255 PIA  
                     i8255_enable <= '1';
                 elsif cpu_addr(11 downto 8) = "1000" then  -- 0xb800 6522 VIA (optional)
                     mc6522_enable <= '1';
                 elsif cpu_addr(11 downto 10) = "01" then
-                    spi_enable <= '1';  -- 0xb400-0xb7ff SPI
+                    pl8_enable <= '1';  -- 0xb400-0xb7ff SPI
                 elsif cpu_addr(11 downto 4) = "11011011" then
                     uart_enable <= '1';  -- 0xbdb0-0xbdbf UART
                 elsif cpu_addr(11 downto 5) = "1101110" then
@@ -399,39 +558,30 @@ begin
                 elsif cpu_addr(11 downto 5) = "1101111" then
                     reg_enable <= '1';  -- 0xbde0-0xbdff GODIL Registers
                 elsif cpu_addr(11 downto 4) = "11111111" then
-                    extern_reg_enable <= '1';  -- 0xbff0-0xbfff RomLatch
+                    extern_enable <= '1';  -- 0xbff0-0xbfff RomLatch
                 end if;
                 
-            when x"C"   => extern_rom_enable <= '1';
-            when x"D"   => extern_rom_enable <= '1';
-            when x"E"   => extern_rom_enable <= '1';
-            when x"F"   => extern_rom_enable <= '1';
+            when x"C"   => extern_enable <= '1';
+            when x"D"   => extern_enable <= '1';
+            when x"E"   => extern_enable <= '1';
+            when x"F"   => extern_enable <= '1';
             when others => null;
         end case;
 
     end process;
 
     cpu_din <=
-        extern_data     when extern_ram_enable = '1'               else
         godil_data      when video_ram_enable = '1'                else
         i8255_data      when i8255_enable = '1'                    else
         mc6522_data     when mc6522_enable = '1'                   else
         godil_data      when sid_enable = '1'  and CImplSID        else
         godil_data      when uart_enable = '1' and CImplUart       else
         godil_data      when reg_enable = '1'                      else -- TODO add CImpl constraint
-        spi_data        when spi_enable = '1'  and CImplSDDOS      else
-        extern_data     when spi_enable = '1'  and not CImplSDDOS  else
-        extern_data     when extern_rom_enable = '1'               else
-        extern_data     when extern_reg_enable = '1'               else
+        pl8_data        when pl8_enable = '1'  and CImplSDDOS      else
+        pl8_data        when pl8_enable = '1'  and CImplAtoMMC2    else
+        extern_data     when extern_enable = '1'                   else
         x"f1";          -- un-decoded locations
         
-    ExternWE        <= not_cpu_R_W_n;
-    RamCE           <= extern_ram_enable;			
-    RomCE           <= extern_rom_enable;			
-    ExternA         <= '0' & cpu_addr(15 downto 0);
-    ExternDin       <= cpu_dout(7 downto 0);
-    extern_data     <= ExternDout;
-    
 --------------------------------------------------------
 -- clock enable generator
 --------------------------------------------------------
@@ -492,8 +642,6 @@ begin
         end if;
     end process;
         
-    LED1 <= '0';
-    LED2 <= '0';
  
 end BEHAVIORAL;
 
