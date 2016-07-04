@@ -7,7 +7,12 @@ DATA2MEM=${XILINX}/ISE_DS/ISE/bin/lin/data2mem
 PAPILIO_LOADER=/opt/GadgetFactory/papilio-loader/programmer
 PROG=${PAPILIO_LOADER}/linux32/papilio-prog
 BSCAN=${PAPILIO_LOADER}/bscan_spi_xc6slx9.bit
+
+# Image for Phill's RAM ROM Board
 IMAGE=128K_avr.rom
+
+# Image for Atom 2015
+#IMAGE=os15-11.rom
 
 mkdir -p tmp
 
