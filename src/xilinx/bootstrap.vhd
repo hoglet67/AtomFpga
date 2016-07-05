@@ -24,6 +24,8 @@ use UNISIM.Vcomponents.all;
 
 entity bootstrap is
     generic (
+        -- whether to gate the WE signal with the clock
+        gated_write    : boolean := true;
         -- length user data in flash
         user_length    : std_logic_vector(23 downto 0) := x"040000"
     );
@@ -74,6 +76,7 @@ signal clock_en         : std_logic := '0';
 signal SRAM_Din         : std_logic_vector (7 downto 0);
 signal SRAM_nDOE        : std_logic_vector (7 downto 0);
 signal SRAM_nWE_int     : std_logic;
+signal SRAM_nWE_idle    : std_logic;
 
 --
 -- bootstrap signals
@@ -131,6 +134,8 @@ begin
 
     SRAM_nWE_int <= bs_nWE when bs_busy = '1' else RAM_nWE;
 
+    SRAM_nWE_idle <= '1' when gated_write else SRAM_nWE_int;
+    
     rx_clk_ddr : ODDR2
     port map (
         Q  => SRAM_nWE,
@@ -138,7 +143,7 @@ begin
         C1 => clock,
         CE => '1',
         D0 => SRAM_nWE_int,
-        D1 => '1',
+        D1 => SRAM_nWE_idle,
         R  => '0',
         S  => '0'
     );
@@ -152,7 +157,7 @@ begin
             C1 => clock,
             CE => '1',
             D0 => SRAM_nWE_int,
-            D1 => '1',
+            D1 => SRAM_nWE_idle,
             R  => '0',
             S  => '0'
         );
