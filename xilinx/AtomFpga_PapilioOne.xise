@@ -195,7 +195,7 @@
       <association xil_pn:name="Implementation" xil_pn:seqID="67"/>
     </file>
     <file xil_pn:name="AtomFpga_PapilioOne.bmm" xil_pn:type="FILE_BMM"/>
-    <file xil_pn:name="../src/common/MC6522/m6522_v3.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../src/common/MC6522/m6522.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="112"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="86"/>
     </file>

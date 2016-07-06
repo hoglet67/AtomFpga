@@ -352,7 +352,12 @@ begin
 
     Inst_atommc2: if (CImplAtoMMC2) generate
     
-        Inst_AVR8: entity work.AVR8 port map(
+        Inst_AVR8: entity work.AVR8
+        generic map(
+            CDATAMEMSIZE         => 4096,
+            CPROGMEMSIZE         => 10240
+        )
+        port map(
             clk16M            => clk_16M00,
             nrst              => RSTn,
             portain           => AVRDataOut,
