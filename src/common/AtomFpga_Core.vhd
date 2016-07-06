@@ -19,57 +19,59 @@ use ieee.numeric_std.all;
 
 entity AtomFpga_Core is
     generic (
-       CImplSDDOS          : boolean;
-       CImplAtoMMC2        : boolean;
-       CImplGraphicsExt    : boolean;
-       CImplSoftChar       : boolean;
-       CImplSID            : boolean;
-       CImplVGA80x40       : boolean;
-       CImplHWScrolling    : boolean;
-       CImplMouse          : boolean;
-       CImplUart           : boolean;
-       CImplDoubleVideo    : boolean;
-       CImplRamRomNone     : boolean;
-       CImplRamRomPhill    : boolean;
-       CImplRamRomAtom2015 : boolean;
-       MainClockSpeed      : integer;
-       DefaultBaud         : integer
+       CImplSDDOS              : boolean;
+       CImplAtoMMC2            : boolean;
+       CImplGraphicsExt        : boolean;
+       CImplSoftChar           : boolean;
+       CImplSID                : boolean;
+       CImplVGA80x40           : boolean;
+       CImplHWScrolling        : boolean;
+       CImplMouse              : boolean;
+       CImplUart               : boolean;
+       CImplDoubleVideo        : boolean;
+       CImplRamRomNone         : boolean;
+       CImplRamRomPhill        : boolean;
+       CImplRamRomAtom2015     : boolean;
+       CImplRamRomSchakelKaart : boolean;
+       MainClockSpeed          : integer;
+       DefaultBaud             : integer
     );
-    port (clk_vga : in    std_logic;
-        clk_16M00 : in    std_logic;
-        clk_32M00 : in    std_logic;
-        ps2_clk   : in    std_logic;
-        ps2_data  : in    std_logic;
-        ps2_mouse_clk   : inout    std_logic;
-        ps2_mouse_data  : inout    std_logic;
-        ERSTn     : in    std_logic;
-        IRSTn     : out   std_logic;
-        red       : out   std_logic_vector (2 downto 0);
-        green     : out   std_logic_vector (2 downto 0);
-        blue      : out   std_logic_vector (2 downto 0);
-        vsync     : out   std_logic;
-        hsync     : out   std_logic;
-        phi2      : out   std_logic;
-        ExternCE  : out   std_logic;
-        ExternWE  : out   std_logic;
-        ExternA   : out   std_logic_vector (18 downto 0);
-        ExternDin : out   std_logic_vector (7 downto 0);
-        ExternDout: in    std_logic_vector (7 downto 0);
-        audiol    : out   std_logic;
-        audioR    : out   std_logic;
-        SDMISO    : in    std_logic;
-        SDSS      : out   std_logic;
-        SDCLK     : out   std_logic;
-        SDMOSI    : out   std_logic;
-        uart_RxD  : in    std_logic;
-        uart_TxD  : out   std_logic;
-        avr_RxD   : in    std_logic;
-        avr_TxD   : out   std_logic;
-        LED1      : out   std_logic;        
-        LED2      : out   std_logic;
-        charSet   : in    std_logic;
-        Joystick1 : in    std_logic_vector (7 downto 0) := (others => '1'); 
-        Joystick2 : in    std_logic_vector (7 downto 0) := (others => '1')
+    port (clk_vga      : in    std_logic;
+        clk_16M00      : in    std_logic;
+        clk_32M00      : in    std_logic;
+        ps2_clk        : in    std_logic;
+        ps2_data       : in    std_logic;
+        ps2_mouse_clk  : inout    std_logic;
+        ps2_mouse_data : inout    std_logic;
+        ERSTn          : in    std_logic;
+        IRSTn          : out   std_logic;
+        red            : out   std_logic_vector (2 downto 0);
+        green          : out   std_logic_vector (2 downto 0);
+        blue           : out   std_logic_vector (2 downto 0);
+        vsync          : out   std_logic;
+        hsync          : out   std_logic;
+        phi2           : out   std_logic;
+        ExternCE       : out   std_logic;
+        ExternWE       : out   std_logic;
+        ExternA        : out   std_logic_vector (18 downto 0);
+        ExternDin      : out   std_logic_vector (7 downto 0);
+        ExternDout     : in    std_logic_vector (7 downto 0);
+        sid_audio_d    : out   std_logic_vector (17 downto 0);
+        sid_audio      : out   std_logic;
+        atom_audio     : out   std_logic;
+        SDMISO         : in    std_logic;
+        SDSS           : out   std_logic;
+        SDCLK          : out   std_logic;
+        SDMOSI         : out   std_logic;
+        uart_RxD       : in    std_logic;
+        uart_TxD       : out   std_logic;
+        avr_RxD        : in    std_logic;
+        avr_TxD        : out   std_logic;
+        LED1           : out   std_logic;        
+        LED2           : out   std_logic;
+        charSet        : in    std_logic;
+        Joystick1      : in    std_logic_vector (7 downto 0) := (others => '1'); 
+        Joystick2      : in    std_logic_vector (7 downto 0) := (others => '1')
         );
 end AtomFpga_Core;
 
@@ -158,8 +160,6 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal key_escape  : std_logic;
     signal key_turbo   : std_logic_vector(1 downto 0);
 
-    signal sid_audio  : std_logic;
-
     signal pl8_enable : std_logic;
     signal pl8_data   : std_logic_vector (7 downto 0);
 
@@ -241,6 +241,7 @@ begin
             sid_cs => sid_enable,
             sid_we => sid_we,
             sid_audio => sid_audio,
+            sid_audio_d => sid_audio_d,
             PS2_CLK => ps2_mouse_clk,
             PS2_DATA => ps2_mouse_data,            
             uart_cs => uart_enable,
@@ -488,6 +489,25 @@ begin
                 ExternDout   => ExternDout
                 );
     end generate;
+
+    Inst_RamRomSchakelKaart: if (CImplRamRomSchakelKaart) generate
+        Inst_RamRomSchakelKaart_comp: entity work.RamRom_SchakelKaart
+            port map(
+                clock        => clk_16M00,
+                reset_n      => RSTn,
+                -- signals from/to 6502
+                cpu_addr     => cpu_addr,
+                cpu_we       => not_cpu_R_W_n,
+                cpu_dout     => cpu_dout,
+                cpu_din      => extern_data,
+                -- signals from/to external memory system
+                ExternCE     => ExternCE,
+                ExternWE     => ExternWE,
+                ExternA      => ExternA,
+                ExternDin    => ExternDin,
+                ExternDout   => ExternDout
+                );
+    end generate;
     
 ---------------------------------------------------------------------
 --
@@ -507,10 +527,8 @@ begin
     inpurps2dat   <= ps2_data;
     not_cpu_R_W_n <= not cpu_R_W_n;
     cpu_IRQ_n     <= mc6522_irq;
-
     
-    audiol        <= sid_audio;
-    audioR        <= i8255_pc_data(2);
+    atom_audio        <= i8255_pc_data(2);
 
     i8255_pc_idata <= vdg_fs_n & key_repeat & "11" & i8255_pc_data (3 downto 0);
     i8255_pb_idata <= key_shift & key_ctrl & ps2dataout;

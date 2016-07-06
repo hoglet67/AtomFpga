@@ -154,8 +154,8 @@ signal clock_16        : std_logic;
 signal clock_25        : std_logic;
 signal clock_32        : std_logic;
 
-signal led1_n          : std_logic;
-signal led2_n          : std_logic;
+signal led1            : std_logic;
+signal led2            : std_logic;
 
 signal Phi2            : std_logic;
 
@@ -170,10 +170,10 @@ signal ExternDin       : std_logic_vector (7 downto 0);
 signal ExternDout      : std_logic_vector (7 downto 0);
 
 -- A registered version to allow slow flash to be used
-signal ExternA_r         : std_logic_vector (18 downto 0);
+signal ExternA_r       : std_logic_vector (18 downto 0);
 
-signal audio_l_1bit    : std_logic;
-signal audio_r_1bit    : std_logic;
+signal atom_audio      : std_logic;
+signal sid_audio       : std_logic_vector(17 downto 0);
 signal audio_l         : std_logic_vector(15 downto 0);
 signal audio_r         : std_logic_vector(15 downto 0);
 signal powerup_reset_n : std_logic;
@@ -220,21 +220,22 @@ begin
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
-        CImplSDDOS          => true,
-        CImplAtoMMC2        => false,
-        CImplGraphicsExt    => true,
-        CImplSoftChar       => true,
-        CImplSID            => true,
-        CImplVGA80x40       => true,
-        CImplHWScrolling    => true,
-        CImplMouse          => true,
-        CImplUart           => true,
-        CImplDoubleVideo    => false,
-        CImplRamRomNone     => false,
-        CImplRamRomPhill    => true,
-        CImplRamRomAtom2015 => false,
-        MainClockSpeed      => 16000000,
-        DefaultBaud         => 115200
+        CImplSDDOS              => true,
+        CImplAtoMMC2            => false,
+        CImplGraphicsExt        => true,
+        CImplSoftChar           => true,
+        CImplSID                => true,
+        CImplVGA80x40           => true,
+        CImplHWScrolling        => true,
+        CImplMouse              => true,
+        CImplUart               => true,
+        CImplDoubleVideo        => false,
+        CImplRamRomNone         => false,
+        CImplRamRomPhill        => false,
+        CImplRamRomAtom2015     => false,
+        CImplRamRomSchakelKaart => true,
+        MainClockSpeed          => 16000000,
+        DefaultBaud             => 115200
      )
      port map(
         clk_vga             => clock_25,
@@ -257,8 +258,9 @@ begin
         ExternA             => ExternA,
         ExternDin           => ExternDin,
         ExternDout          => ExternDout,
-        audiol              => audio_l_1bit,
-        audioR              => audio_r_1bit,
+        sid_audio           => open,
+        sid_audio_d         => sid_audio,
+        atom_audio          => atom_audio,
         SDMISO              => SD_MISO,
         SDSS                => SD_nCS,
         SDCLK               => SD_SCLK,
@@ -267,8 +269,8 @@ begin
         uart_TxD            => uart_Tx,
         avr_RxD             => '1',
         avr_TxD             => avr_Tx,
-        LED1                => led1_n,
-        LED2                => led2_n,
+        LED1                => led1,
+        LED2                => led2,
         charSet             => SW(0)
         );
 
@@ -324,11 +326,26 @@ begin
 -- Audio DACs
 --------------------------------------------------------
 
-	 -- temporary hack to get audio working
-	 -- need to move the DAC out of the core
-	 audio_l <= x"4000" when audio_l_1bit = '1' else x"C000";
-	 audio_r <= x"4000" when audio_r_1bit = '1' else x"C000";
-	 
+    -- This version assumes only one source is playing at once
+    process(atom_audio, sid_audio)
+        variable l : std_logic_vector(15 downto 0);
+        variable r : std_logic_vector(15 downto 0);
+    begin
+        -- Atom Audio is a single bit
+        if (atom_audio = '1') then
+            l := x"1000";
+            r := x"1000";
+        else
+            l := x"EFFF";
+            r := x"EFFF";
+        end if;
+        -- SID output is 18-bit unsigned
+        l := l + (sid_audio(17 downto 2) - x"8000");
+        r := r + (sid_audio(17 downto 2) - x"8000");
+        audio_l <= l;
+        audio_r <= r;
+    end process;
+
     i2s : entity work.i2s_intf
         port map (
             CLK         => clock_32,
@@ -386,10 +403,9 @@ begin
     FL_WE_N <= '1';
     -- Flash address change every at most every 16 cycles (2MHz)
     -- Use the latched version to maximise access time
-	 -- Start at address at 0x100000 (AtoMMC)
-	 -- Start at address at 0x120000 (AtoMMC)
+	 -- Start at address at 0x100000
 	 
-    FL_ADDR <= "01001" & ExternA_r(16 downto 0);
+    FL_ADDR <= "010000" & ExternA_r(15 downto 0);
 
     -- SRAM bus
     SRAM_UB_N <= '1';
@@ -414,8 +430,8 @@ begin
     LEDG(0) <= pll_1_locked;
     LEDG(1) <= pll_2_locked;
     LEDG(7 downto 2) <= (others => '0');
-    LEDR(0) <= not led1_n;
-    LEDR(1) <= not led2_n;
+    LEDR(0) <= led1;
+    LEDR(1) <= led2;
     LEDR(2) <= is_error;
     LEDR(3) <= not is_done;
     LEDR(9 downto 4) <= (others => '0');
