@@ -73,8 +73,8 @@ architecture behavioral of AtomFpga_Hoglet is
     signal uart_TxD   : std_logic;
     signal avr_TxD    : std_logic;
 
-    signal LED1n      : std_logic;
-    signal LED2n      : std_logic;
+    signal LED1       : std_logic;
+    signal LED2       : std_logic;
 
 begin
 
@@ -143,8 +143,8 @@ begin
         uart_TxD            => uart_TxD,
         avr_RxD             => '1',
         avr_TxD             => avr_TxD,
-        LED1                => LED1n,
-        LED2                => LED2n,
+        LED1                => LED1,
+        LED2                => LED2,
         charSet             => '0'
         );
 
@@ -166,7 +166,8 @@ begin
     -- Idle state is high, logically OR the active low signals
     TxD <= uart_TxD and avr_TxD;
 
-    LED1 <= not LED1n;
-    LED2 <= not LED2n;
+    -- on the hoglet board the LEDs are active low
+    LED1 <= not LED1;
+    LED2 <= not LED2;
     
 end behavioral;

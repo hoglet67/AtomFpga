@@ -1,6 +1,6 @@
 -- Acorn Atom FPGA for the Altera/Terasic DE1
 --
--- Copright (c) 2014 David Banks
+-- Copright (c) 2016 David Banks
 --
 -- Based on previous work by Alan Daly
 --
