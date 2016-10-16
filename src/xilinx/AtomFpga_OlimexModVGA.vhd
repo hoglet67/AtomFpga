@@ -91,9 +91,8 @@ begin
 
     inst_dcm2 : entity work.dcm2 port map(
         CLKIN_IN  => clk_25M00,
-        CLK0_OUT  => clock_16,
-        CLK0_OUT1 => open,
-        CLK2X_OUT => open);
+        CLK0_OUT  => clock_25,
+        CLKFX_OUT => clock_16);
 
     inst_dcm3 : entity work.dcm3 port map (
         CLKIN_IN  => clock_16,
@@ -121,7 +120,7 @@ begin
         DefaultBaud             => 115200          
     )
     port map(
-        clk_vga             => clk_25M00,
+        clk_vga             => clock_25,
         clk_16M00           => clock_16,
         clk_32M00           => clock_32,
         ps2_clk             => ps2_clk,

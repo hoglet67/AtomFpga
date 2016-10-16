@@ -5,26 +5,35 @@ library UNISIM;
 use UNISIM.Vcomponents.all;
 
 entity dcm2 is
-    port (CLKIN_IN  : in  std_logic;
-          CLK0_OUT  : out std_logic;
-          CLK0_OUT1 : out std_logic;
-          CLK2X_OUT : out std_logic); 
+    port (CLKIN_IN       : in  std_logic;
+          CLK0_OUT       : out std_logic;
+          CLKFX_OUT      : out std_logic);
 end dcm2;
 
 architecture BEHAVIORAL of dcm2 is
-    signal CLKFX_BUF   : std_logic;
-    signal CLKIN_IBUFG : std_logic;
     signal GND_BIT     : std_logic;
+    signal CLKIN       : std_logic;
+    signal CLKFX       : std_logic;
+    signal CLKFX_BUF   : std_logic;
+    signal CLK0        : std_logic;
+    signal CLK0_BUF    : std_logic;
+    signal CLKFB       : std_logic;
 begin
 
     GND_BIT <= '0';
-    CLKFX_BUFG_INST : BUFG
-        port map (I => CLKFX_BUF, O => CLK0_OUT);
+        
+    -- CLK0 output buffer
+    CLK0_BUFG_INST : BUFG
+        port map (I => CLK0, O => CLK0_BUF);
+    CLK0_OUT <= CLK0_BUF;
     
+    -- CLKFX output buffer
+    CLKFX_BUFG_INST : BUFG
+        port map (I => CLKFX, O => CLKFX_BUF);
+    CLKFX_OUT <= CLKFX_BUF;
 
     DCM_INST : DCM
-        -- DCM_SP_INST : DCM_SP
-        generic map(CLK_FEEDBACK          => "NONE",
+        generic map(CLK_FEEDBACK          => "1X",
                     CLKDV_DIVIDE          => 4.0,  -- 16.000 = 25MHz * 16 / 25
                     CLKFX_DIVIDE          => 25,
                     CLKFX_MULTIPLY        => 16,
@@ -38,7 +47,7 @@ begin
                     FACTORY_JF            => x"C080",
                     PHASE_SHIFT           => 0,
                     STARTUP_WAIT          => false)
-        port map (CLKFB    => GND_BIT,
+        port map (CLKFB    => CLK0_BUF,
                   CLKIN    => CLKIN_IN,
                   DSSEN    => GND_BIT,
                   PSCLK    => GND_BIT,
@@ -46,9 +55,9 @@ begin
                   PSINCDEC => GND_BIT,
                   RST      => GND_BIT,
                   CLKDV    => open,
-                  CLKFX    => CLKFX_BUF,
+                  CLKFX    => CLKFX,
                   CLKFX180 => open,
-                  CLK0     => open,
+                  CLK0     => CLK0,
                   CLK2X    => open,
                   CLK2X180 => open,
                   CLK90    => open,
