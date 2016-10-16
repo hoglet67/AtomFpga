@@ -73,8 +73,8 @@ architecture behavioral of AtomFpga_Hoglet is
     signal uart_TxD   : std_logic;
     signal avr_TxD    : std_logic;
 
-    signal LED1       : std_logic;
-    signal LED2       : std_logic;
+    signal LED1_int   : std_logic;
+    signal LED2_int   : std_logic;
 
 begin
 
@@ -143,8 +143,8 @@ begin
         uart_TxD            => uart_TxD,
         avr_RxD             => '1',
         avr_TxD             => avr_TxD,
-        LED1                => LED1,
-        LED2                => LED2,
+        LED1                => LED1_int,
+        LED2                => LED2_int,
         charSet             => '0'
         );
 
@@ -167,7 +167,7 @@ begin
     TxD <= uart_TxD and avr_TxD;
 
     -- on the hoglet board the LEDs are active low
-    LED1 <= not LED1;
-    LED2 <= not LED2;
+    LED1 <= not LED1_int;
+    LED2 <= not LED2_int;
     
 end behavioral;
