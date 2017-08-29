@@ -4,7 +4,7 @@ mkdir -p build
 
 pushd build
 
-for file in SDROM.ASM int.inc math-lib.inc sd.inc; do
+for file in SDROM.ASM SDROM_FPGA.ASM int.inc math-lib.inc sd.inc; do
 
 cp ../$file tmp
 
@@ -93,19 +93,17 @@ tr -d "\r" <tmp >$file
 
 done
 
-# Add a Save
-cat >> SDROM.ASM << EOF
-SAVE "SDROM.rom", start_asm, eind_asm
-EOF
-
-# Build
-../../../BeebASM/beebasm/beebasm -v -i  SDROM.ASM
-
-mv SDROM.rom ..
-
-rm -rf build
+for build in SDROM SDROM_FPGA
+do
+    echo "Building $build"
+    echo "SAVE \"$build.rom\",start_asm, eind_asm" >> $build.ASM
+    ../../../../BeebASM/beebasm/beebasm -v -i $build.ASM > ../$build.log 
+    mv $build.rom ..
+done
 
 popd
+rm -rf build
+
 
 
 

@@ -1,4 +1,7 @@
 *~
 #*
 SDROM.rom
+SDROM.log
+SDROM_FPGA.rom
+SDROM_FPGA.log
 build/

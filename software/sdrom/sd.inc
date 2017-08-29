@@ -62,11 +62,16 @@ CLK         equ $40
 CS          equ $20
 
 IFTYPE      equ $22b  ; B - detected interface type 0x80 = PL8, 0x40 = VIA, 0 = none
+.IFTRUE INCLUDE_SDHC
+CARDTYPE    equ $22c  ; B - detected card type 0x00 = SD, 0x80 = SDHC
+.ENDIF
 XFERV       equ $23e  ; W - transfer byte function vector
 RWTEMP      equ $3d1  ; W - temporary copy of RWLEN used in loadbytes
 XBTEMP      equ $3d4  ; [3] - temp storage for XFERBYTE
 
+.IFTRUE INCLUDE_VIA
 VIA         equ $b800
+.ENDIF
 
 ;-----------------------------------------------------------------
 ; SD_INIT
@@ -100,6 +105,8 @@ sd_init
            jsr init_card                    ; carry set if card reset OK
 
            bcs di_detected
+
+.IFTRUE INCLUDE_VIA
 forcevia:
            lda #<xferbyte_via
            sta XFERV
@@ -112,6 +119,7 @@ forcevia:
            jsr wakemmc_via                  ; initialisation sequence for VIA type interface
            jsr init_card
            bcs di_detected
+.ENDIF
              
            lda #<iferr                      ; no interface detected
            sta XFERV
@@ -257,6 +265,8 @@ xferbyte_pl8:
            lda $b400
            rts
 
+.IFTRUE INCLUDE_VIA
+
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
 ; initiate an spi transfer. this is spi mode 0, where we sample on the rising edge.
@@ -300,6 +310,8 @@ xb_xferbit:
            ldx XBTEMP
            rts
 
+.ENDIF
+
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
 ; pump up the card
@@ -310,15 +322,97 @@ init_card:
            ldx #1
            stx 4
            lda #0
+.IFTRUE INCLUDE_SDHC
+           sta CARDTYPE
+.ENDIF
            sta $16,x
            sta $25,x
            sta $34,x
            sta $43,x
-             
+
+; send CMD0             
            lda #$40
            jsr sendcommand
            cmp #1                  ; expect response 'card gone idle'
            bne ic_noresponse
+
+
+.IF INCLUDE_SDHC
+
+; After the card enters idle state with a CMD0, send a CMD8 with
+; argument of 0x000001AA and correct CRC prior to initialization
+; process.
+ 
+; send CMD8
+           lda #$01
+           sta $25,x
+           lda #$aa
+           sta $16,x
+           lda #$40 + 8
+           ldy #$87
+           jsr sendcommand_with_crc
+
+; If the CMD8 is rejected with illigal command error (0x05), the card
+; is SDC version 1 or MMC version 3.
+
+           cmp #5
+           beq card_type_sd
+           cmp #1
+           bne ic_noresponse
+
+; If accepted, R7 response (R1(0x01) + 32-bit return value) will be
+; returned. The lower 12 bits in the return value 0x1AA means that the
+; card is SDC version 2 and it can work at voltage range of 2.7 to 3.6
+; volts. If not the case, the card should be rejected. 
+
+           jsr OSXFERFF
+           jsr OSXFERFF
+           jsr OSXFERFF
+           cmp #$01
+           bne ic_noresponse
+           jsr OSXFERFF
+           cmp #$AA
+           bne ic_noresponse
+
+; And then initiate initialization with ACMD41 with HCS flag (bit
+; 30).
+
+           ldy #$00
+           sty RWTEMP
+           sty $25,x
+           sty $16,x
+           dey
+           sty CARDTYPE
+
+; send ACMD41 with HCS bit set
+send_acmd41:
+           lda #$00
+           sta $43,x
+           lda #$40 + 55
+           jsr sendcommand_with_crc
+
+           lda #$40
+           sta $43,x
+           lda #$40 + 41
+           jsr sendcommand
+           beq ic_initaccepted
+
+           dec RWTEMP
+           bne send_acmd41
+           beq ic_noresponse
+           
+; After the initialization completed, read OCR register with CMD58 and
+; check CCS flag (bit 30). When it is set, the card is a high-capacity
+; card known as SDHC/SDXC. The data read/write operations described
+; below are commanded in block addressing insted of byte
+; addressing. The size of data block at block addressing mode is fixed
+; to 512 bytes.
+
+           ; todo, not critical 
+
+card_type_sd:
+
+.ENDIF ; INCLUDE_SDHC
              
 ; reset card - try ACMD1 first
            lda #$40+41
@@ -343,6 +437,8 @@ ic_noresponse:
 ic_initaccepted:
            sec
            rts
+
+.IFTRUE INCLUDE_VIA
 
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
@@ -371,6 +467,7 @@ wm_clockit:
           bne wm_clockit
              
           rts
+.ENDIF
 
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
@@ -380,11 +477,16 @@ wm_clockit:
 ;
 ; on entry
 ;  A = command to send, command buffer set up appropriately
-;
+;  Y = checksum
+
 ; on exit
 ;  A,X,Y trashed
 ;
 sendcommand:
+.IFTRUE INCLUDE_SDHC
+            ldy #$95
+.ENDIF
+sendcommand_with_crc:
             pha
              
             lda IFTYPE
@@ -403,7 +505,11 @@ sendcommand:
             jsr OSXFER
             lda $16,x
             jsr OSXFER
+.IFTRUE INCLUDE_SDHC
+            tya
+.ELSE
             lda #$95         ; dummy checksum, only required for cmd0.
+.ENDIF
             jsr OSXFER
              
 ; wait to receive a byte with bit 7 clear
@@ -443,11 +549,14 @@ deselectcard:
 cd_setstate:
            bit IFTYPE
            bmi sc_pl8
+
+.IFTRUE INCLUDE_VIA
              
            sta VIA
            ldx #0
            dex
            bne *-1
+.ENDIF
 sc_pl8:
            rts
 
@@ -471,7 +580,11 @@ av_await:
             
 responseerror:
            jsr prttxt                 ; bail if we just can't get it
+.IFTRUE INCLUDE_SDHC
+           .db "RESP?"
+.ELSE
            .db "  RESPONSE ERROR"
+.ENDIF
            nop
            brk
 
@@ -484,6 +597,10 @@ responseerror:
 sectortocmdbuf:
            ldx 4
            lda sector
+.IFTRUE INCLUDE_SDHC
+           bit CARDTYPE
+           bmi sectortocmdbuf_sdhc
+.ENDIF
            asl a
            sta $25,x
            lda sector+1
@@ -495,6 +612,18 @@ sectortocmdbuf:
            lda #0
            sta $16,x
            rts
+
+.IFTRUE INCLUDE_SDHC
+.sectortocmdbuf_sdhc:
+           sta $16,x
+           lda sector+1
+           sta $25,x
+           lda sector+2
+           sta $34,x
+           lda #0
+           sta $43,x
+           rts
+.ENDIF
 
 ;-----------------------------------------------------------------------------------
 OSXFERFF:

@@ -10,8 +10,8 @@
 ;		 .dw eind_asm-start_asm
 ;****************************************
 
-INCLUDE_VIA equ TRUE
-INCLUDE_SDHC equ FALSE
+INCLUDE_VIA equ FALSE
+INCLUDE_SDHC equ TRUE
 
 start_asm    
              include math-lib.inc
