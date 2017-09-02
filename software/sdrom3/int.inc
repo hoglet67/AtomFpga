@@ -1269,9 +1269,9 @@ exec_file1:
 ;                STA $C8
 ;                LDA #' '
 ;                STA qual
-;                LDA #0
+                LDA #0
 ;                STA cur_drive
-	sta $9e
+                STA $9E
 
                 JSR load1              ; Load file, no loadaddress given
 
