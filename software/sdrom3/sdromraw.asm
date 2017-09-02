@@ -1,6 +1,6 @@
 
 ;              .org $A000-22
-			.org	$a000
+			.org	$e000
 			
 ;****************************************
 ; Header for Atom emulator Wouter Ras
@@ -19,6 +19,6 @@ start_asm:
 end_asm:
 
 ; Fill the end of the rom with $FF
-.res $afff-*, $FF
+.res $efff-*, $FF
 	RTS
 eind_asm:
