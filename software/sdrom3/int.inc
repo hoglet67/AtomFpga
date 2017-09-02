@@ -12,6 +12,24 @@
 ; v03.24 !!!!!!!!!!! PHS - Merged in routines for AVR/AtomClone !!
 ; v03.25 !!!!!!!!!!! *RUN file and *file problem now solved !!!!!!
 ; v03.26 !!!!!!!!!!! Several problems with AVR build solved !!!!!!
+; v03.27 ??
+; v03.28 !!!!!!!!!!! Exxx version with autoboot, *FORMAT fixed !!!
+;        Fxxx patch needed for autobooting SDDOS at #Exxx
+;
+;        1. Changes execution address of DOS command from $E00D to $EFCC
+;        ---------------------------------------------------------------
+;          Offset in kernel.rom  Original value  New value
+;
+;           08ea                  0d              cc
+;           08eb                  e0              ef
+;
+;       2. Changes JMP at FF94 from JMP $C282 to JMP $e000
+;        --------------------------------------------------
+;          Offset in kernel.rom  Original value  New value
+;
+;           0f95                  b2              00
+;           0f96                  c2              e0
+;
 ;=================================================================
 
 ;=================================================================
@@ -84,11 +102,103 @@ wait_key        = $FE94
 OSWRCH          = $FFF4
 OSCRLF          = $FFED
 
+RDCVEC          = $20a
+FKIDX		= $3CA
+
 ;=================================================================
-; ROM IDENTIFIER
+; BOOT ROUTINE
 ;=================================================================
 
-romid:         .byte $40,$BF
+   ; test ctrl - if pressed, don't initialise
+   ;
+   bit $b001
+   bvs initialise
+
+   ; don't initialise the firmware
+   ; the E000 build 
+   jmp   $c2b2             ; set #2900 text space and enter command handler
+
+initialise:
+   tya
+   pha
+   txa
+   pha
+
+   ldx   #0
+   stx   FKIDX            ; fake key index for OSRDCH patch, just piggybacking
+
+   lda   #43              ;'+'
+   sta   $800b
+
+shorttitle:
+   lda   version,x
+   and   #$bf
+   sta   $800d,x
+   inx
+   cmp   #$20
+   bne   shorttitle
+
+   jsr   sddos
+
+   bit $b001
+   bmi unpatched
+
+patchosrdch:		; Shift key pressed, start *MENU
+   lda   #<osrdchcode
+   sta   RDCVEC
+   lda   #>osrdchcode
+   sta   RDCVEC+1
+
+unpatched:
+   pla
+   tax
+   pla
+   tay
+
+   jmp   $c2b2             ; set #2900 text space and enter command handler
+
+; patched os input function
+;
+; streams fake keypresses to the system
+; re-registers the bios' function when
+; a> fake keys have all been sent or
+; b> when no shift-key is detected
+;
+osrdchcode:
+   php
+   cld
+   stx   $e4
+   sty   $e5
+	
+   ldx   FKIDX
+   lda   fakekeys,x
+   cmp	#$0d
+   beq   unpatch
+
+   inx
+   stx   FKIDX
+
+   ldx   $e4
+   ldy   $e5
+   plp
+   rts
+
+unpatch:
+   ; restore OSRDCH, continue on to read a char
+
+osrdchcode_unhook:
+   lda   #$94
+   sta   RDCVEC
+   lda   #$fe
+   sta   RDCVEC+1
+   
+   lda 	#$0d
+   pha
+   jmp 	$fe5c
+
+fakekeys:
+   .byte "*MENU"
+   .byte $0d,0
 
 ;=================================================================
 ; COMMAND INTERPRETER
@@ -559,7 +669,8 @@ infall1:        JSR file_info1          ; Print file info
 format:         JSR get_drivenr                 ; Read disknumber
                 JSR chk_end_command
                
-                JSR status_disk_r               ; Read disk status
+                LDA drivenr                     ; Read disk status
+		JSR sd_drivestatus_r
                 JSR chk_disk
 
                 JSR prttxt
@@ -592,8 +703,15 @@ form1:          STA catbuf,X
                 LDA #<400
                 STA catbuf+$107
 
+		LDA cur_drive
+		STA work
+		LDA drivenr
+		STA cur_drive
                 JSR catalog_w                   ; Save catalog from $2000
-                JMP diskchange                  ; Set diskchangeflag
+                JSR diskchange                  ; Set diskchangeflag
+		LDA work
+		STA cur_drive
+		RTS
 
 ;-----------------------------------------------------------------
 ; *LOAD <filename>,<loadaddress>
@@ -1715,7 +1833,8 @@ dhelp:
 				JSR chk_end_command
                 JSR OSCRLF 
                 JSR prttxt                      ; Print header
-                .byte 	"SDDOS V3.27 [TURBO]  (C)KC 2015"
+version:
+                .byte 	"SDDOS V3.28E [TURBO] (C)KC 2017"
 .ifdef AVR
 				.byte	" AVR"
 .endif
