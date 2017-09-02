@@ -1262,22 +1262,23 @@ exec_file:
 
                 JMP command_error
 
-exec_file1:     LDA cur_drive          ; Save drive + qual
-                STA $C7
-                LDA qual
-                STA $C8
-                LDA #' '
-                STA qual
-                LDA #0
-                STA cur_drive
+exec_file1:
+;                LDA cur_drive          ; Save drive + qual
+;                STA $C7
+;                LDA qual
+;                STA $C8
+;                LDA #' '
+;                STA qual
+;                LDA #0
+;                STA cur_drive
 	sta $9e
 
                 JSR load1              ; Load file, no loadaddress given
 
-                LDA $C7                ; Restore drive + qual
-                STA cur_drive
-                LDA $C8
-                STA qual
+;                LDA $C7                ; Restore drive + qual
+;                STA cur_drive
+;                LDA $C8
+;                STA qual
 
                 JMP ($09E)             ; Jump to executionaddress
 
