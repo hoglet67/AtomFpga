@@ -65,12 +65,12 @@ IFTYPE      equ $22b  ; B - detected interface type 0x80 = PL8, 0x40 = VIA, 0 = 
 .IFTRUE INCLUDE_SDHC
 CARDTYPE    equ $22c  ; B - detected card type 0x00 = SD, 0x80 = SDHC
 .ENDIF
-XFERV       equ $23e  ; W - transfer byte function vector
 RWTEMP      equ $3d1  ; W - temporary copy of RWLEN used in loadbytes
 XBTEMP      equ $3d4  ; [3] - temp storage for XFERBYTE
 
 .IFTRUE INCLUDE_VIA
 VIA         equ $b800
+XFERV       equ $23e  ; W - transfer byte function vector
 .ENDIF
 
 ;-----------------------------------------------------------------
@@ -96,10 +96,13 @@ sd_init
 ; the PL8 interface does the card idle initialisation so we can go straight for
 ; the reset card command(4)1...
 
+
+.IFTRUE INCLUDE_VIA
            lda #<xferbyte_pl8
            sta XFERV
            lda #>xferbyte_pl8
            sta XFERV+1
+.ENDIF
            lda #$80                         ; interface type PL8
            sta IFTYPE 
            jsr init_card                    ; carry set if card reset OK
@@ -119,12 +122,12 @@ forcevia:
            jsr wakemmc_via                  ; initialisation sequence for VIA type interface
            jsr init_card
            bcs di_detected
-.ENDIF
              
            lda #<iferr                      ; no interface detected
            sta XFERV
            lda #>iferr
            sta XFERV+1
+.ENDIF
             
            lda #0
            sta IFTYPE
@@ -255,14 +258,14 @@ write_end
 ;  A = received byte, X,Y preserved
 ;
 xferbyte_pl8:
-           sta $b400
+           sta SPI_PORT
            nop
            nop
            nop
            nop
            nop
            nop
-           lda $b400
+           lda SPI_PORT
            rts
 
 .IFTRUE INCLUDE_VIA
@@ -547,17 +550,15 @@ deselectcard:
            lda #MOSI+CS
              
 cd_setstate:
-           bit IFTYPE
-           bmi sc_pl8
-
 .IFTRUE INCLUDE_VIA
-             
+           bit IFTYPE
+           bmi sc_pl8             
            sta VIA
            ldx #0
            dex
            bne *-1
-.ENDIF
 sc_pl8:
+.ENDIF
            rts
 
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
@@ -629,5 +630,9 @@ sectortocmdbuf:
 OSXFERFF:
             lda #$ff
 OSXFER:
+.IFTRUE INCLUDE_VIA
             jmp (XFERV)
+.ELSE
+            jmp xferbyte_pl8
+.ENDIF
 
