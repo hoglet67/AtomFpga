@@ -138,6 +138,7 @@ di_detected:
            rts
 
 iferr:
+           jsr deselectcard
            jsr prttxt
            .db "INTERFACE?"
            nop
@@ -558,8 +559,17 @@ cd_setstate:
            dex
            bne *-1
 sc_pl8:
-.ENDIF
            rts
+.ELSE
+           and #CS
+           bne sc_pl8_deselect
+sc_pl8_select:
+           sta SPI_PORT + 4 ; CS = 0
+           rts
+sc_pl8_deselect:
+           sta SPI_PORT + 3 ; CS = 1
+           rts
+.ENDIF
 
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
