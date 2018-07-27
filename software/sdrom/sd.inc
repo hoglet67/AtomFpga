@@ -63,7 +63,7 @@ CS          equ $20
 
 IFTYPE      equ $22b  ; B - detected interface type 0x80 = PL8, 0x40 = VIA, 0 = none
 .IFTRUE INCLUDE_SDHC
-CARDTYPE    equ $22c  ; B - detected card type 0x00 = SD, 0x80 = SDHC
+CARDTYPE    equ $22c  ; B - detected card type 0x00 = SD, 0x40 = SDHC
 .ENDIF
 RWTEMP      equ $3d1  ; W - temporary copy of RWLEN used in loadbytes
 XBTEMP      equ $3d4  ; [3] - temp storage for XFERBYTE
@@ -385,34 +385,24 @@ init_card:
            sty RWTEMP
            sty $25,x
            sty $16,x
-           dey
-           sty CARDTYPE
 
 ; send ACMD41 with HCS bit set
 send_acmd41:
            lda #$00
            sta $43,x
            lda #$40 + 55
-           jsr sendcommand_with_crc
+           jsr sendcommand
 
            lda #$40
            sta $43,x
            lda #$40 + 41
            jsr sendcommand
-           beq ic_initaccepted
+           beq send_cmd58
 
            dec RWTEMP
            bne send_acmd41
            beq ic_noresponse
            
-; After the initialization completed, read OCR register with CMD58 and
-; check CCS flag (bit 30). When it is set, the card is a high-capacity
-; card known as SDHC/SDXC. The data read/write operations described
-; below are commanded in block addressing insted of byte
-; addressing. The size of data block at block addressing mode is fixed
-; to 512 bytes.
-
-           ; todo, not critical 
 
 card_type_sd:
 
@@ -438,6 +428,28 @@ ic_noresponse:
            clc
            rts
             
+.IFTRUE INCLUDE_SDHC
+; After the initialization completed, read OCR register with CMD58 and
+; check CCS flag (bit 30). When it is set, the card is a high-capacity
+; card known as SDHC/SDXC. The data read/write operations described
+; below are commanded in block addressing insted of byte
+; addressing. The size of data block at block addressing mode is fixed
+; to 512 bytes.
+
+send_cmd58
+           lda #$00
+           sta $43,x
+           lda #$40 + 58
+           jsr sendcommand
+           bne ic_noresponse
+           jsr OSXFERFF
+           and #$40
+           sta CARDTYPE
+           jsr OSXFERFF
+           jsr OSXFERFF
+           jsr OSXFERFF
+.ENDIF
+
 ic_initaccepted:
            sec
            rts
@@ -610,7 +622,7 @@ sectortocmdbuf:
            lda sector
 .IFTRUE INCLUDE_SDHC
            bit CARDTYPE
-           bmi sectortocmdbuf_sdhc
+           bvs sectortocmdbuf_sdhc
 .ENDIF
            asl a
            sta $25,x
