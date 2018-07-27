@@ -588,12 +588,16 @@ sc_pl8_deselect:
 ; wait for the card to return a particular value, or report response error
 ;
 awaitvalue:
+           ldx #$10
            ldy #0
            sta RWTEMP
              
 av_await:
            dey
+           bne av_await2:
+           dex
            beq responseerror
+av_await2:           
             
            jsr OSXFERFF
            cmp RWTEMP
