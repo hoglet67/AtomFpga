@@ -10,6 +10,7 @@ xilinx/working/
 xilinx/AtomFpga_Hoglet_bd.bmm
 xilinx/AtomFpga_PapilioOne_bd.bmm
 xilinx/AtomFpga_PapilioDuo_bd.bmm
+xilinx/AtomFpga_Atom2K18_bd.bmm
 
 altera/db/
 altera/incremental_db/
