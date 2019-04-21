@@ -366,16 +366,13 @@
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="148"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="77"/>
     </file>
-    <file xil_pn:name="../src/common/AVR8/Memory/XPM_Xilinx.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="149"/>
-      <association xil_pn:name="Implementation" xil_pn:seqID="56"/>
-    </file>
-    <file xil_pn:name="AtomFpga_Atom2K18.bmm" xil_pn:type="FILE_BMM">
-      <association xil_pn:name="Implementation" xil_pn:seqID="0"/>
-    </file>
     <file xil_pn:name="../src/common/RamRom_SchakelKaart.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="145"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="76"/>
+    </file>
+    <file xil_pn:name="../src/common/AVR8/Memory/XPM_AtoMMC2.vhd" xil_pn:type="FILE_VHDL">
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="144"/>
+      <association xil_pn:name="Implementation" xil_pn:seqID="56"/>
     </file>
   </files>
 
