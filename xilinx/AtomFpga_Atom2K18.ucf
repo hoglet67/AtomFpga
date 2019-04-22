@@ -89,23 +89,23 @@ NET "dac_ldac_n"     LOC = "P81"   | IOSTANDARD = LVCMOS33 ;
 NET "dac_sck"        LOC = "P79"   | IOSTANDARD = LVCMOS33 ;
 
 # Keyboard
-NET "pa<3>"          LOC = "P94"   | IOSTANDARD = LVCMOS33 ;
-NET "pa<2>"          LOC = "P97"   | IOSTANDARD = LVCMOS33 ;
-NET "pa<1>"          LOC = "P99"   | IOSTANDARD = LVCMOS33 ;
-NET "pa<0>"          LOC = "P101"  | IOSTANDARD = LVCMOS33 ;
-NET "pb<7>"          LOC = "P66"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<6>"          LOC = "P74"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<5>"          LOC = "P78"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<4>"          LOC = "P80"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<3>"          LOC = "P82"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<2>"          LOC = "P84"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<1>"          LOC = "P87"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<0>"          LOC = "P92"   | IOSTANDARD = LVCMOS33 ;
-NET "pc<6>"          LOC = "P67"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pa<3>"      LOC = "P94"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pa<2>"      LOC = "P97"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pa<1>"      LOC = "P99"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pa<0>"      LOC = "P101"  | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pb<7>"      LOC = "P66"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pb<6>"      LOC = "P74"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pb<5>"      LOC = "P78"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pb<4>"      LOC = "P80"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pb<3>"      LOC = "P82"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pb<2>"      LOC = "P84"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pb<1>"      LOC = "P87"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pb<0>"      LOC = "P92"   | IOSTANDARD = LVCMOS33 ;
+NET "kbd_pc<6>"      LOC = "P67"   | IOSTANDARD = LVCMOS33 ;
 
 # Mouse
-NET "mouse_clk"      LOC = "P102"  | IOSTANDARD = LVCMOS33 ;
-NET "mouse_data"     LOC = "P100"  | IOSTANDARD = LVCMOS33 ;
+NET "ps2_mouse_clk"  LOC = "P102"  | IOSTANDARD = LVCMOS33 ;
+NET "ps2_mouse_data" LOC = "P100"  | IOSTANDARD = LVCMOS33 ;
 
 # Cassette
 NET "cas_in"         LOC = "P144"  | IOSTANDARD = LVCMOS33 ;

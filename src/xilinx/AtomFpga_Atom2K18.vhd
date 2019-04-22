@@ -70,13 +70,13 @@ entity AtomFpga_Atom2K18 is
         dac_sck        : out   std_logic;
 
         -- Keyboard
-        pa             : out   std_logic_vector(3 downto 0);
-        pb             : in    std_logic_vector(7 downto 0);
-        pc             : in    std_logic_vector(6 downto 6);
+        kbd_pa         : out   std_logic_vector(3 downto 0);
+        kbd_pb         : in    std_logic_vector(7 downto 0);
+        kbd_pc         : in    std_logic_vector(6 downto 6);
 
         -- Mouse
-        mouse_clk      : inout std_logic;
-        mouse_data     : inout std_logic;
+        ps2_mouse_clk  : inout std_logic;
+        ps2_mouse_data : inout std_logic;
 
         -- Cassette
         cas_in         : in    std_logic;
@@ -134,6 +134,13 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal audio_r         : std_logic_vector(dacwidth - 1 downto 0);
     signal dac_shift_reg_l : std_logic_vector(dacwidth - 1 downto 0);
     signal dac_shift_reg_r : std_logic_vector(dacwidth - 1 downto 0);
+
+    -- Matrix Keyboard
+    signal ps2_kbd_enable  : std_logic;
+    signal ps2_kbd_clk     : std_logic;
+    signal ps2_kbd_data    : std_logic;
+    signal int_kbd_pb      : std_logic_vector(7 downto 0);
+    signal int_kbd_pc      : std_logic_vector(6 downto 6);
 
 begin
 
@@ -272,12 +279,19 @@ begin
         clk_vga             => clock_25,
         clk_16M00           => clock_16,
         clk_32M00           => clock_32,
-        ps2_clk             => pb(6),
-        ps2_data            => pb(7),
-        ps2_mouse_clk       => mouse_clk,
-        ps2_mouse_data      => mouse_data,
+
+        kbd_pa              => kbd_pa,
+        kbd_pb              => int_kbd_pb,
+        kbd_pc              => int_kbd_pc,
+
+        ps2_clk             => ps2_kbd_clk,
+        ps2_data            => ps2_kbd_data,
+        ps2_mouse_clk       => ps2_mouse_clk,
+        ps2_mouse_data      => ps2_mouse_data,
+
         ERSTn               => hard_reset_n,
         IRSTn               => reset_n,          -- not currently used
+
         red(2)              => vga_red1,
         red(1)              => vga_red2,
         red(0)              => open,
@@ -429,7 +443,23 @@ begin
     -- Keyboard
     ------------------------------------------------
 
-    pa <= "1111";
+    process(clock_16)
+    begin
+        if rising_edge(clock_16) then
+            if powerup_reset_n = '0' then
+                -- PC(7) linked to ground indicates a PS/2 keyboard should be used
+                ps2_kbd_enable <= not kbd_pc(6);
+            end if;
+        end if;
+    end process;
+
+    -- Enable/Disable the PS/2 keyboard
+    ps2_kbd_clk  <= kbd_pb(6) when ps2_kbd_enable = '1' else '1';
+    ps2_kbd_data <= kbd_pb(7) when ps2_kbd_enable = '1' else '1';
+
+    -- Enable/Disable the Matrix keyboard
+    int_kbd_pb   <= kbd_pb when ps2_kbd_enable = '0' else (others => '1');
+    int_kbd_pc   <= kbd_pc when ps2_kbd_enable = '0' else (others => '1');
 
     ------------------------------------------------
     -- Cassette

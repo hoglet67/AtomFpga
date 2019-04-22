@@ -42,6 +42,9 @@ entity AtomFpga_Core is
         clk_16M00      : in    std_logic;
         clk_32M00      : in    std_logic;
         -- Keyboard/mouse
+        kbd_pa         : out   std_logic_vector(3 downto 0);
+        kbd_pb         : in    std_logic_vector(7 downto 0) := (others => '1');
+        kbd_pc         : in    std_logic_vector(6 downto 6) := (others => '1');
         ps2_clk        : in    std_logic;
         ps2_data       : in    std_logic;
         ps2_mouse_clk  : inout std_logic;
@@ -310,6 +313,11 @@ begin
         Joystick2  => Joystick2
         );
 
+    -- external keyboard matrix
+    kbd_pa <= i8255_pa_data(3 downto 0);
+    i8255_pb_idata <= (key_shift & key_ctrl & ps2dataout) and (kbd_pb);
+    i8255_pc_idata <= vdg_fs_n & (key_repeat and kbd_pc(6)) & "11" & i8255_pc_data (3 downto 0);
+
 ---------------------------------------------------------------------
 --
 ---------------------------------------------------------------------
@@ -541,8 +549,6 @@ begin
 
     atom_audio        <= i8255_pc_data(2);
 
-    i8255_pc_idata <= vdg_fs_n & key_repeat & "11" & i8255_pc_data (3 downto 0);
-    i8255_pb_idata <= key_shift & key_ctrl & ps2dataout;
 
     vdg_gm        <= i8255_pa_data(7 downto 5) when RSTn='1' else "000";
     vdg_an_g      <= i8255_pa_data(4)  when RSTn='1' else '0';
