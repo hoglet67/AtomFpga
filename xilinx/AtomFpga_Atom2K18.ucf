@@ -21,104 +21,104 @@ TIMESPEC "TS_CrossDomain_16_25" = FROM "clk_domain_16" TO "clk_domain_25" TIG;
 TIMESPEC "TS_CrossDomain_25_16" = FROM "clk_domain_25" TO "clk_domain_16" TIG;
 
 # Clock
-NET "clk_50"        LOC = "P50"   | IOSTANDARD = LVCMOS33 ;
+NET "clk_50"         LOC = "P50"   | IOSTANDARD = LVCMOS33 ;
 
 # External Bus
-NET "bus_a<18>"     LOC = "P93"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<17>"     LOC = "P88"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<16>"     LOC = "P6"    | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<15>"     LOC = "P8"    | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<14>"     LOC = "P7"    | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<13>"     LOC = "P9"    | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<12>"     LOC = "P12"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<11>"     LOC = "P21"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<10>"     LOC = "P26"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<9>"      LOC = "P16"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<8>"      LOC = "P14"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<7>"      LOC = "P10"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<6>"      LOC = "P15"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<5>"      LOC = "P17"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<4>"      LOC = "P22"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<3>"      LOC = "P24"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<2>"      LOC = "P27"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<1>"      LOC = "P30"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_a<0>"      LOC = "P33"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_d<7>"      LOC = "P32"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_d<6>"      LOC = "P34"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_d<5>"      LOC = "P40"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_d<4>"      LOC = "P43"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_d<3>"      LOC = "P45"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_d<2>"      LOC = "P44"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_d<1>"      LOC = "P41"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_d<0>"      LOC = "P35"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_blk_b"     LOC = "P139"  | IOSTANDARD = LVCMOS33 ;
-NET "bus_phi2"      LOC = "P1"    | IOSTANDARD = LVCMOS33 ;
-NET "bus_rnw"       LOC = "P142"  | IOSTANDARD = LVCMOS33 ;
-NET "bus_nrds"      LOC = "P5"    | IOSTANDARD = LVCMOS33 ;
-NET "bus_nwds"      LOC = "P11"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_sync"      LOC = "P56"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_nmi_n"     LOC = "P143"  | IOSTANDARD = LVCMOS33 ;
-NET "bus_irq_n"     LOC = "P2"    | IOSTANDARD = LVCMOS33 ;
-NET "bus_rst_n"     LOC = "P75"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_rdy"       LOC = "P47"   | IOSTANDARD = LVCMOS33 ;
-NET "bus_so"        LOC = "P58"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<18>"      LOC = "P93"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<17>"      LOC = "P88"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<16>"      LOC = "P6"    | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<15>"      LOC = "P8"    | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<14>"      LOC = "P7"    | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<13>"      LOC = "P9"    | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<12>"      LOC = "P12"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<11>"      LOC = "P21"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<10>"      LOC = "P26"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<9>"       LOC = "P16"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<8>"       LOC = "P14"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<7>"       LOC = "P10"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<6>"       LOC = "P15"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<5>"       LOC = "P17"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<4>"       LOC = "P22"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<3>"       LOC = "P24"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<2>"       LOC = "P27"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<1>"       LOC = "P30"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_a<0>"       LOC = "P33"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_d<7>"       LOC = "P32"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_d<6>"       LOC = "P34"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_d<5>"       LOC = "P40"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_d<4>"       LOC = "P43"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_d<3>"       LOC = "P45"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_d<2>"       LOC = "P44"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_d<1>"       LOC = "P41"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_d<0>"       LOC = "P35"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_blk_b"      LOC = "P139"  | IOSTANDARD = LVCMOS33 ;
+NET "bus_phi2"       LOC = "P1"    | IOSTANDARD = LVCMOS33 ;
+NET "bus_rnw"        LOC = "P142"  | IOSTANDARD = LVCMOS33 ;
+NET "bus_nrds"       LOC = "P5"    | IOSTANDARD = LVCMOS33 ;
+NET "bus_nwds"       LOC = "P11"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_sync"       LOC = "P56"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_nmi_n"      LOC = "P143"  | IOSTANDARD = LVCMOS33 ;
+NET "bus_irq_n"      LOC = "P2"    | IOSTANDARD = LVCMOS33 ;
+NET "bus_rst_n"      LOC = "P75"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_rdy"        LOC = "P47"   | IOSTANDARD = LVCMOS33 ;
+NET "bus_so"         LOC = "P58"   | IOSTANDARD = LVCMOS33 ;
 
 # External device chip selects
-NET "cs_ram_n"      LOC = "P23"   | IOSTANDARD = LVCMOS33 ;
-NET "cs_rom_n"      LOC = "P29"   | IOSTANDARD = LVCMOS33 ;
-NET "cs_via_n"      LOC = "P140"  | IOSTANDARD = LVCMOS33 ;
-NET "cs_tube_n"     LOC = "P123"  | IOSTANDARD = LVCMOS33 ;
-NET "cs_buf_n"      LOC = "P141"  | IOSTANDARD = LVCMOS33 ;
-NET "buf_dir"       LOC = "P126"  | IOSTANDARD = LVCMOS33 ;
+NET "cs_ram_n"       LOC = "P23"   | IOSTANDARD = LVCMOS33 ;
+NET "cs_rom_n"       LOC = "P29"   | IOSTANDARD = LVCMOS33 ;
+NET "cs_via_n"       LOC = "P140"  | IOSTANDARD = LVCMOS33 ;
+NET "cs_tube_n"      LOC = "P123"  | IOSTANDARD = LVCMOS33 ;
+NET "cs_buf_n"       LOC = "P141"  | IOSTANDARD = LVCMOS33 ;
+NET "buf_dir"        LOC = "P126"  | IOSTANDARD = LVCMOS33 ;
 
 # Video
-NET "vga_red1"      LOC = "P127"  | IOSTANDARD = LVCMOS33 ;
-NET "vga_red2"      LOC = "P61"   | IOSTANDARD = LVCMOS33 ;
-NET "vga_green1"    LOC = "P124"  | IOSTANDARD = LVCMOS33 ;
-NET "vga_green2"    LOC = "P121"  | IOSTANDARD = LVCMOS33 ;
-NET "vga_blue1"     LOC = "P115"  | IOSTANDARD = LVCMOS33 ;
-NET "vga_blue2"     LOC = "P62"   | IOSTANDARD = LVCMOS33 ;
-NET "vga_vsync"     LOC = "P105"  | IOSTANDARD = LVCMOS33 ;
-NET "vga_hsync"     LOC = "P112"  | IOSTANDARD = LVCMOS33 ;
+NET "vga_red1"       LOC = "P127"  | IOSTANDARD = LVCMOS33 ;
+NET "vga_red2"       LOC = "P61"   | IOSTANDARD = LVCMOS33 ;
+NET "vga_green1"     LOC = "P124"  | IOSTANDARD = LVCMOS33 ;
+NET "vga_green2"     LOC = "P121"  | IOSTANDARD = LVCMOS33 ;
+NET "vga_blue1"      LOC = "P115"  | IOSTANDARD = LVCMOS33 ;
+NET "vga_blue2"      LOC = "P62"   | IOSTANDARD = LVCMOS33 ;
+NET "vga_vsync"      LOC = "P105"  | IOSTANDARD = LVCMOS33 ;
+NET "vga_hsync"      LOC = "P112"  | IOSTANDARD = LVCMOS33 ;
 
 # Audio
-NET "audio"         LOC = "P46"   | IOSTANDARD = LVCMOS33 ;
-NET "dac_cs_n"      LOC = "P85"   | IOSTANDARD = LVCMOS33 ;
-NET "dac_sdi"       LOC = "P83"   | IOSTANDARD = LVCMOS33 ;
-NET "dac_ldac_n"    LOC = "P81"   | IOSTANDARD = LVCMOS33 ;
-NET "dac_sck"       LOC = "P79"   | IOSTANDARD = LVCMOS33 ;
+NET "audio"          LOC = "P46"   | IOSTANDARD = LVCMOS33 ;
+NET "dac_cs_n"       LOC = "P85"   | IOSTANDARD = LVCMOS33 ;
+NET "dac_sdi"        LOC = "P83"   | IOSTANDARD = LVCMOS33 ;
+NET "dac_ldac_n"     LOC = "P81"   | IOSTANDARD = LVCMOS33 ;
+NET "dac_sck"        LOC = "P79"   | IOSTANDARD = LVCMOS33 ;
 
 # Keyboard
-NET "pa<3>"         LOC = "P94"   | IOSTANDARD = LVCMOS33 ;
-NET "pa<2>"         LOC = "P97"   | IOSTANDARD = LVCMOS33 ;
-NET "pa<1>"         LOC = "P99"   | IOSTANDARD = LVCMOS33 ;
-NET "pa<0>"         LOC = "P101"  | IOSTANDARD = LVCMOS33 ;
-NET "pb<7>"         LOC = "P66"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<6>"         LOC = "P74"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<5>"         LOC = "P78"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<4>"         LOC = "P80"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<3>"         LOC = "P82"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<2>"         LOC = "P84"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<1>"         LOC = "P87"   | IOSTANDARD = LVCMOS33 ;
-NET "pb<0>"         LOC = "P92"   | IOSTANDARD = LVCMOS33 ;
-NET "pc<6>"         LOC = "P67"   | IOSTANDARD = LVCMOS33 ;
+NET "pa<3>"          LOC = "P94"   | IOSTANDARD = LVCMOS33 ;
+NET "pa<2>"          LOC = "P97"   | IOSTANDARD = LVCMOS33 ;
+NET "pa<1>"          LOC = "P99"   | IOSTANDARD = LVCMOS33 ;
+NET "pa<0>"          LOC = "P101"  | IOSTANDARD = LVCMOS33 ;
+NET "pb<7>"          LOC = "P66"   | IOSTANDARD = LVCMOS33 ;
+NET "pb<6>"          LOC = "P74"   | IOSTANDARD = LVCMOS33 ;
+NET "pb<5>"          LOC = "P78"   | IOSTANDARD = LVCMOS33 ;
+NET "pb<4>"          LOC = "P80"   | IOSTANDARD = LVCMOS33 ;
+NET "pb<3>"          LOC = "P82"   | IOSTANDARD = LVCMOS33 ;
+NET "pb<2>"          LOC = "P84"   | IOSTANDARD = LVCMOS33 ;
+NET "pb<1>"          LOC = "P87"   | IOSTANDARD = LVCMOS33 ;
+NET "pb<0>"          LOC = "P92"   | IOSTANDARD = LVCMOS33 ;
+NET "pc<6>"          LOC = "P67"   | IOSTANDARD = LVCMOS33 ;
 
 # Mouse
-NET "mouse_clk"     LOC = "P102"  | IOSTANDARD = LVCMOS33 ;
-NET "mouse_data"    LOC = "P100"  | IOSTANDARD = LVCMOS33 ;
+NET "mouse_clk"      LOC = "P102"  | IOSTANDARD = LVCMOS33 ;
+NET "mouse_data"     LOC = "P100"  | IOSTANDARD = LVCMOS33 ;
 
 # Cassette
-NET "cas_in"        LOC = "P144"  | IOSTANDARD = LVCMOS33 ;
-NET "cas_out"       LOC = "P59"   | IOSTANDARD = LVCMOS33 ;
+NET "cas_in"         LOC = "P144"  | IOSTANDARD = LVCMOS33 ;
+NET "cas_out"        LOC = "P59"   | IOSTANDARD = LVCMOS33 ;
 
 # Serial
-NET "serial_tx"     LOC = "P98"   | IOSTANDARD = LVCMOS33 ;
-NET "serial_rx"     LOC = "P95"   | IOSTANDARD = LVCMOS33 ;
+NET "serial_tx"      LOC = "P98"   | IOSTANDARD = LVCMOS33 ;
+NET "serial_rx"      LOC = "P95"   | IOSTANDARD = LVCMOS33 ;
 
 # SD Card
-NET "mmc_led_red"   LOC = "P48"   | IOSTANDARD = LVCMOS33 ;
-NET "mmc_led_green" LOC = "P57"   | IOSTANDARD = LVCMOS33 ;
-NET "mmc_clk"       LOC = "P111"  | IOSTANDARD = LVCMOS33 ;
-NET "mmc_ss"        LOC = "P104"  | IOSTANDARD = LVCMOS33 ;
-NET "mmc_mosi"      LOC = "P114"  | IOSTANDARD = LVCMOS33 ;
-NET "mmc_miso"      LOC = "P116"  | IOSTANDARD = LVCMOS33 ;
+NET "mmc_led_red"    LOC = "P48"   | IOSTANDARD = LVCMOS33 ;
+NET "mmc_led_green"  LOC = "P57"   | IOSTANDARD = LVCMOS33 ;
+NET "mmc_clk"        LOC = "P111"  | IOSTANDARD = LVCMOS33 ;
+NET "mmc_ss"         LOC = "P104"  | IOSTANDARD = LVCMOS33 ;
+NET "mmc_mosi"       LOC = "P114"  | IOSTANDARD = LVCMOS33 ;
+NET "mmc_miso"       LOC = "P116"  | IOSTANDARD = LVCMOS33 ;

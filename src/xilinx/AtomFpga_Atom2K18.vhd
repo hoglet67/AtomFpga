@@ -63,36 +63,36 @@ entity AtomFpga_Atom2K18 is
         vga_hsync      : out   std_logic;
 
         -- Audio
-        audio         : out   std_logic;
-        dac_cs_n      : out   std_logic;
-        dac_sdi       : out   std_logic;
-        dac_ldac_n    : out   std_logic;
-        dac_sck       : out   std_logic;
+        audio          : out   std_logic;
+        dac_cs_n       : out   std_logic;
+        dac_sdi        : out   std_logic;
+        dac_ldac_n     : out   std_logic;
+        dac_sck        : out   std_logic;
 
         -- Keyboard
-        pa            : out   std_logic_vector(3 downto 0);
-        pb            : in    std_logic_vector(7 downto 0);
-        pc            : in    std_logic_vector(6 downto 6);
+        pa             : out   std_logic_vector(3 downto 0);
+        pb             : in    std_logic_vector(7 downto 0);
+        pc             : in    std_logic_vector(6 downto 6);
 
         -- Mouse
-        mouse_clk     : inout std_logic;
-        mouse_data    : inout std_logic;
+        mouse_clk      : inout std_logic;
+        mouse_data     : inout std_logic;
 
         -- Cassette
-        cas_in        : in    std_logic;
-        cas_out       : out   std_logic;
+        cas_in         : in    std_logic;
+        cas_out        : out   std_logic;
 
         -- Serial
-        serial_tx     : out   std_logic;
-        serial_rx     : in    std_logic;
+        serial_tx      : out   std_logic;
+        serial_rx      : in    std_logic;
 
         -- SD Card
-        mmc_led_red   : out   std_logic;
-        mmc_led_green : out   std_logic;
-        mmc_clk       : out   std_logic;
-        mmc_ss        : out   std_logic;
-        mmc_mosi      : out   std_logic;
-        mmc_miso      : in    std_logic
+        mmc_led_red    : out   std_logic;
+        mmc_led_green  : out   std_logic;
+        mmc_clk        : out   std_logic;
+        mmc_ss         : out   std_logic;
+        mmc_mosi       : out   std_logic;
+        mmc_miso       : in    std_logic
         );
 
 end AtomFpga_Atom2K18;
