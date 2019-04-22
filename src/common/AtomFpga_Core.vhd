@@ -55,8 +55,13 @@ entity AtomFpga_Core is
         blue           : out   std_logic_vector (2 downto 0);
         vsync          : out   std_logic;
         hsync          : out   std_logic;
-        -- External bus interface
+        -- External 6502 bus interface
         phi2           : out   std_logic;
+        sync           : out   std_logic;
+        rdy            : in    std_logic := '1';
+        so             : in    std_logic := '1';
+        irq_n          : in    std_logic := '1';
+        nmi_n          : in    std_logic := '1';
         ExternCE       : out   std_logic;
         ExternWE       : out   std_logic;
         ExternA        : out   std_logic_vector (18 downto 0);
@@ -202,15 +207,15 @@ begin
     cpu : entity work.T65 port map (
         Mode           => "00",
         Abort_n        => '1',
-        SO_n           => '1',
+        SO_n           => so,
         Res_n          => RSTn,
         Enable         => cpu_clken,
         Clk            => clk_16M00,
-        Rdy            => '1',
+        Rdy            => rdy,
         IRQ_n          => cpu_IRQ_n,
-        NMI_n          => '1',
+        NMI_n          => nmi_n,
         R_W_n          => cpu_R_W_n,
-        Sync           => open,
+        Sync           => sync,
         A(23 downto 16) => open,
         A(15 downto 0) => cpu_addr(15 downto 0),
         DI(7 downto 0) => cpu_din(7 downto 0),
@@ -536,7 +541,7 @@ begin
     inpurps2clk   <= ps2_clk;
     inpurps2dat   <= ps2_data;
     not_cpu_R_W_n <= not cpu_R_W_n;
-    cpu_IRQ_n     <= mc6522_irq;
+    cpu_IRQ_n     <= mc6522_irq and irq_n;
 
     atom_audio        <= i8255_pc_data(2);
 

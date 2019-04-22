@@ -287,8 +287,13 @@ begin
         blue(0)             => open,
         vsync               => vga_vsync,
         hsync               => vga_hsync,
-        Phi2                => phi2,
 
+        phi2                => phi2,
+        sync                => bus_sync,
+        rdy                 => bus_rdy,
+        so                  => bus_so,
+        irq_n               => bus_irq_n,
+        nmi_n               => bus_nmi_n,
         ExternCE            => extern_ce,       -- active high!
         ExternWE            => extern_we,       -- active high!
         ExternA             => extern_a,
@@ -327,7 +332,6 @@ begin
     bus_nwds    <= not(extern_ce and     extern_we and phi2);
     bus_rnw     <= not(                  extern_we         );
     bus_blk_b   <= '0' when extern_ce = '1' and extern_a(17 downto 12) = "111000" else '1';
-    bus_sync    <= '0'; -- TODO
 
     extern_dout <= bus_d;
 
