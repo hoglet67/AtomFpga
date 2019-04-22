@@ -112,6 +112,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
 
     -- Reset generation
     signal reset_n         : std_logic;
+    signal hard_reset_n    : std_logic;
     signal powerup_reset_n : std_logic;
     signal reset_counter   : std_logic_vector(9 downto 0);
 
@@ -239,7 +240,8 @@ begin
             if (reset_counter(reset_counter'high) = '0') then
                 reset_counter <= reset_counter + 1;
             end if;
-            powerup_reset_n <= bus_rst_n and reset_counter(reset_counter'high);
+            powerup_reset_n <= reset_counter(reset_counter'high);
+            hard_reset_n    <= reset_counter(reset_counter'high) and bus_rst_n;
         end if;
     end process;
 
@@ -274,7 +276,7 @@ begin
         ps2_data            => pb(7),
         ps2_mouse_clk       => mouse_clk,
         ps2_mouse_data      => mouse_data,
-        ERSTn               => powerup_reset_n,
+        ERSTn               => hard_reset_n,
         IRSTn               => reset_n,          -- not currently used
         red(2)              => vga_red1,
         red(1)              => vga_red2,
