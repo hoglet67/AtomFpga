@@ -5,7 +5,7 @@ run_data2mem=true
 XILINX=/opt/Xilinx/14.7
 DATA2MEM=${XILINX}/ISE_DS/ISE/bin/lin/data2mem
 PAPILIO_LOADER=/opt/GadgetFactory/papilio-loader/programmer
-PROG=${PAPILIO_LOADER}/linux32/papilio-prog
+PROG=${PAPILIO_LOADER}/linux64/papilio-prog
 BSCAN=${PAPILIO_LOADER}/bscan_spi_xc3s500e.bit
 
 # Image for Phill's RAM ROM Board
@@ -20,7 +20,7 @@ mkdir -p tmp
 ./make_ramrom_phill_image.sh
 
 # Run bitmerge to merge in the ROM images
-gcc -o tmp/bitmerge bitmerge.c 
+gcc -o tmp/bitmerge bitmerge.c
 ./tmp/bitmerge ../xilinx/working/AtomFpga_Hoglet.bit 60000:$IMAGE tmp/merged.bit
 rm -f ./tmp/bitmerge
 
