@@ -349,7 +349,7 @@ begin
         LED1                => mmc_led_green,
         LED2                => mmc_led_red,
 
-        charSet             => '0'
+        charSet             => '1'
         );
 
     ------------------------------------------------
