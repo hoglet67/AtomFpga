@@ -233,7 +233,7 @@ begin
     -- The external reset signal is not asserted on power up
     -- This internal counter forces power up reset to happen
     -- This is needed by AtomGodilVideo to initialize some of the registers
-    ResetProcess : process (clock_16)
+    process (clock_16)
     begin
         if rising_edge(clock_16) then
             if (reset_counter(reset_counter'high) = '0') then
@@ -376,7 +376,7 @@ begin
     -- note: this actually takes 16-bit samples
     ------------------------------------------------
 
-    dac_sync : process(clock_16)
+    process(clock_16)
     begin
         if rising_edge(clock_16) then
             cycle <= cycle + 1;
