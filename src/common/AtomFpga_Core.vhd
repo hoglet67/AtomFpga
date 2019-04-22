@@ -1,5 +1,7 @@
 --------------------------------------------------------------------------------
--- Copyright (c) 2009 Alan Daly.  All rights reserved.
+-- Copyright (c) 2019 David Banks
+--
+-- based on work by Alan Daly. Copyright(c) 2009. All rights reserved.
 --------------------------------------------------------------------------------
 --   ____  ____
 --  /   /\/   /
@@ -96,28 +98,31 @@ end AtomFpga_Core;
 architecture BEHAVIORAL of AtomFpga_Core is
 
 -------------------------------------------------
--- cpu signals names
+-- Clocks and enables
 -------------------------------------------------
+    signal clken_counter     : std_logic_vector (3 downto 0);
+    signal cpu_cycle         : std_logic;
+    signal cpu_clken         : std_logic;
+    signal phi               : std_logic;
+
+-------------------------------------------------
+-- CPU signals
+-------------------------------------------------
+    signal RSTn              : std_logic;
     signal cpu_R_W_n         : std_logic;
+    signal not_cpu_R_W_n     : std_logic;
     signal cpu_addr          : std_logic_vector (15 downto 0);
     signal cpu_din           : std_logic_vector (7 downto 0);
     signal cpu_dout          : std_logic_vector (7 downto 0);
     signal cpu_IRQ_n         : std_logic;
---cpu clock and enables
-    signal clken_counter     : std_logic_vector (3 downto 0);
-    signal cpu_cycle         : std_logic;
-    signal cpu_clken         : std_logic;
-    signal not_cpu_R_W_n     : std_logic;
-    signal phi               : std_logic;
+
 ---------------------------------------------------
--- VDG signals names
+-- VDG signals
 ---------------------------------------------------
-    signal RSTn              : std_logic;
     signal vdg_fs_n          : std_logic;
     signal vdg_an_g          : std_logic;
     signal vdg_gm            : std_logic_vector(2 downto 0);
     signal vdg_css           : std_logic;
-    -- VGA output
     signal vdg_red           : std_logic;
     signal vdg_green1        : std_logic;
     signal vdg_green0        : std_logic;
@@ -126,8 +131,9 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal vdg_vsync         : std_logic;
     signal vdg_hblank        : std_logic;
     signal vdg_vblank        : std_logic;
+
 ----------------------------------------------------
--- enables
+-- Device enables
 ----------------------------------------------------
     signal mc6522_enable     : std_logic;
     signal i8255_enable      : std_logic;
@@ -141,13 +147,15 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal reg_we            : std_logic;
     signal sid_we            : std_logic;
     signal uart_we           : std_logic;
+
 ----------------------------------------------------
--- ram/roms
+-- External data
 ----------------------------------------------------
     signal extern_data       : std_logic_vector(7 downto 0);
     signal godil_data        : std_logic_vector(7 downto 0);
+
 ----------------------------------------------------
---
+-- 6522 signals
 ----------------------------------------------------
     signal via4_clken        : std_logic;
     signal via1_clken        : std_logic;
@@ -160,50 +168,50 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal mc6522_porta      : std_logic_vector(7 downto 0);
     signal mc6522_portb      : std_logic_vector(7 downto 0);
 
-    signal i8255_pa_data  : std_logic_vector(7 downto 0);
-    signal i8255_pb_data  : std_logic_vector(7 downto 0);
-    signal i8255_pb_idata : std_logic_vector(7 downto 0);
-    signal i8255_pc_data  : std_logic_vector(7 downto 0);
-    signal i8255_pc_idata : std_logic_vector(7 downto 0);
-    signal i8255_data     : std_logic_vector(7 downto 0);
-    signal i8255_rd       : std_logic;
+----------------------------------------------------
+-- 8255 signals
+----------------------------------------------------
+    signal i8255_pa_data     : std_logic_vector(7 downto 0);
+    signal i8255_pb_idata    : std_logic_vector(7 downto 0);
+    signal i8255_pc_data     : std_logic_vector(7 downto 0);
+    signal i8255_pc_idata    : std_logic_vector(7 downto 0);
+    signal i8255_data        : std_logic_vector(7 downto 0);
+    signal i8255_rd          : std_logic;
 
-    signal ps2dataout  : std_logic_vector(5 downto 0);
-    signal key_shift   : std_logic;
-    signal key_ctrl    : std_logic;
-    signal key_repeat  : std_logic;
-    signal key_break   : std_logic;
-    signal key_escape  : std_logic;
-    signal key_turbo   : std_logic_vector(1 downto 0);
+    signal ps2dataout        : std_logic_vector(5 downto 0);
+    signal key_shift         : std_logic;
+    signal key_ctrl          : std_logic;
+    signal key_repeat        : std_logic;
+    signal key_break         : std_logic;
+    signal key_escape        : std_logic;
+    signal key_turbo         : std_logic_vector(1 downto 0);
 
-    signal pl8_enable : std_logic;
-    signal pl8_data   : std_logic_vector (7 downto 0);
+----------------------------------------------------
+-- AtoMMC signals
+----------------------------------------------------
 
-    signal uart_escape : std_logic;
-    signal uart_break : std_logic;
-
-    signal nARD            : std_logic;
-    signal nAWR            : std_logic;
-    signal AVRA0           : std_logic;
-    signal AVRInt          : std_logic;
-    signal AVRDataIn       : std_logic_vector (7 downto 0);
-    signal AVRDataOut      : std_logic_vector (7 downto 0);
-
-    signal PL8Data         : std_logic_vector (7 downto 0);
-    signal PL8Enable       : std_logic;
-
-    signal ioport          : std_logic_vector (7 downto 0);
-
-    signal LED1n           : std_logic;
-    signal LED2n           : std_logic;
+    signal pl8_enable        : std_logic;
+    signal pl8_data          : std_logic_vector (7 downto 0);
+    signal uart_escape       : std_logic;
+    signal uart_break        : std_logic;
+    signal nARD              : std_logic;
+    signal nAWR              : std_logic;
+    signal AVRA0             : std_logic;
+    signal AVRInt            : std_logic;
+    signal AVRDataIn         : std_logic_vector (7 downto 0);
+    signal AVRDataOut        : std_logic_vector (7 downto 0);
+    signal ioport            : std_logic_vector (7 downto 0);
+    signal LED1n             : std_logic;
+    signal LED2n             : std_logic;
 
 --------------------------------------------------------------------
 --                   here it begin :)
 --------------------------------------------------------------------
+
 begin
 
 ---------------------------------------------------------------------
---
+-- 6502 CPU (using T65 core)
 ---------------------------------------------------------------------
     cpu : entity work.T65 port map (
         Mode           => "00",
@@ -221,8 +229,23 @@ begin
         A(15 downto 0) => cpu_addr(15 downto 0),
         DI(7 downto 0) => cpu_din(7 downto 0),
         DO(7 downto 0) => cpu_dout(7 downto 0));
+
+    not_cpu_R_W_n <= not cpu_R_W_n;
+    cpu_IRQ_n     <= mc6522_irq and irq_n;
+
+    -- reset logic
+    RSTn          <= ERSTn and key_break;
+    IRSTn         <= RSTn;
+
+    -- write enables
+    gated_we      <= not_cpu_R_W_n;
+    uart_we       <= gated_we;
+    video_ram_we  <= gated_we and video_ram_enable;
+    reg_we        <= gated_we;
+    sid_we        <= gated_we;
+
 ---------------------------------------------------------------------
---
+-- Atom GODIL Video adapter
 ---------------------------------------------------------------------
     Inst_AtomGodilVideo : entity work.AtomGodilVideo
         generic map (
@@ -274,9 +297,18 @@ begin
             final_hsync => vdg_hsync,
             charSet => charSet
             );
+
+    -- external ouputs
+    red(2 downto 0)   <= vdg_red & vdg_red & vdg_red;
+    green(2 downto 0) <= vdg_green1 & vdg_green0 & vdg_green0;
+    blue(2 downto 0)  <= vdg_blue & vdg_blue & vdg_blue;
+    vsync             <= vdg_vsync;
+    hsync             <= vdg_hsync;
+
 ---------------------------------------------------------------------
---
+-- 8255 PIA
 ---------------------------------------------------------------------
+
     pia : entity work.I82C55 port map(
         I_ADDR => cpu_addr(1 downto 0),  -- A1-A0
         I_DATA => cpu_dout,  -- D7-D0
@@ -290,9 +322,40 @@ begin
         RESET  => RSTn,
         ENA    => cpu_clken,
         CLK    => clk_16M00);
+
+    -- Port A
+    --   bits 7..4 (output) determine the 6847 graphics mode
+    --   bits 3..0 (output) drive the keyboard matrix
+
+    vdg_gm        <= i8255_pa_data(7 downto 5) when RSTn='1' else "000";
+    vdg_an_g      <= i8255_pa_data(4)          when RSTn='1' else '0';
+    kbd_pa        <= i8255_pa_data(3 downto 0);
+
+    -- Port B
+    --   bits 7..0 (input) read the keyboard matrix
+    i8255_pb_idata <= (key_shift & key_ctrl & ps2dataout) and (kbd_pb);
+
+
+    -- Port C
+    --    bit 7 (input) FS from the 6847
+    --    bit 6 (input) Repeat from the keyboard matrix
+    --    bit 5 (input) Cassette input
+    --    bit 4 (input) 2.4KHz tone input
+    --    bit 3 (output) CSS to the 6847
+    --    bit 2 (output) Audio
+    --    bit 1 (output) Enable 2.4KHz tone to casette output
+    --    bit 0 (output) Cassette output
+    --
+    vdg_css       <= i8255_pc_data(3)          when RSTn='1' else '0';
+    atom_audio    <= i8255_pc_data(2);
+
+    i8255_pc_idata <= vdg_fs_n & (key_repeat and kbd_pc(6)) & "11" & i8255_pc_data (3 downto 0);
+
+
 ---------------------------------------------------------------------
---
+-- PS/2 Keyboard Emulation
 ---------------------------------------------------------------------
+
     input : entity work.keyboard port map(
         CLOCK      => clk_16M00,
         nRESET     => ERSTn,
@@ -313,14 +376,10 @@ begin
         Joystick2  => Joystick2
         );
 
-    -- external keyboard matrix
-    kbd_pa <= i8255_pa_data(3 downto 0);
-    i8255_pb_idata <= (key_shift & key_ctrl & ps2dataout) and (kbd_pb);
-    i8255_pc_idata <= vdg_fs_n & (key_repeat and kbd_pc(6)) & "11" & i8255_pc_data (3 downto 0);
+---------------------------------------------------------------------
+-- 6522 VIA
+---------------------------------------------------------------------
 
----------------------------------------------------------------------
---
----------------------------------------------------------------------
     via : entity work.M6522 port map(
         I_RS    => cpu_addr(3 downto 0),
         I_DATA  => cpu_dout,
@@ -344,6 +403,8 @@ begin
         I_P2_H  => via1_clken,
         ENA_4   => via4_clken,
         CLK     => clk_16M00);
+
+    mc6522_ca1    <= '1';
 
 --------------------------------------------------------
 -- SDDOS
@@ -534,32 +595,11 @@ begin
 --
 ---------------------------------------------------------------------
 
-    gated_we      <= not_cpu_R_W_n;
-    uart_we       <= gated_we;
-    video_ram_we  <= gated_we and video_ram_enable;
-    reg_we        <= gated_we;
-    sid_we        <= gated_we;
 
-    RSTn          <= ERSTn and key_break;
-    IRSTn         <= RSTn;
+---------------------------------------------------------------------
+-- Device enables
+---------------------------------------------------------------------
 
-    mc6522_ca1    <= '1';
-    not_cpu_R_W_n <= not cpu_R_W_n;
-    cpu_IRQ_n     <= mc6522_irq and irq_n;
-
-    atom_audio        <= i8255_pc_data(2);
-
-
-    vdg_gm        <= i8255_pa_data(7 downto 5) when RSTn='1' else "000";
-    vdg_an_g      <= i8255_pa_data(4)  when RSTn='1' else '0';
-    vdg_css       <= i8255_pc_data(3) when RSTn='1' else '0';
-    red(2 downto 0)   <= vdg_red & vdg_red & vdg_red;
-    green(2 downto 0) <= vdg_green1 & vdg_green0 & vdg_green0;
-    blue(2 downto 0)  <= vdg_blue & vdg_blue & vdg_blue;
-    vsync             <= vdg_vsync;
-    hsync             <= vdg_hsync;
-
--- enables
     process(cpu_addr)
     begin
         -- All regions normally de-selected
@@ -610,6 +650,10 @@ begin
 
     end process;
 
+---------------------------------------------------------------------
+-- CPU data input multiplexor
+---------------------------------------------------------------------
+
     cpu_din <=
         godil_data      when video_ram_enable = '1'                else
         i8255_data      when i8255_enable = '1'                    else
@@ -623,9 +667,10 @@ begin
         x"f1";          -- un-decoded locations
 
 --------------------------------------------------------
--- clock enable generator
+-- Clock enable generator
 --------------------------------------------------------
-    clk_gen : process(clk_16M00, RSTn)
+
+    process(clk_16M00, RSTn)
     begin
         if RSTn = '0' then
             clken_counter <= (others => '0');
