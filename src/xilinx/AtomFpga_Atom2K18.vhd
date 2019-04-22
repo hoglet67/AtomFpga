@@ -123,6 +123,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal extern_dout     : std_logic_vector (7 downto 0);
     signal extern_a        : std_logic_vector (18 downto 0);
     signal phi2            : std_logic;
+    signal rnw             : std_logic;
 
     -- Audio mixer and DAC
     constant dacwidth      : integer := 16; -- this needs to match the MCP4822 frame size
@@ -141,6 +142,10 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal ps2_kbd_data    : std_logic;
     signal int_kbd_pb      : std_logic_vector(7 downto 0);
     signal int_kbd_pc      : std_logic_vector(6 downto 6);
+
+    -- External devices
+    signal extern_tube     : std_logic;
+    signal extern_via      : std_logic;
 
 begin
 
@@ -272,6 +277,7 @@ begin
         CImplRamRomPhill        => false,
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
+        CImplVIA                => false,
         MainClockSpeed          => 16000000,
         DefaultBaud             => 115200
      )
@@ -306,15 +312,21 @@ begin
 
         phi2                => phi2,
         sync                => bus_sync,
+        rnw                 => rnw,
+        blk_b               => bus_blk_b,
         rdy                 => bus_rdy,
         so                  => bus_so,
         irq_n               => bus_irq_n,
         nmi_n               => bus_nmi_n,
-        ExternCE            => extern_ce,       -- active high!
-        ExternWE            => extern_we,       -- active high!
+
+        ExternCE            => extern_ce,       -- active high Ram/Rom chip select
+        ExternWE            => extern_we,       -- active high Ram/Rom write
         ExternA             => extern_a,
         ExternDin           => extern_din,
         ExternDout          => extern_dout,
+
+        ExternTube          => extern_tube,     -- active high Tube chip select
+        ExternVIA           => extern_via,      -- active high VIA chip select
 
         sid_audio           => open,
         sid_audio_d         => sid_audio,
@@ -344,13 +356,43 @@ begin
     -- External bus
     ------------------------------------------------
 
+    -- TODO:  22/4/2019
+    --
+    -- I'm not happy with the design of the external bus interface, for the
+    -- following reasons:
+    --
+    -- 1. extern_we and extern_ce are mediated by the pluggable RAMROM modules
+    --    in AtomFpga_Core. This means they are not active when external devices
+    --    in Bxxx are accessed.
+    --
+    -- 2. As a work around, I've exposed the 6502 RNW (rnw) signal directly,
+    --    which is probably the right thing to do, as Atom2K18 does have a full
+    --    external bus. But it's now confusing as to when to use extern_we and
+    --    when to use rnw.
+    --
+    -- 3. It's not clear how addresses on extern_a correspond to what the CPU
+    --    accessed, again because this signal is the output of a RAMROM module.
+    --
+    -- 4. It seemed wrong to have to add ExternTube and ExternVIA signals to the
+    --    AtomFpga_Core. It should have been possible to implement these externally
+    --    in the FPGA target specific wrapper. But (3) made this difficult.
+    --
+    -- 5. The NRDS and NWDS signals are currently generated from the RAMROM
+    --    specific extern_ce and extern_we. It would be better if they uses
+    --    rnw and ignored extern_ce. But this is more dangerous, so lets
+    --    see how the current version works before breaking things more!
+    --
+    -- What's in place currently will work (I think) for the VIA and Tube, but
+    -- will not currently allow any devices to be added to the bus. Need to
+    -- talk with Roland about how he thinks the external bus should be mapped
+    -- into the Atom address space.
+
     bus_phi2    <= phi2;
+    bus_rnw     <= rnw;
     bus_a       <= extern_a;
-    bus_d       <= extern_din when extern_we = '1' else "ZZZZZZZZ";
-    bus_nrds    <= not(extern_ce and not extern_we and phi2);
-    bus_nwds    <= not(extern_ce and     extern_we and phi2);
-    bus_rnw     <= not(                  extern_we         );
-    bus_blk_b   <= '0' when extern_ce = '1' and extern_a(17 downto 12) = "111000" else '1';
+    bus_d       <= extern_din when rnw = '0' else "ZZZZZZZZ";
+    bus_nrds    <= not(extern_ce and not extern_we and phi2);  -- FIXME: See above
+    bus_nwds    <= not(extern_ce and     extern_we and phi2);  -- FIXME: See above
 
     extern_dout <= bus_d;
 
@@ -360,10 +402,10 @@ begin
 
     cs_rom_n    <= not(extern_ce and not extern_a(17));
     cs_ram_n    <= not(extern_ce and     extern_a(17));
-    cs_via_n    <= '1'; -- TODO
-    cs_tube_n   <= '1'; -- TODO
-    cs_buf_n    <= '1'; -- TODO
-    buf_dir     <= '0'; -- TODO
+    cs_via_n    <= not(extern_via);
+    cs_tube_n   <= not(extern_tube);
+    cs_buf_n    <= not(extern_tube);  -- FIXME: See above
+    buf_dir     <= not rnw;           -- FIXME: See above
 
     ------------------------------------------------
     -- Audio mixer

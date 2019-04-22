@@ -35,6 +35,7 @@ entity AtomFpga_Core is
        CImplRamRomPhill        : boolean;
        CImplRamRomAtom2015     : boolean;
        CImplRamRomSchakelKaart : boolean;
+       CImplVIA                : boolean := true;
        MainClockSpeed          : integer;
        DefaultBaud             : integer
     );
@@ -63,15 +64,21 @@ entity AtomFpga_Core is
         -- External 6502 bus interface
         phi2           : out   std_logic;
         sync           : out   std_logic;
+        rnw            : out   std_logic;
+        blk_b          : out   std_logic;
         rdy            : in    std_logic := '1';
         so             : in    std_logic := '1';
         irq_n          : in    std_logic := '1';
         nmi_n          : in    std_logic := '1';
+        -- External Ram/Rom interface
         ExternCE       : out   std_logic;
         ExternWE       : out   std_logic;
         ExternA        : out   std_logic_vector (18 downto 0);
         ExternDin      : out   std_logic_vector (7 downto 0);
         ExternDout     : in    std_logic_vector (7 downto 0);
+        -- Additional external device chip selects
+        ExternTube     : out   std_logic;
+        ExternVIA      : out   std_logic;
         -- Audio
         sid_audio_d    : out   std_logic_vector (17 downto 0);
         sid_audio      : out   std_logic;
@@ -140,6 +147,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
 ----------------------------------------------------
     signal mc6522_enable     : std_logic;
     signal i8255_enable      : std_logic;
+    signal tube_enable       : std_logic;
     signal extern_enable     : std_logic;
     signal video_ram_enable  : std_logic;
     signal reg_enable        : std_logic;
@@ -249,6 +257,10 @@ begin
     video_ram_we  <= gated_we and video_ram_enable;
     reg_we        <= gated_we;
     sid_we        <= gated_we;
+
+    -- external bus
+    rnw           <= cpu_R_W_n;
+    blk_b         <= '0' when cpu_addr(15 downto 12) = x"0" else '1';
 
 ---------------------------------------------------------------------
 -- Atom GODIL Video adapter
@@ -402,31 +414,35 @@ begin
 -- 6522 VIA
 ---------------------------------------------------------------------
 
-    via : entity work.M6522 port map(
-        I_RS    => cpu_addr(3 downto 0),
-        I_DATA  => cpu_dout,
-        O_DATA  => mc6522_data(7 downto 0),
-        I_RW_L  => cpu_R_W_n,
-        I_CS1   => mc6522_enable,
-        I_CS2_L => '0',
-        O_IRQ_L => mc6522_irq,
-        I_CA1   => mc6522_ca1,
-        I_CA2   => mc6522_ca2,
-        O_CA2   => mc6522_ca2,
-        I_PA    => mc6522_porta(7 downto 0),
-        O_PA    => mc6522_porta(7 downto 0),
-        I_CB1   => mc6522_cb1,
-        O_CB1   => mc6522_cb1,
-        I_CB2   => mc6522_cb2,
-        O_CB2   => mc6522_cb2,
-        I_PB    => mc6522_portb(7 downto 0),
-        O_PB    => mc6522_portb(7 downto 0),
-        RESET_L => RSTn,
-        I_P2_H  => via1_clken,
-        ENA_4   => via4_clken,
-        CLK     => clk_16M00);
+    Inst_via: if (CImplVIA) generate
 
-    mc6522_ca1    <= '1';
+        via : entity work.M6522 port map(
+            I_RS    => cpu_addr(3 downto 0),
+            I_DATA  => cpu_dout,
+            O_DATA  => mc6522_data(7 downto 0),
+            I_RW_L  => cpu_R_W_n,
+            I_CS1   => mc6522_enable,
+            I_CS2_L => '0',
+            O_IRQ_L => mc6522_irq,
+            I_CA1   => mc6522_ca1,
+            I_CA2   => mc6522_ca2,
+            O_CA2   => mc6522_ca2,
+            I_PA    => mc6522_porta(7 downto 0),
+            O_PA    => mc6522_porta(7 downto 0),
+            I_CB1   => mc6522_cb1,
+            O_CB1   => mc6522_cb1,
+            I_CB2   => mc6522_cb2,
+            O_CB2   => mc6522_cb2,
+            I_PB    => mc6522_portb(7 downto 0),
+            O_PB    => mc6522_portb(7 downto 0),
+            RESET_L => RSTn,
+            I_P2_H  => via1_clken,
+            ENA_4   => via4_clken,
+            CLK     => clk_16M00);
+
+        mc6522_ca1    <= '1';
+
+    end generate;
 
 --------------------------------------------------------
 -- SDDOS
@@ -614,11 +630,6 @@ begin
     end generate;
 
 ---------------------------------------------------------------------
---
----------------------------------------------------------------------
-
-
----------------------------------------------------------------------
 -- Device enables
 ---------------------------------------------------------------------
 
@@ -627,6 +638,7 @@ begin
         -- All regions normally de-selected
         mc6522_enable     <= '0';
         i8255_enable      <= '0';
+        tube_enable       <= '0';
         video_ram_enable  <= '0';
         sid_enable        <= '0';
         pl8_enable        <= '0';
@@ -659,10 +671,11 @@ begin
                     sid_enable <= '1';  -- 0xbdc0-0xbddf SID
                 elsif cpu_addr(11 downto 5) = "1101111" then
                     reg_enable <= '1';  -- 0xbde0-0xbdff GODIL Registers
+                elsif cpu_addr(11 downto 4) = "11101110" then
+                    tube_enable <= '1';    -- 0xbee0-0xbeef
                 elsif cpu_addr(11 downto 4) = "11111111" then
                     extern_enable <= '1';  -- 0xbff0-0xbfff RomLatch
                 end if;
-
             when x"C"   => extern_enable <= '1';
             when x"D"   => extern_enable <= '1';
             when x"E"   => extern_enable <= '1';
@@ -672,6 +685,10 @@ begin
 
     end process;
 
+    -- External device chip selects
+    ExternTube <= tube_enable;
+    ExternVIA  <= mc6522_enable;
+
 ---------------------------------------------------------------------
 -- CPU data input multiplexor
 ---------------------------------------------------------------------
@@ -679,7 +696,9 @@ begin
     cpu_din <=
         godil_data      when video_ram_enable = '1'                else
         i8255_data      when i8255_enable = '1'                    else
-        mc6522_data     when mc6522_enable = '1'                   else
+        mc6522_data     when mc6522_enable = '1' and CImplVIA      else
+        extern_data     when mc6522_enable = '1' and not CImplVIA  else
+        extern_data     when tube_enable = '1'                     else
         godil_data      when sid_enable = '1'  and CImplSID        else
         godil_data      when uart_enable = '1' and CImplUart       else
         godil_data      when reg_enable = '1'                      else -- TODO add CImpl constraint
