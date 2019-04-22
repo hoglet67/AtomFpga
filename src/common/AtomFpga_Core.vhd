@@ -165,8 +165,6 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal i8255_data     : std_logic_vector(7 downto 0);
     signal i8255_rd       : std_logic;
 
-    signal inpurps2dat : std_logic;
-    signal inpurps2clk : std_logic;
     signal ps2dataout  : std_logic_vector(5 downto 0);
     signal key_shift   : std_logic;
     signal key_ctrl    : std_logic;
@@ -296,8 +294,8 @@ begin
         CLOCK      => clk_16M00,
         nRESET     => ERSTn,
         CLKEN_1MHZ => cpu_clken,
-        PS2_CLK    => inpurps2clk,
-        PS2_DATA   => inpurps2dat,
+        PS2_CLK    => ps2_clk,
+        PS2_DATA   => ps2_data,
         KEYOUT     => ps2dataout,
         ROW        => i8255_pa_data(3 downto 0),
         ESC_IN     => uart_escape,
@@ -538,8 +536,6 @@ begin
     IRSTn         <= RSTn;
 
     mc6522_ca1    <= '1';
-    inpurps2clk   <= ps2_clk;
-    inpurps2dat   <= ps2_data;
     not_cpu_R_W_n <= not cpu_R_W_n;
     cpu_IRQ_n     <= mc6522_irq and irq_n;
 
