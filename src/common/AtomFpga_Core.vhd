@@ -86,6 +86,9 @@ entity AtomFpga_Core is
         uart_TxD       : out   std_logic;
         avr_RxD        : in    std_logic;
         avr_TxD        : out   std_logic;
+        -- Cassette
+        cas_in         : in    std_logic := '0';
+        cas_out        : out   std_logic;
         -- Misc
         LED1           : out   std_logic;
         LED2           : out   std_logic;
@@ -185,6 +188,9 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal key_break         : std_logic;
     signal key_escape        : std_logic;
     signal key_turbo         : std_logic_vector(1 downto 0);
+
+    signal cas_divider       : std_logic_vector(11 downto 0);
+    signal cas_tone          : std_logic;
 
 ----------------------------------------------------
 -- AtoMMC signals
@@ -345,12 +351,28 @@ begin
     --    bit 2 (output) Audio
     --    bit 1 (output) Enable 2.4KHz tone to casette output
     --    bit 0 (output) Cassette output
-    --
     vdg_css       <= i8255_pc_data(3)          when RSTn='1' else '0';
     atom_audio    <= i8255_pc_data(2);
 
-    i8255_pc_idata <= vdg_fs_n & (key_repeat and kbd_pc(6)) & "11" & i8255_pc_data (3 downto 0);
+    i8255_pc_idata <= vdg_fs_n & (key_repeat and kbd_pc(6)) & cas_in & cas_tone & i8255_pc_data (3 downto 0);
 
+    -- Cassette divider
+    -- 16 MHz / 13 / 16 / 16 = 4807 Hz
+    process(clk_16M00)
+    begin
+        if rising_edge(clk_16M00) then
+            if cas_divider = 0 then
+                cas_divider <= x"CFF";
+                cas_tone    <= not cas_tone;
+            else
+                cas_divider <= cas_divider - 1;
+            end if;
+        end if;
+    end process;
+
+    -- this is a direct translation of the logic in the atom
+    -- (two NAND gates and an inverter)
+    cas_out <= not(not((not cas_tone) and i8255_pc_data(1)) and i8255_pc_data(0));
 
 ---------------------------------------------------------------------
 -- PS/2 Keyboard Emulation

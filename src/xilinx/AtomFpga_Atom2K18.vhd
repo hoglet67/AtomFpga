@@ -331,6 +331,9 @@ begin
         avr_RxD             => '1',
         avr_TxD             => open,
 
+        cas_in              => cas_in,
+        cas_out             => cas_out,
+
         LED1                => mmc_led_green,
         LED2                => mmc_led_red,
 
@@ -460,11 +463,5 @@ begin
     -- Enable/Disable the Matrix keyboard
     int_kbd_pb   <= kbd_pb when ps2_kbd_enable = '0' else (others => '1');
     int_kbd_pc   <= kbd_pc when ps2_kbd_enable = '0' else (others => '1');
-
-    ------------------------------------------------
-    -- Cassette
-    ------------------------------------------------
-
-    cas_out <= '0';
 
 end behavioral;
