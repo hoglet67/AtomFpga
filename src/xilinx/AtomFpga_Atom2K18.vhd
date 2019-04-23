@@ -117,6 +117,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal reset_counter   : std_logic_vector(9 downto 0);
 
     -- External bus interface
+    signal extern_bus      : std_logic;
     signal extern_ce       : std_logic;
     signal extern_we       : std_logic;
     signal extern_din      : std_logic_vector (7 downto 0);
@@ -319,14 +320,12 @@ begin
         irq_n               => bus_irq_n,
         nmi_n               => bus_nmi_n,
 
+        ExternBus           => extern_bus,      -- active high external bus select
         ExternCE            => extern_ce,       -- active high Ram/Rom chip select
         ExternWE            => extern_we,       -- active high Ram/Rom write
         ExternA             => extern_a,
         ExternDin           => extern_din,
         ExternDout          => extern_dout,
-
-        ExternTube          => extern_tube,     -- active high Tube chip select
-        ExternVIA           => extern_via,      -- active high VIA chip select
 
         sid_audio           => open,
         sid_audio_d         => sid_audio,
@@ -356,7 +355,7 @@ begin
     -- External bus
     ------------------------------------------------
 
-    -- TODO:  22/4/2019
+    -- 22/4/2019
     --
     -- I'm not happy with the design of the external bus interface, for the
     -- following reasons:
@@ -386,13 +385,42 @@ begin
     -- will not currently allow any devices to be added to the bus. Need to
     -- talk with Roland about how he thinks the external bus should be mapped
     -- into the Atom address space.
+    --
+    -- 22/4/2019
+    --
+    -- Roland's reply:
+    --
+    -- All addresses from #B000 - #BFFF should be external except for:
+    -- #B000 - #B003 (8255)
+    -- #B400 - #B403 (AtoMMC)
+    -- #B800 - #B80F (6522)
+    -- #BD00 - #BDFF (Godil + reserved address space)
+    -- #BFF0 - #BFFF (control registers, some addresses are reserved)
+    --
+    -- 23/4/2019
+    --
+    -- For consistency, I ended up using a minimum of 16-byte blocks.
+    -- This is all implemented in AtomFpga_Core
+    --
+    -- To answer my concerns above
+    -- 1. This is resolved by adding a seperate ExternBus output from the core
+    -- 2. I'm happy exposing RNW directly
+    -- 3. The RamRom modules should just output the CPU address when not selected
+    -- 4. ExternVia and ExternTube replaced with ExternBus
+    -- 5. Use ExternCE/ExternWE (for RamRom) and ExternBus/rnw (for Bus)
 
     bus_phi2    <= phi2;
     bus_rnw     <= rnw;
     bus_a       <= extern_a;
     bus_d       <= extern_din when rnw = '0' else "ZZZZZZZZ";
-    bus_nrds    <= not(extern_ce and not extern_we and phi2);  -- FIXME: See above
-    bus_nwds    <= not(extern_ce and     extern_we and phi2);  -- FIXME: See above
+
+    bus_nrds    <= '0' when extern_ce  = '1' and extern_we = '0' and phi2 = '1' else -- RamRom
+                   '0' when extern_bus = '1' and rnw       = '1' and phi2 = '1' else -- Bus
+                   '1';
+
+    bus_nwds    <= '0' when extern_ce  = '1' and extern_we = '1' and phi2 = '1' else -- RamRom
+                   '0' when extern_bus = '1' and rnw       = '0' and phi2 = '1' else -- Bus
+                   '1';
 
     extern_dout <= bus_d;
 
@@ -400,12 +428,17 @@ begin
     -- External device chip selects
     ------------------------------------------------
 
+    extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B80" else '0';
+    extern_tube <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else '0';
+
     cs_rom_n    <= not(extern_ce and not extern_a(17));
     cs_ram_n    <= not(extern_ce and     extern_a(17));
+
     cs_via_n    <= not(extern_via);
     cs_tube_n   <= not(extern_tube);
-    cs_buf_n    <= not(extern_tube);  -- FIXME: See above
-    buf_dir     <= not rnw;           -- FIXME: See above
+
+    cs_buf_n    <= not(extern_bus and not extern_tube);  -- Tube is on the 3v3 side of the bus
+    buf_dir     <= not rnw;
 
     ------------------------------------------------
     -- Audio mixer

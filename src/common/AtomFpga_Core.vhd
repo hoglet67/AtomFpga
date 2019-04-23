@@ -70,15 +70,13 @@ entity AtomFpga_Core is
         so             : in    std_logic := '1';
         irq_n          : in    std_logic := '1';
         nmi_n          : in    std_logic := '1';
-        -- External Ram/Rom interface
+        -- External Bus/Ram/Rom interface
+        ExternBus      : out   std_logic;
         ExternCE       : out   std_logic;
         ExternWE       : out   std_logic;
         ExternA        : out   std_logic_vector (18 downto 0);
         ExternDin      : out   std_logic_vector (7 downto 0);
         ExternDout     : in    std_logic_vector (7 downto 0);
-        -- Additional external device chip selects
-        ExternTube     : out   std_logic;
-        ExternVIA      : out   std_logic;
         -- Audio
         sid_audio_d    : out   std_logic_vector (17 downto 0);
         sid_audio      : out   std_logic;
@@ -147,8 +145,8 @@ architecture BEHAVIORAL of AtomFpga_Core is
 ----------------------------------------------------
     signal mc6522_enable     : std_logic;
     signal i8255_enable      : std_logic;
-    signal tube_enable       : std_logic;
-    signal extern_enable     : std_logic;
+    signal ext_ramrom_enable : std_logic;
+    signal ext_bus_enable    : std_logic;
     signal video_ram_enable  : std_logic;
     signal reg_enable        : std_logic;
     signal sid_enable        : std_logic;
@@ -638,56 +636,57 @@ begin
         -- All regions normally de-selected
         mc6522_enable     <= '0';
         i8255_enable      <= '0';
-        tube_enable       <= '0';
         video_ram_enable  <= '0';
         sid_enable        <= '0';
         pl8_enable        <= '0';
         reg_enable        <= '0';
         uart_enable       <= '0';
-        extern_enable     <= '0';
+        ext_ramrom_enable <= '0';
+        ext_bus_enable    <= '0';
 
         case cpu_addr(15 downto 12) is
-            when x"0" => extern_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
-            when x"1" => extern_enable <= '1';
-            when x"2" => extern_enable <= '1';
-            when x"3" => extern_enable <= '1';
-            when x"4" => extern_enable <= '1';
-            when x"5" => extern_enable <= '1';
-            when x"6" => extern_enable <= '1';
-            when x"7" => extern_enable <= '1';
+            when x"0" => ext_ramrom_enable <= '1';  -- 0x0000 -- 0x03ff is RAM
+            when x"1" => ext_ramrom_enable <= '1';
+            when x"2" => ext_ramrom_enable <= '1';
+            when x"3" => ext_ramrom_enable <= '1';
+            when x"4" => ext_ramrom_enable <= '1';
+            when x"5" => ext_ramrom_enable <= '1';
+            when x"6" => ext_ramrom_enable <= '1';
+            when x"7" => ext_ramrom_enable <= '1';
             when x"8" => video_ram_enable  <= '1';  -- 0x8000 -- 0x9fff is RAM
             when x"9" => video_ram_enable  <= '1';
-            when x"A" => extern_enable <= '1';
+            when x"A" => ext_ramrom_enable <= '1';
             when x"B" =>
-                if cpu_addr(11 downto 8) = "0000" then     -- 0xb000 8255 PIA
+                if cpu_addr(11 downto 4)          = x"00" then -- 0xB00x 8255 PIA
                     i8255_enable <= '1';
-                elsif cpu_addr(11 downto 8) = "1000" then  -- 0xb800 6522 VIA (optional)
-                    mc6522_enable <= '1';
-                elsif cpu_addr(11 downto 10) = "01" then
-                    pl8_enable <= '1';  -- 0xb400-0xb7ff SPI
-                elsif cpu_addr(11 downto 4) = "11011011" then
-                    uart_enable <= '1';  -- 0xbdb0-0xbdbf UART
-                elsif cpu_addr(11 downto 5) = "1101110" then
-                    sid_enable <= '1';  -- 0xbdc0-0xbddf SID
-                elsif cpu_addr(11 downto 5) = "1101111" then
-                    reg_enable <= '1';  -- 0xbde0-0xbdff GODIL Registers
-                elsif cpu_addr(11 downto 4) = "11101110" then
-                    tube_enable <= '1';    -- 0xbee0-0xbeef
-                elsif cpu_addr(11 downto 4) = "11111111" then
-                    extern_enable <= '1';  -- 0xbff0-0xbfff RomLatch
+                elsif cpu_addr(11 downto 4)       = x"40" then -- 0xB40x AtoMMC/SPI
+                    pl8_enable <= '1';
+                elsif cpu_addr(11 downto 4)       = x"80" then -- 0xB80x 6522 VIA
+                    if CImplVIA then
+                        mc6522_enable <= '1';
+                    end if;
+                elsif cpu_addr(11 downto 4)       = x"DB" then -- 0xBDBx UART
+                    uart_enable <= '1';
+                elsif cpu_addr(11 downto 5) & '0' = x"DC" then -- 0xBDCx, 0xBDDx SID
+                    sid_enable <= '1';
+                elsif cpu_addr(11 downto 5) & '0' = x"DE" then -- 0xBDEx, 0xBDFx GODIL Registers
+                    reg_enable <= '1';
+                elsif cpu_addr(11 downto 4)       = x"FF" then -- 0xBFFx RomLatch
+                    ext_ramrom_enable <= '1';
+                elsif cpu_addr(11 downto 8)      /= x"D"  then -- any non-mapped 0xBxxx address is deemed external
+                    ext_bus_enable <= '1';                     -- apart from 0xBDxx which are deemed reserved
                 end if;
-            when x"C"   => extern_enable <= '1';
-            when x"D"   => extern_enable <= '1';
-            when x"E"   => extern_enable <= '1';
-            when x"F"   => extern_enable <= '1';
+            when x"C"   => ext_ramrom_enable <= '1';
+            when x"D"   => ext_ramrom_enable <= '1';
+            when x"E"   => ext_ramrom_enable <= '1';
+            when x"F"   => ext_ramrom_enable <= '1';
             when others => null;
         end case;
 
     end process;
 
-    -- External device chip selects
-    ExternTube <= tube_enable;
-    ExternVIA  <= mc6522_enable;
+    -- External bus enable
+    ExternBus <= ext_bus_enable;
 
 ---------------------------------------------------------------------
 -- CPU data input multiplexor
@@ -696,15 +695,14 @@ begin
     cpu_din <=
         godil_data      when video_ram_enable = '1'                else
         i8255_data      when i8255_enable = '1'                    else
-        mc6522_data     when mc6522_enable = '1' and CImplVIA      else
-        extern_data     when mc6522_enable = '1' and not CImplVIA  else
-        extern_data     when tube_enable = '1'                     else
+        mc6522_data     when mc6522_enable = '1'                   else
         godil_data      when sid_enable = '1'  and CImplSID        else
         godil_data      when uart_enable = '1' and CImplUart       else
         godil_data      when reg_enable = '1'                      else -- TODO add CImpl constraint
         pl8_data        when pl8_enable = '1'  and CImplSDDOS      else
         pl8_data        when pl8_enable = '1'  and CImplAtoMMC2    else
-        extern_data     when extern_enable = '1'                   else
+        extern_data     when ext_ramrom_enable = '1'               else
+        extern_data     when ext_bus_enable = '1'                  else
         x"f1";          -- un-decoded locations
 
 --------------------------------------------------------
