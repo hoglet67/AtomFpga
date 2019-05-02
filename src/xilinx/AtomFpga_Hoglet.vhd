@@ -154,10 +154,10 @@ begin
     RomCE      <= ExternCE and not Addr(17);
 
     RAMWRn     <= not (ExternWE and RamCE and Phi2);
-    RAMOEn     <= not ((not ExternWE) and RamCE);
+    RAMOEn     <= not ((not ExternWE) and RamCE and Phi2);
 
     ROMWRn     <= not (ExternWE and RomCE and Phi2);
-    ROMOEn     <= not ((not ExternWE) and RomCE);
+    ROMOEn     <= not ((not ExternWE) and RomCE and Phi2);
 
     ExternD    <= ExternDin when ExternWE = '1' else "ZZZZZZZZ";
     ExternDout <= ExternD;
