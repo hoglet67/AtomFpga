@@ -111,7 +111,6 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal clken_counter     : std_logic_vector (3 downto 0);
     signal cpu_cycle         : std_logic;
     signal cpu_clken         : std_logic;
-    signal phi               : std_logic;
 
 -------------------------------------------------
 -- CPU signals
@@ -714,7 +713,6 @@ begin
         if RSTn = '0' then
             clken_counter <= (others => '0');
             cpu_clken <= '0';
-            phi <= '0';
             phi2 <= '0';
         elsif rising_edge(clk_16M00) then
             clken_counter <= clken_counter + 1;
@@ -723,46 +721,45 @@ begin
                     -- 2MHz
                     -- cpu_clken active on cycle 0, 8
                     -- address/data changes on cycle 1, 9
-                    -- phi2 active on cycle 2..5, 10..13
+                    -- phi2 active on cycle 4..7, 12..15
                     cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);  -- on cycles 0, 8
-                    phi <= not clken_counter(2);
                     via1_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);
                     via4_clken <= clken_counter(0);
+                    if clken_counter(1 downto 0) = 3 then
+                        phi2 <= not clken_counter(2);
+                    end if;
                 when "10" =>
                     -- 4MHz
                     -- cpu_clken active on cycle 0, 4, 8, 12
                     -- address/data changes on cycle 1, 5, 9, 13
-                    -- phi2 active on cycle 2..3, 6..7 10..11 14..15
+                    -- phi2 active on cycle 2..3, 6..7, 10..11, 14..15
                     cpu_clken <= clken_counter(0) and clken_counter(1);
-                    phi <= not clken_counter(1);
                     via1_clken <= clken_counter(0) and clken_counter(1);
                     via4_clken <= '1';
+                    if clken_counter(0) = '1' then
+                        phi2 <= not clken_counter(1);
+                    end if;
                 when "11" =>
                     -- 8MHz
                     -- cpu_clken active on cycle 0, 2, 4, 6, 8, 10, 12, 14
                     -- address/data changes on cycle 1, 3, 5, 7, 9, 11, 13, 15
-                    -- phi2 active on cycle 1, 3, 5, 7, 9, 11, 13, 15
-                    -- NOTE: this case is not ideal, because no matter how you time phi2, one or other
-                    -- edge will change at the same time as address/data changes.
-                    -- (1) Address Setup at start of write cycle
-                    -- (2) Data hold and end of write cycle
-                    -- For now we will optimise for (2)
+                    -- phi2 active on cycle 0, 2, 4, 6, 8, 10, 12, 14
                     cpu_clken <= clken_counter(0);
-                    phi <= clken_counter(0); -- not negated, see note above
                     via1_clken <= clken_counter(0);
                     via4_clken <= '1';
+                    phi2 <= not clken_counter(0);
                 when others =>
                     -- 1MHz
                     -- cpu_clken active on cycle 0
                     -- address/data changes on cycle 1
-                    -- phi2 active on cycle 2..9
+                    -- phi2 active on cycle 8..15
                     cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);
-                    phi <= not clken_counter(3);
                     via1_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);
                     via4_clken <= clken_counter(0) and clken_counter(1);
+                    if clken_counter(2 downto 0) = 7 then
+                        phi2 <= not clken_counter(3);
+                    end if;
             end case;
-            -- delay by 1 cycle so address and data will be stable for 62.5ns before phi2
-            phi2 <= phi;
         end if;
     end process;
 
