@@ -3,15 +3,15 @@
 --
 -- based on work by Alan Daly. Copyright(c) 2009. All rights reserved.
 --------------------------------------------------------------------------------
---   ____  ____ 
---  /   /\/   / 
--- /___/  \  /    
--- \   \   \/    
---  \   \         
+--   ____  ____
+--  /   /\/   /
+-- /___/  \  /
+-- \   \   \/
+--  \   \
 --  /   /         Filename  : AtomFpga_PapilioDuo.vhd
 -- /___/   /\     Timestamp : 19/04/2015
--- \   \  /  \ 
---  \___\/\___\ 
+-- \   \  /  \
+--  \___\/\___\
 --
 --Design Name: AtomFpga_PapilioDuo
 --Device: Spartan6 LX9
@@ -69,7 +69,7 @@ architecture behavioral of AtomFpga_PapilioDuo is
     signal clock_32        : std_logic;
     signal reset_n         : std_logic;
     signal powerup_reset_n : std_logic;
-    signal hard_reset_n    : std_logic;     
+    signal hard_reset_n    : std_logic;
     signal reset_counter   : std_logic_vector(9 downto 0);
     signal phi2            : std_logic;
 
@@ -79,7 +79,7 @@ architecture behavioral of AtomFpga_PapilioDuo is
     signal RAM_nWE         : std_logic;
     signal RAM_nOE         : std_logic;
     signal RAM_nCS         : std_logic;
-    
+
     signal ExternCE        : std_logic;
     signal ExternWE        : std_logic;
     signal ExternA         : std_logic_vector (18 downto 0);
@@ -101,11 +101,11 @@ architecture behavioral of AtomFpga_PapilioDuo is
     signal bootstrap_busy  : std_logic;
 
 begin
-    
+
 --------------------------------------------------------
 -- Atom Fpga Core
 --------------------------------------------------------
-    
+
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplSDDOS              => false,
@@ -123,7 +123,7 @@ begin
         CImplRamRomAtom2015     => false,
         CImplRamRomSchakelKaart => false,
         MainClockSpeed          => 16000000,
-        DefaultBaud             => 115200          
+        DefaultBaud             => 115200
      )
      port map (
         clk_vga             => clock_25,
@@ -145,7 +145,7 @@ begin
         ExternWE            => ExternWE,
         ExternA             => ExternA,
         ExternDin           => ExternDin,
-        ExternDout          => ExternDout,        
+        ExternDout          => ExternDout,
         sid_audio           => audiol,
         sid_audio_d         => open,
         atom_audio          => audioR,
@@ -162,16 +162,16 @@ begin
         charSet             => DIP(0),
         Joystick1           => JOYSTICK1,
         Joystick2           => JOYSTICK2
-    );  
+    );
 
     red(0)     <= '0';
     green(0)   <= '0';
     blue(0)    <= '0';
-        
+
 --------------------------------------------------------
 -- Clock Generation
 --------------------------------------------------------
-    
+
     inst_dcm4 : entity work.dcm4 port map(
         CLKIN_IN  => clk_32M00,
         CLK0_OUT  => clock_32,
@@ -238,20 +238,18 @@ begin
         FLASH_CK        => FLASH_CK,
         FLASH_SO        => FLASH_SO
     );
-    
+
     MemProcess : process (clock_16)
     begin
         if rising_edge(clock_16) then
             RAM_A      <= ExternA;
             RAM_nCS    <= not ExternCE;
-            RAM_nOE    <= not ((not ExternWE) and ExternCE);
+            RAM_nOE    <= not ((not ExternWE) and ExternCE and phi2);
             RAM_nWE    <= not (ExternWE and ExternCE and phi2);
             RAM_Din    <= ExternDin;
        end if;
-    end process;            
+    end process;
 
     ExternDout <= RAM_Dout;
-    
+
 end behavioral;
-
-
