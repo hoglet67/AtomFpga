@@ -93,7 +93,7 @@ begin
     -- External address decoding
     --
     -- external address bus is 18..0 (512KB)
-    -- bit 18 is always zero
+    -- bit 18 indicates an unmapped access (e.g to I/O space)
     -- bit 17 selects between ROM (0) and RAM (1)
     -- bits 16..0 select with 128KB block
     -------------------------------------------------
@@ -111,7 +111,8 @@ begin
                   "01111" &             cpu_addr(13 downto 0) when cpu_addr(15 downto 14) = "11" and OSInRam = '1' else
                   "0110"  & RomLatch  & cpu_addr(11 downto 0) when cpu_addr(15 downto 12) = "1010" else
                   "010"   & ExRamBank & cpu_addr(13 downto 0) when cpu_addr(15 downto 14) = "01"   else
-                  "01110" &             cpu_addr(13 downto 0);
+                  "01110" &             cpu_addr(13 downto 0) when cpu_addr(15 downto 14) = "00"   else
+                  "111"   &             cpu_addr(15 downto 0);
 
     ExternDin   <= cpu_dout;
 
