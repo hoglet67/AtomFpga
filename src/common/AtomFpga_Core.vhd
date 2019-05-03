@@ -242,7 +242,8 @@ begin
         DO(7 downto 0) => cpu_dout(7 downto 0));
 
     not_cpu_R_W_n <= not cpu_R_W_n;
-    cpu_IRQ_n     <= mc6522_irq and irq_n;
+    cpu_IRQ_n     <= irq_n and mc6522_irq when CImplVIA else
+                     irq_n;
 
     -- reset logic
     RSTn          <= ERSTn and key_break;
@@ -663,6 +664,8 @@ begin
                 elsif cpu_addr(11 downto 4)       = x"80" then -- 0xB80x 6522 VIA
                     if CImplVIA then
                         mc6522_enable <= '1';
+                    else
+                        ext_bus_enable <= '1';
                     end if;
                 elsif cpu_addr(11 downto 4)       = x"DB" then -- 0xBDBx UART
                     uart_enable <= '1';
