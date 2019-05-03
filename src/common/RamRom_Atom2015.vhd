@@ -1,15 +1,15 @@
 --------------------------------------------------------------------------------
 -- Copyright (c) 2016 David Banks
 --------------------------------------------------------------------------------
---   ____  ____ 
---  /   /\/   / 
--- /___/  \  /    
--- \   \   \/    
---  \   \         
+--   ____  ____
+--  /   /\/   /
+-- /___/  \  /
+-- \   \   \/
+--  \   \
 --  /   /         Filename  : RamRom_Atom2015
 -- /___/   /\     Timestamp : 04/07/2016
--- \   \  /  \ 
---  \___\/\___\ 
+-- \   \  /  \
+--  \___\/\___\
 --
 --Design Name: RamRom_Atom2015
 
@@ -36,9 +36,9 @@ entity RamRom_Atom2015 is
 end RamRom_Atom2015;
 
 architecture behavioral of RamRom_Atom2015 is
-    
+
     signal BFFE_Enable : std_logic;
-    signal BFFF_Enable : std_logic;    
+    signal BFFF_Enable : std_logic;
     signal RegBFFE  : std_logic_vector (7 downto 0);
     signal RegBFFF  : std_logic_vector (7 downto 0);
 
@@ -51,7 +51,7 @@ architecture behavioral of RamRom_Atom2015 is
 begin
 
     -- Mapping to External SRAM...
-    
+
     -- 0x00000 - Atom #A000 Bank 0
     -- 0x01000 - Atom #A000 Bank 1
     -- 0x02000 - Atom #A000 Bank 2
@@ -93,7 +93,7 @@ begin
     -- External address decoding
     --
     -- external address bus is 18..0 (512KB)
-    -- bit 18 is always zero 
+    -- bit 18 is always zero
     -- bit 17 selects between ROM (0) and RAM (1)
     -- bits 16..0 select with 128KB block
     -------------------------------------------------
@@ -110,22 +110,22 @@ begin
     ExternA    <= "0010"  & OSRomBank & cpu_addr(13 downto 0) when cpu_addr(15 downto 14) = "11" and OSInRam = '0' else
                   "01111" &             cpu_addr(13 downto 0) when cpu_addr(15 downto 14) = "11" and OSInRam = '1' else
                   "0110"  & RomLatch  & cpu_addr(11 downto 0) when cpu_addr(15 downto 12) = "1010" else
-                  "010"   & ExRamBank & cpu_addr(13 downto 0) when cpu_addr(15 downto 14) = "01"   else                  
-                  "01110" &             cpu_addr(13 downto 0);        
-    
+                  "010"   & ExRamBank & cpu_addr(13 downto 0) when cpu_addr(15 downto 14) = "01"   else
+                  "01110" &             cpu_addr(13 downto 0);
+
     ExternDin   <= cpu_dout;
 
-    cpu_din     <= RegBFFE when BFFE_Enable = '1' else 
-                   RegBFFF when BFFF_Enable = '1' else 
+    cpu_din     <= RegBFFE when BFFE_Enable = '1' else
+                   RegBFFF when BFFF_Enable = '1' else
                    ExternDout;
 
     -------------------------------------------------
     -- RAM/ROM Board Registers
     -------------------------------------------------
-    
+
     BFFE_Enable <= '1' when cpu_addr(15 downto 0) = "1011111111111110" else '0';
     BFFF_Enable <= '1' when cpu_addr(15 downto 0) = "1011111111111111" else '0';
-    
+
     RomLatchProcess : process (reset_n, clock)
     begin
         if reset_n = '0' then
@@ -141,7 +141,7 @@ begin
             end if;
         end if;
     end process;
-        
+
     -------------------------------------------------
     -- BFFE and BFFF registers
     --
@@ -152,14 +152,12 @@ begin
     -- - BFFE bit 6 (turbo mode)
     --   as F1..F4 already allow 1/2/4/8MHz to be selected
     --
-    -------------------------------------------------    
+    -------------------------------------------------
 
     WriteProt  <= RegBFFE(7);
     OSRomBank  <= RegBFFE(3);
     OSInRam    <= RegBFFE(2);
     ExRamBank  <= RegBFFE(1 downto 0);
     RomLatch   <= RegBFFF(2 downto 0);
-    
+
 end behavioral;
-
-
