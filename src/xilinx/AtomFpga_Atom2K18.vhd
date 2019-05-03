@@ -273,7 +273,7 @@ begin
         CImplHWScrolling        => true,
         CImplMouse              => true,
         CImplUart               => true,
-        CImplDoubleVideo        => true,
+        CImplDoubleVideo        => false,    -- make room for ROMs for testing
         CImplRamRomNone         => false,
         CImplRamRomPhill        => false,
         CImplRamRomAtom2015     => true,
