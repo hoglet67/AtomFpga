@@ -66,6 +66,7 @@ entity AtomFpga_Core is
         sync           : out   std_logic;
         rnw            : out   std_logic;
         blk_b          : out   std_logic;
+        addr           : out   std_logic_vector(15 downto 0);
         rdy            : in    std_logic := '1';
         so             : in    std_logic := '1';
         irq_n          : in    std_logic := '1';
@@ -259,6 +260,7 @@ begin
     -- external bus
     rnw           <= cpu_R_W_n;
     blk_b         <= '0' when cpu_addr(15 downto 12) = x"0" else '1';
+    addr          <= cpu_addr;
 
 ---------------------------------------------------------------------
 -- Atom GODIL Video adapter
@@ -548,6 +550,20 @@ begin
     end generate;
 
 ---------------------------------------------------------------------
+-- No SD Filesystem
+---------------------------------------------------------------------
+
+    Inst_no_atommc2: if ((not CImplSDDOS) and (not CImplAtoMMC2)) generate
+
+        SDCLK      <= '1';
+        SDSS       <= '1';
+        SDMOSI     <= '1';
+        LED1       <= '0';
+        LED2       <= '0';
+
+    end generate;
+
+---------------------------------------------------------------------
 -- Ram Rom board functionality
 ---------------------------------------------------------------------
 
@@ -711,13 +727,10 @@ begin
 -- Clock enable generator
 --------------------------------------------------------
 
-    process(clk_16M00, RSTn)
+    process(clk_16M00)
     begin
-        if RSTn = '0' then
-            clken_counter <= (others => '0');
-            cpu_clken <= '0';
-            phi2 <= '0';
-        elsif rising_edge(clk_16M00) then
+        -- Don't include reset here, so 6502 continues to be clocked during reset
+        if rising_edge(clk_16M00) then
             clken_counter <= clken_counter + 1;
             case (key_turbo) is
                 when "01" =>
