@@ -78,7 +78,8 @@ architecture behavioral of AtomFpga_BeebAdapter is
     signal cs_ram_n    : std_logic;
     signal cs_rom_n    : std_logic;
     signal cs_via_n    : std_logic;
-    signal cs_bus_n    : std_logic;
+    signal cs_tube_n   : std_logic;
+    signal cs_buf_n    : std_logic;
     signal bus_nrds    : std_logic;
     signal bus_nwds    : std_logic;
     signal bus_phi2    : std_logic;
@@ -86,51 +87,10 @@ architecture behavioral of AtomFpga_BeebAdapter is
     signal bus_sync    : std_logic;
     signal bus_rst_n   : std_logic;
 
-
-    signal rom0_data   : std_logic_vector(7 downto 0);
-    signal rom1_data   : std_logic_vector(7 downto 0);
-    signal rom2_data   : std_logic_vector(7 downto 0);
-    signal rom3_data   : std_logic_vector(7 downto 0);
-    signal rom_data    : std_logic_vector(7 downto 0);
-
     signal pb          : std_logic_vector(7 downto 0);
     signal pc          : std_logic_vector(6 downto 6);
 
 begin
-
-    inst_rom0 : entity work.atombasic
-        port map (
-            CLK => bus_phi2,
-            ADDR => ext_addr(11 downto 0),
-            DATA => rom0_data
-            );
-
-    inst_rom1 : entity work.atomfloat
-        port map (
-            CLK => bus_phi2,
-            ADDR => ext_addr(11 downto 0),
-            DATA => rom1_data
-            );
-
-    inst_rom2 : entity work.e000
-        port map (
-            CLK => bus_phi2,
-            ADDR => ext_addr(11 downto 0),
-            DATA => rom2_data
-            );
-
-    inst_rom3 : entity work.atomkernal
-        port map (
-            CLK => bus_phi2,
-            ADDR => ext_addr(11 downto 0),
-            DATA => rom3_data
-            );
-
-    rom_data <= rom0_data when ext_addr(13 downto 12) = "00" else
-                rom1_data when ext_addr(13 downto 12) = "01" else
-                rom2_data when ext_addr(13 downto 12) = "10" else
-                rom3_data when ext_addr(13 downto 12) = "11" else
-                x"00";
 
     ram_addr <= ext_addr;
     ram_cel  <= cs_ram_n;
@@ -140,85 +100,89 @@ begin
     ram_data <= ext_data when bus_rnw = '0' and cs_ram_n = '0' else
                 (others => 'Z');
 
-    ext_data <= ram_data when bus_rnw = '1' and cs_ram_n = '0' else
-                rom_data when bus_rnw = '1' and cs_rom_n = '0' else
-					 x"B0"    when bus_rnw = '1' and cs_via_n = '0' else
-                 (others => 'Z');
+    ext_data <= ram_data when bus_rnw = '1' and cs_ram_n  = '0' else
+	             x"CC"    when bus_rnw = '1' and cs_rom_n  = '0' else
+                x"B0"    when bus_rnw = '1' and cs_via_n  = '0' else  -- fake VIA
+	             x"DD"    when bus_rnw = '1' and cs_buf_n  = '0' else
+	             x"EE"    when bus_rnw = '1' and cs_tube_n = '0' else
+                (others => 'Z');
 
-	 bus_rst_n <= not SW1;
+    bus_rst_n <= not SW1;
 
     inst_AtomFpga_Atom2K18 : entity work.AtomFpga_Atom2K18
+        generic map(
+            CImplTestRom => true,
+            CImplTestRam => true
+            )
         port map(
+            -- Clock
+            clk_50         => clk50,
 
+            -- External Bus
+            bus_a          => ext_addr,
+            bus_d          => ext_data,
+            bus_blk_b      => open,
+            bus_phi2       => bus_phi2,
+            bus_rnw        => bus_rnw,
+            bus_nrds       => bus_nrds,
+            bus_nwds       => bus_nwds,
+            bus_sync       => bus_sync,
+            bus_nmi_n      => '1',
+            bus_irq_n      => '1',
+            bus_rst_n      => bus_rst_n,
+            bus_rdy        => '1',
+            bus_so         => '1',
 
-        -- Clock
-        clk_50         => clk50,
+            -- External device chip selects
+            cs_ram_n       => cs_ram_n,
+            cs_rom_n       => cs_rom_n,
+            cs_via_n       => cs_via_n,
+            cs_tube_n      => cs_tube_n,
+            cs_buf_n       => cs_buf_n,
+            buf_dir        => open,
 
-        -- External Bus
-        bus_a          => ext_addr,
-        bus_d          => ext_data,
-        bus_blk_b      => open,
-        bus_phi2       => bus_phi2,
-        bus_rnw        => bus_rnw,
-        bus_nrds       => bus_nrds,
-        bus_nwds       => bus_nwds,
-        bus_sync       => bus_sync,
-        bus_nmi_n      => '1',
-        bus_irq_n      => '1',
-        bus_rst_n      => bus_rst_n,
-        bus_rdy        => '1',
-        bus_so         => '1',
+            -- Video
+            vga_red1       => vga_red1,
+            vga_red2       => vga_red2,
+            vga_green1     => vga_green1,
+            vga_green2     => vga_green2,
+            vga_blue1      => vga_blue1,
+            vga_blue2      => vga_blue2,
+            vga_vsync      => vga_vsync,
+            vga_hsync      => vga_hsync,
 
-        -- External device chip selects
-        cs_ram_n       => cs_ram_n,
-        cs_rom_n       => cs_rom_n,
-        cs_via_n       => cs_via_n,
-        cs_tube_n      => open,
-        cs_buf_n       => cs_bus_n,
-        buf_dir        => open,
+            -- Audio
+            audio          => open,
+            dac_cs_n       => dac_cs_n,
+            dac_sdi        => dac_sdi,
+            dac_ldac_n     => dac_ldac_n,
+            dac_sck        => dac_sck,
 
-        -- Video
-        vga_red1       => vga_red1,
-        vga_red2       => vga_red2,
-        vga_green1     => vga_green1,
-        vga_green2     => vga_green2,
-        vga_blue1      => vga_blue1,
-        vga_blue2      => vga_blue2,
-        vga_vsync      => vga_vsync,
-        vga_hsync      => vga_hsync,
+            -- Keyboard
+            kbd_pa         => open,
+            kbd_pb         => pb,
+            kbd_pc         => pc,
 
-        -- Audio
-        audio          => open,
-        dac_cs_n       => dac_cs_n,
-        dac_sdi        => dac_sdi,
-        dac_ldac_n     => dac_ldac_n,
-        dac_sck        => dac_sck,
+            -- Mouse
+            ps2_mouse_clk  => open,
+            ps2_mouse_data => open,
 
-        -- Keyboard
-        kbd_pa         => open,
-        kbd_pb         => pb,
-        kbd_pc         => pc,
+            -- Cassette
+            cas_in         => '0',
+            cas_out        => open,
 
-        -- Mouse
-        ps2_mouse_clk  => open,
-        ps2_mouse_data => open,
+            -- Serial
+            serial_tx      => open,
+            serial_rx      => '0',
 
-        -- Cassette
-        cas_in         => '0',
-        cas_out        => open,
-
-        -- Serial
-        serial_tx      => open,
-        serial_rx      => '0',
-
-        -- SD Card
-        mmc_led_red    => open,
-        mmc_led_green  => open,
-        mmc_clk        => open,
-        mmc_ss         => open,
-        mmc_mosi       => open,
-        mmc_miso       => '0'
-        );
+            -- SD Card
+            mmc_led_red    => open,
+            mmc_led_green  => open,
+            mmc_clk        => open,
+            mmc_ss         => open,
+            mmc_mosi       => open,
+            mmc_miso       => '0'
+            );
 
     -- pc(6) linked to ground enables the PS/2 keyboard
     pc(6) <= '0';
@@ -230,7 +194,7 @@ begin
     pmod1        <= bus_rst_n & bus_sync & vga_vsync & vga_hsync & vga_green1 & vga_green2 & "00";
     -- pmod2        <= bus_phi2 & bus_nrds & bus_nwds & bus_rnw & cs_ram_n & cs_rom_n & cs_via_n & cs_bus_n;
 
-	 led          <= not bus_rst_n;
+    led          <= not bus_rst_n;
 
     bus_data     <= (others => 'Z');
     bus_data_dir <= '1';
