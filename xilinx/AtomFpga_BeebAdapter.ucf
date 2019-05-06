@@ -101,3 +101,11 @@ NET "led"           LOC = "P67"  | IOSTANDARD = LVCMOS33 ;
 
 NET "sw1"           LOC = "P62"  | IOSTANDARD = LVCMOS33 ;
 NET "sw2"           LOC = "P144" | IOSTANDARD = LVCMOS33 ;
+
+NET "uart_rxd"      LOC = "P55"  | IOSTANDARD = LVCMOS33 ;
+NET "uart_txd"      LOC = "P51"  | IOSTANDARD = LVCMOS33 ;
+
+NET "flash_cs"      LOC = "P38"  | IOSTANDARD = LVCMOS33 ;
+NET "flash_ck"      LOC = "P70"  | IOSTANDARD = LVCMOS33 ;
+NET "flash_si"      LOC = "P64"  | IOSTANDARD = LVCMOS33 ;
+NET "flash_so"      LOC = "P65"  | IOSTANDARD = LVCMOS33  | pullup ;
