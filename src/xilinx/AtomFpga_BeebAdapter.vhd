@@ -268,8 +268,8 @@ begin
         CImplUart               => true,
         CImplDoubleVideo        => true,
         CImplRamRomNone         => false,
-        CImplRamRomPhill        => true,
-        CImplRamRomAtom2015     => false,
+        CImplRamRomPhill        => false,
+        CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
         MainClockSpeed          => 16000000,
         DefaultBaud             => 115200
@@ -306,8 +306,8 @@ begin
         uart_TxD            => uart_txd,
         avr_RxD             => '1',
         avr_TxD             => open,
-        LED1                => led,
-        LED2                => open,
+        LED1                => led,  -- Green LED
+        LED2                => open, -- Red LED
         charSet             => '1',
         Joystick1           => (others => '1'),
         Joystick2           => (others => '1')
