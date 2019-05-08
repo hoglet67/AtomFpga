@@ -112,6 +112,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal clken_counter     : std_logic_vector (3 downto 0);
     signal cpu_cycle         : std_logic;
     signal cpu_clken         : std_logic;
+    signal sample_data       : std_logic;
 
 -------------------------------------------------
 -- CPU signals
@@ -123,6 +124,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal cpu_din           : std_logic_vector (7 downto 0);
     signal cpu_dout          : std_logic_vector (7 downto 0);
     signal cpu_IRQ_n         : std_logic;
+    signal ExternDout1       : std_logic_vector (7 downto 0);
 
 ---------------------------------------------------
 -- VDG signals
@@ -567,6 +569,15 @@ begin
 -- Ram Rom board functionality
 ---------------------------------------------------------------------
 
+    process(clk_16M00)
+    begin
+        if rising_edge(clk_16M00) then
+            if sample_data = '1' then
+                ExternDout1 <= ExternDout;
+            end if;
+        end if;
+    end process;
+
     Inst_RamRomNone: if (CImplRamRomNone) generate
         Inst_RamRomNone_comp: entity work.RamRom_None
             port map(
@@ -582,7 +593,7 @@ begin
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
                 ExternDin    => ExternDin,
-                ExternDout   => ExternDout
+                ExternDout   => ExternDout1
                 );
     end generate;
 
@@ -601,7 +612,7 @@ begin
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
                 ExternDin    => ExternDin,
-                ExternDout   => ExternDout
+                ExternDout   => ExternDout1
                 );
     end generate;
 
@@ -620,7 +631,7 @@ begin
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
                 ExternDin    => ExternDin,
-                ExternDout   => ExternDout
+                ExternDout   => ExternDout1
                 );
     end generate;
 
@@ -639,7 +650,7 @@ begin
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
                 ExternDin    => ExternDin,
-                ExternDout   => ExternDout
+                ExternDout   => ExternDout1
                 );
     end generate;
 
@@ -738,42 +749,63 @@ begin
                     -- cpu_clken active on cycle 0, 8
                     -- address/data changes on cycle 1, 9
                     -- phi2 active on cycle 4..7, 12..15
-                    cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);  -- on cycles 0, 8
+                    -- sample_data active of cycle 7, 15 (i.e. the last cycle of phi2)
+                    cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);
                     via1_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);
                     via4_clken <= clken_counter(0);
                     if clken_counter(1 downto 0) = 3 then
                         phi2 <= not clken_counter(2);
+                    end if;
+                    if clken_counter(2 downto 0) = 6 then
+                        sample_data <= '1';
+                    else
+                        sample_data <= '0';
                     end if;
                 when "10" =>
                     -- 4MHz
                     -- cpu_clken active on cycle 0, 4, 8, 12
                     -- address/data changes on cycle 1, 5, 9, 13
                     -- phi2 active on cycle 2..3, 6..7, 10..11, 14..15
+                    -- sample_data active of cycle 3, 7, 11, 15  (i.e. the last cycle of phi2)
                     cpu_clken <= clken_counter(0) and clken_counter(1);
                     via1_clken <= clken_counter(0) and clken_counter(1);
                     via4_clken <= '1';
                     if clken_counter(0) = '1' then
                         phi2 <= not clken_counter(1);
                     end if;
+                    if clken_counter(1 downto 0) = 2 then
+                        sample_data <= '1';
+                    else
+                        sample_data <= '0';
+                    end if;
                 when "11" =>
                     -- 8MHz
+                    -- TODO - this mode is currently unstable
                     -- cpu_clken active on cycle 0, 2, 4, 6, 8, 10, 12, 14
                     -- address/data changes on cycle 1, 3, 5, 7, 9, 11, 13, 15
                     -- phi2 active on cycle 0, 2, 4, 6, 8, 10, 12, 14
+                    -- sample_data active on cycle 0, 2, 4, 6, 8, 10, 12, 14  (i.e. the last cycle of phi2)
                     cpu_clken <= clken_counter(0);
                     via1_clken <= clken_counter(0);
                     via4_clken <= '1';
-                    phi2 <= not clken_counter(0);
+                    phi2 <= clken_counter(0);
+                    sample_data <= clken_counter(0);
                 when others =>
                     -- 1MHz
                     -- cpu_clken active on cycle 0
                     -- address/data changes on cycle 1
                     -- phi2 active on cycle 8..15
+                    -- sample_data active of cycle 15  (i.e. the last cycle of phi2)
                     cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);
                     via1_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);
                     via4_clken <= clken_counter(0) and clken_counter(1);
                     if clken_counter(2 downto 0) = 7 then
                         phi2 <= not clken_counter(3);
+                    end if;
+                    if clken_counter(3 downto 0) = 14 then
+                        sample_data <= '1';
+                    else
+                        sample_data <= '0';
                     end if;
             end case;
         end if;
