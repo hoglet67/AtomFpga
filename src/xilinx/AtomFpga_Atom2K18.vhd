@@ -516,7 +516,7 @@ begin
     cs_tube_n   <= not(extern_tube);
 
     cs_buf_n    <= not(extern_bus and not extern_tube);  -- Tube is on the 3v3 side of the bus
-    buf_dir     <= not rnw;
+    buf_dir     <= rnw;
 
     ------------------------------------------------
     -- Audio mixer
