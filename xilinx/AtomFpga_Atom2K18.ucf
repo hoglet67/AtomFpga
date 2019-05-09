@@ -122,3 +122,17 @@ NET "mmc_clk"        LOC = "P111"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW
 NET "mmc_ss"         LOC = "P104"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
 NET "mmc_mosi"       LOC = "P114"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
 NET "mmc_miso"       LOC = "P116"  | IOSTANDARD = LVCMOS33 ;
+
+# LEDs on FPGA Module
+NET "led<1>"         LOC = "P138"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
+NET "led<2>"         LOC = "P137"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
+NET "led<3>"         LOC = "P134"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
+NET "led<4>"         LOC = "P133"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
+NET "led<5>"         LOC = "P120"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
+NET "led<6>"         LOC = "P119"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
+NET "led<7>"         LOC = "P118"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
+NET "led<8>"         LOC = "P117"  | IOSTANDARD = LVCMOS33 | DRIVE=8 | SLEW=SLOW ;
+
+# Switches on FPGA Module
+NET "sw<1>"          LOC = "P132"  | IOSTANDARD = LVCMOS33 ;
+NET "sw<2>"          LOC = "P131"  | IOSTANDARD = LVCMOS33 ;
