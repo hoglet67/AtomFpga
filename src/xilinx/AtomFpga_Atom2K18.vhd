@@ -299,7 +299,7 @@ begin
         CImplRamRomPhill        => false,
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
-        CImplVIA                => true,
+        CImplVIA                => false,
         MainClockSpeed          => 16000000,
         DefaultBaud             => 115200
      )
