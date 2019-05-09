@@ -26,8 +26,8 @@ use unisim.vcomponents.all;
 
 entity AtomFpga_Atom2K18 is
     generic (
-        CImplTestRom   : boolean := true;
-        CImplTestRam   : boolean := true
+        CImplTestRom   : boolean := false;
+        CImplTestRam   : boolean := false
         );
     port (
         -- Clock
