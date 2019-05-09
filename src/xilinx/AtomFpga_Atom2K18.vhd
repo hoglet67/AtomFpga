@@ -286,7 +286,7 @@ begin
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplSDDOS              => false,
-        CImplAtoMMC2            => false,   -- disable so building is faster
+        CImplAtoMMC2            => true,   -- disable so building is faster
         CImplGraphicsExt        => true,
         CImplSoftChar           => true,
         CImplSID                => true,
