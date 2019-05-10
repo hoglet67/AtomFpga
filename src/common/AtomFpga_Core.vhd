@@ -637,8 +637,9 @@ begin
                 ExternA      => ExternA,
                 ExternDin    => ExternDin,
                 ExternDout   => ExternDout1,
-                -- turbo mode output bits
-                turbo        => turbo
+                -- turbo mode control
+                turbo_in     => key_turbo,
+                turbo_out    => turbo
                 );
     end generate;
 

@@ -32,8 +32,9 @@ entity RamRom_Atom2015 is
           ExternA      : out std_logic_vector (18 downto 0);
           ExternDin    : out std_logic_vector (7 downto 0);
           ExternDout   : in  std_logic_vector (7 downto 0);
-          -- Speed
-          turbo        : out std_logic_vector(1 downto 0)
+          -- turbo mode control
+          turbo_in     : in std_logic_vector(1 downto 0);
+          turbo_out    : out std_logic_vector(1 downto 0)
    );
 end RamRom_Atom2015;
 
@@ -49,6 +50,8 @@ architecture behavioral of RamRom_Atom2015 is
     signal OSRomBank       : std_logic;                     -- bank0 or bank1
     signal ExRamBank       : std_logic_vector (1 downto 0); -- #4000-#7FFF bank select
     signal RomLatch        : std_logic_vector (2 downto 0); -- #A000-#AFFF bank select
+
+    signal turbo_in_old    : std_logic_vector(1 downto 0);
 
 begin
 
@@ -142,6 +145,12 @@ begin
             if BFFF_Enable = '1' and cpu_we = '1' then
                 RegBFFF <= cpu_dout;
             end if;
+            -- Track changes to the manual turbo settings
+            if turbo_in /= turbo_in_old then
+                RegBFFE(6) <= turbo_in(0);
+                RegBFFE(5) <= turbo_in(1);
+            end if;
+            turbo_in_old <= turbo_in;
         end if;
     end process;
 
@@ -158,6 +167,6 @@ begin
     ExRamBank  <= RegBFFE(1 downto 0);
     RomLatch   <= RegBFFF(2 downto 0);
 
-    turbo      <= RegBFFE(5) & RegBFFE(6);
+    turbo_out  <= RegBFFE(5) & RegBFFE(6);
 
 end behavioral;
