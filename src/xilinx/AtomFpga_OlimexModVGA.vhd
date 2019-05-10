@@ -1,15 +1,15 @@
 --------------------------------------------------------------------------------
 -- Copyright (c) 2009 Alan Daly.  All rights reserved.
 --------------------------------------------------------------------------------
---   ____  ____ 
---  /   /\/   / 
--- /___/  \  /    
--- \   \   \/    
---  \   \         
+--   ____  ____
+--  /   /\/   /
+-- /___/  \  /
+-- \   \   \/
+--  \   \
 --  /   /         Filename  : AtomFpga_OlimexModVGA.vhd
 -- /___/   /\     Timestamp : 02/03/2013 06:17:50
--- \   \  /  \ 
---  \___\/\___\ 
+-- \   \  /  \
+--  \___\/\___\
 --
 --Design Name: AtomFpga_OlimexModVGA
 --Device: spartan3A
@@ -46,13 +46,13 @@ entity AtomFpga_OlimexModVGA is
 end AtomFpga_OlimexModVGA;
 
 architecture behavioral of AtomFpga_OlimexModVGA is
-    
+
     signal clock_16        : std_logic;
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
     signal Phi2            : std_logic;
     signal powerup_reset_n : std_logic;
-    signal hard_reset_n    : std_logic;     
+    signal hard_reset_n    : std_logic;
     signal reset_counter   : std_logic_vector(15 downto 0);
 
     signal RAM_A           : std_logic_vector(18 downto 0);
@@ -99,7 +99,7 @@ begin
         CLK0_OUT  => clock_32,
         CLK0_OUT1 => open,
         CLK2X_OUT => open);
-    
+
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplSDDOS              => true,
@@ -111,17 +111,19 @@ begin
         CImplHWScrolling        => false,
         CImplMouse              => false,
         CImplUart               => false,
-        CImplDoubleVideo        => false,        
+        CImplDoubleVideo        => false,
         CImplRamRomNone         => true,
         CImplRamRomPhill        => false,
         CImplRamRomAtom2015     => false,
         CImplRamRomSchakelKaart => false,
         MainClockSpeed          => 16000000,
-        DefaultBaud             => 115200          
+        DefaultBaud             => 115200
     )
     port map(
         clk_vga             => clock_25,
-        clk_16M00           => clock_16,
+        clk_main            => clock_16,
+        clk_avr             => clock_16,
+        clk_dac             => clock_32,
         clk_32M00           => clock_32,
         ps2_clk             => ps2_clk,
         ps2_data            => ps2_data,
@@ -198,7 +200,7 @@ begin
         RAM_Dout        => RAM_Dout,
         SRAM_nOE        => RamOEn,
         SRAM_nWE        => RamWRn,
-        SRAM_nCS        => CE1,        
+        SRAM_nCS        => CE1,
         SRAM_A(20 downto 16) => open,
         SRAM_A(15 downto 0) => RamA,
         SRAM_D          => RamD(7 downto 0),
@@ -209,7 +211,7 @@ begin
     );
 
     RamD(15 downto 8) <= (others => 'Z');
-    
+
     MemProcess : process (clock_16)
     begin
         if rising_edge(clock_16) then
@@ -220,9 +222,7 @@ begin
             RAM_Din    <= ExternDin;
        end if;
     end process;
-    
+
     ExternDout <= RAM_Dout;
-    
+
 end behavioral;
-
-

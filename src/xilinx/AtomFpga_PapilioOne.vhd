@@ -1,15 +1,15 @@
 --------------------------------------------------------------------------------
 -- Copyright (c) 2009 Alan Daly.  All rights reserved.
 --------------------------------------------------------------------------------
---   ____  ____ 
---  /   /\/   / 
--- /___/  \  /    
--- \   \   \/    
---  \   \         
+--   ____  ____
+--  /   /\/   /
+-- /___/  \  /
+-- \   \   \/
+--  \   \
 --  /   /         Filename  : AtomFpga_PapilioOne.vhd
 -- /___/   /\     Timestamp : 02/03/2013 06:17:50
--- \   \  /  \ 
---  \___\/\___\ 
+-- \   \  /  \
+--  \___\/\___\
 --
 --Design Name: AtomFpga_PapilioOne
 --Device: spartan3E
@@ -47,7 +47,7 @@ entity AtomFpga_PapilioOne is
 end AtomFpga_PapilioOne;
 
 architecture behavioral of AtomFpga_PapilioOne is
-   
+
     signal clock_16   : std_logic;
     signal clock_25   : std_logic;
     signal clock_32   : std_logic;
@@ -67,7 +67,7 @@ architecture behavioral of AtomFpga_PapilioOne is
     signal RamDout2   : std_logic_vector (7 downto 0);
     signal RomDout1   : std_logic_vector (7 downto 0);
     signal RomDout2   : std_logic_vector (7 downto 0);
-    
+
 begin
 
     inst_dcm4 : entity work.dcm4 port map(
@@ -98,7 +98,7 @@ begin
         D_uP    => ExternDin,
         Q_uP    => RamDout2
     );
-    
+
     rom_c000_ffff : entity work.InternalROM port map(
         CLK     => clock_16,
         ADDR    => ExternA(16 downto 0),
@@ -110,17 +110,17 @@ begin
         ADDR    => ExternA(11 downto 0),
         DATA    => RomDout2
     );
-              
+
     RamCE1 <= '1' when ExternCE = '1' and ExternA(15 downto 11) = "00000" else '0';
     RamCE2 <= '1' when ExternCE = '1' and ExternA(15 downto 13) = "001"   else '0';
     RomCE1 <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "11"    else '0';
     RomCE2 <= '1' when ExternCE = '1' and ExternA(15 downto 12) = "1010"  else '0';
-        
+
     ExternDout(7 downto 0) <= RamDout1 when RamCE1 = '1' else
                               RamDout2 when RamCE2 = '1' else
                               RomDout1 when RomCE1 = '1' else
                               RomDout2 when RomCE2 = '1' else
-                              "11110001";                
+                              "11110001";
     ERSTn <= not ERST;
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core
@@ -140,11 +140,13 @@ begin
         CImplRamRomAtom2015     => false,
         CImplRamRomSchakelKaart => false,
         MainClockSpeed          => 16000000,
-        DefaultBaud             => 115200          
+        DefaultBaud             => 115200
     )
     port map(
         clk_vga             => clock_25,
-        clk_16M00           => clock_16,
+        clk_main            => clock_16,
+        clk_avr             => clock_16,
+        clk_dac             => clock_32,
         clk_32M00           => clock_32,
         ps2_clk             => ps2_clk,
         ps2_data            => ps2_data,
@@ -161,7 +163,7 @@ begin
         ExternWE            => ExternWE,
         ExternA             => ExternA,
         ExternDin           => ExternDin,
-        ExternDout          => ExternDout,        
+        ExternDout          => ExternDout,
         sid_audio           => audiol,
         sid_audio_d         => open,
         atom_audio          => audioR,
@@ -182,5 +184,3 @@ begin
     LED4 <= '0';
 
 end behavioral;
-
-

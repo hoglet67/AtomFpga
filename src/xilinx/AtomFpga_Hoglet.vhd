@@ -110,7 +110,9 @@ begin
      )
      port map(
         clk_vga             => clock_25,
-        clk_16M00           => clock_16,
+        clk_main            => clock_16,
+        clk_avr             => clock_16,
+        clk_dac             => clock_32,
         clk_32M00           => clock_32,
         ps2_clk             => ps2_clk,
         ps2_data            => ps2_data,
@@ -149,7 +151,7 @@ begin
         );
 
     ExternA    <= Addr(16 downto 0);
-    
+
     RamCE      <= ExternCE and Addr(17);
     RomCE      <= ExternCE and not Addr(17);
 
@@ -169,5 +171,5 @@ begin
     -- on the hoglet board the LEDs are active low
     LED1 <= not LED1_int;
     LED2 <= not LED2_int;
-    
+
 end behavioral;

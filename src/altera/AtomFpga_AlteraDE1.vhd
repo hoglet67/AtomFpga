@@ -239,7 +239,9 @@ begin
      )
      port map(
         clk_vga             => clock_25,
-        clk_16M00           => clock_16,
+        clk_main            => clock_16,
+        clk_avr             => clock_16,
+        clk_dac             => clock_32,
         clk_32M00           => clock_32,
         ps2_clk             => PS2_CLK,
         ps2_data            => PS2_DAT,
@@ -292,7 +294,7 @@ begin
             locked         => pll_1_locked
         );
 
-		  
+
     -- 25 MHz VGA clock from 50MHz input clock
     pll_2: entity work.pll25
         port map (
@@ -301,7 +303,7 @@ begin
             c0             => clock_25,
             locked         => pll_2_locked
         );
-		      
+
 --------------------------------------------------------
 -- Power Up Reset Generation
 --------------------------------------------------------
@@ -404,7 +406,7 @@ begin
     -- Flash address change every at most every 16 cycles (2MHz)
     -- Use the latched version to maximise access time
 	 -- Start at address at 0x100000
-	 
+
     FL_ADDR <= "010000" & ExternA_r(15 downto 0);
 
     -- SRAM bus

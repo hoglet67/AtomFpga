@@ -64,7 +64,6 @@ end AtomFpga_PapilioDuo;
 
 architecture behavioral of AtomFpga_PapilioDuo is
 
-    signal clock_16        : std_logic;
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
     signal reset_n         : std_logic;
@@ -122,12 +121,14 @@ begin
         CImplRamRomPhill        => true,
         CImplRamRomAtom2015     => false,
         CImplRamRomSchakelKaart => false,
-        MainClockSpeed          => 16000000,
+        MainClockSpeed          => 32000000,
         DefaultBaud             => 115200
      )
      port map (
         clk_vga             => clock_25,
-        clk_16M00           => clock_16,
+        clk_main            => clock_32,
+        clk_avr             => clock_32,
+        clk_dac             => clock_32,
         clk_32M00           => clock_32,
         ps2_clk             => ps2_kbd_clk,
         ps2_data            => ps2_kbd_data,
@@ -178,11 +179,6 @@ begin
         CLKFX_OUT => clock_25
     );
 
-    inst_dcm5 : entity work.dcm5 port map(
-        CLKIN_IN  => clk_32M00,
-        CLKFX_OUT => clock_16
-    );
-
 --------------------------------------------------------
 -- Power Up Reset Generation
 --------------------------------------------------------
@@ -190,9 +186,9 @@ begin
     -- On the Duo the external reset signal is not asserted on power up
     -- This internal counter forces power up reset to happen
     -- This is needed by the GODIL to initialize some of the registers
-    ResetProcess : process (clock_16)
+    ResetProcess : process (clock_32)
     begin
-        if rising_edge(clock_16) then
+        if rising_edge(clock_32) then
             if (reset_counter(reset_counter'high) = '0') then
                 reset_counter <= reset_counter + 1;
             end if;
@@ -218,7 +214,7 @@ begin
         user_length     => user_length
     )
     port map(
-        clock           => clock_16,
+        clock           => clock_32,
         powerup_reset_n => powerup_reset_n,
         bootstrap_busy  => bootstrap_busy,
         user_address    => user_address,
@@ -239,9 +235,9 @@ begin
         FLASH_SO        => FLASH_SO
     );
 
-    MemProcess : process (clock_16)
+    MemProcess : process (clock_32)
     begin
-        if rising_edge(clock_16) then
+        if rising_edge(clock_32) then
             RAM_A      <= ExternA;
             RAM_nCS    <= not ExternCE;
             RAM_nOE    <= not ((not ExternWE) and ExternCE and phi2);

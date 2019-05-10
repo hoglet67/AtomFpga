@@ -285,9 +285,9 @@ begin
     -- This internal counter forces power up reset to happen
     -- This is needed by AtomGodilVideo to initialize some of the registers
 
-    process (clock_16)
+    process (clock_32)
     begin
-        if rising_edge(clock_16) then
+        if rising_edge(clock_32) then
             if (reset_counter(reset_counter'high) = '0') then
                 reset_counter <= reset_counter + 1;
             end if;
@@ -317,12 +317,14 @@ begin
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
         CImplVIA                => false,
-        MainClockSpeed          => 16000000,
+        MainClockSpeed          => 32000000,
         DefaultBaud             => 115200
      )
      port map(
         clk_vga             => clock_25,
-        clk_16M00           => clock_16,
+        clk_main            => clock_32,
+        clk_avr             => clock_32,
+        clk_dac             => clock_32,
         clk_32M00           => clock_32,
 
         kbd_pa              => kbd_pa,
@@ -398,14 +400,14 @@ begin
 
         inst_romC : entity work.atombasic
             port map (
-                CLK => clock_16,
+                CLK => clock_32,
                 ADDR => cpu_a(11 downto 0),
                 DATA => test_romC_data
                 );
 
         inst_romF : entity work.atomkernal
             port map (
-                CLK => clock_16,
+                CLK => clock_32,
                 ADDR => cpu_a(11 downto 0),
                 DATA => test_romF_data
                 );
@@ -428,7 +430,7 @@ begin
 
         inst_ram : entity work.RAM_8K
             port map (
-                clk     => clock_16,
+                clk     => clock_32,
                 we_uP   => not rnw,
                 ce      => test_ram_enable,
                 addr_uP => test_ram_addr,
@@ -620,9 +622,9 @@ begin
     -- Keyboard
     ------------------------------------------------
 
-    process(clock_16)
+    process(clock_32)
     begin
-        if rising_edge(clock_16) then
+        if rising_edge(clock_32) then
             if powerup_reset_n = '0' then
                 -- PC(7) linked to ground indicates a PS/2 keyboard should be used
                 ps2_kbd_enable <= not kbd_pc(6);
@@ -644,31 +646,31 @@ begin
 
     inst_debounce1 : entity work.debounce
         generic map (
-            counter_size => 19 -- 32ms @ 16MHz
+            counter_size => 20 -- 32ms @ 32MHz
             )
         port map (
-            clock   => clock_16,
+            clock   => clock_32,
             button  => sw(1),
             pressed => sw_pressed(1)
             );
 
     inst_debounce2 : entity work.debounce
         generic map (
-            counter_size => 19 -- 32ms @ 16MHz
+            counter_size => 20 -- 32ms @ 32MHz
             )
         port map (
-            clock   => clock_16,
+            clock   => clock_32,
             button  => sw(2),
             pressed => sw_pressed(2)
             );
 
-    process(clock_16, reset_n)
+    process(clock_32, reset_n)
     begin
         if reset_n = '0' then
             instr_count <= (others => '0');
             led_state   <= (others => '0');
             led         <= (others => '0');
-        elsif rising_edge(clock_16) then
+        elsif rising_edge(clock_32) then
             -- SW1/2 manually increment/decrement bits 0/1 of the LED control register
             if sw_pressed(1) = '1' then
                 led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) - 1;

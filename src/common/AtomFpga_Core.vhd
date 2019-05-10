@@ -41,9 +41,11 @@ entity AtomFpga_Core is
     );
     port (
         -- Clocking
-        clk_vga        : in    std_logic;
-        clk_16M00      : in    std_logic;
-        clk_32M00      : in    std_logic;
+        clk_vga        : in    std_logic; -- nominally 25.175MHz VGA clock
+        clk_main       : in    std_logic; -- clock for the main system
+        clk_avr        : in    std_logic; -- clock for the AtoMMC2 AVR
+        clk_dac        : in    std_logic; -- fast clock for the 1-bit DAC
+        clk_32M00      : in    std_logic; -- fixed clock, used for SID and casette
         -- Keyboard/mouse
         kbd_pa         : out   std_logic_vector(3 downto 0);
         kbd_pb         : in    std_logic_vector(7 downto 0) := (others => '1');
@@ -109,7 +111,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
 -------------------------------------------------
 -- Clocks and enables
 -------------------------------------------------
-    signal clken_counter     : std_logic_vector (3 downto 0);
+    signal clk_counter       : std_logic_vector(4 downto 0);
     signal cpu_cycle         : std_logic;
     signal cpu_clken         : std_logic;
     signal sample_data       : std_logic;
@@ -197,7 +199,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal key_escape        : std_logic;
     signal key_turbo         : std_logic_vector(1 downto 0);
 
-    signal cas_divider       : std_logic_vector(11 downto 0);
+    signal cas_divider       : std_logic_vector(15 downto 0);
     signal cas_tone          : std_logic;
 
     signal turbo             : std_logic_vector(1 downto 0);
@@ -236,7 +238,7 @@ begin
         SO_n           => so,
         Res_n          => RSTn,
         Enable         => cpu_clken,
-        Clk            => clk_16M00,
+        Clk            => clk_main,
         Rdy            => rdy,
         IRQ_n          => cpu_IRQ_n,
         NMI_n          => nmi_n,
@@ -285,9 +287,9 @@ begin
         )
         port map (
             clock_vga => clk_vga,
-            clock_main => clk_16M00,
+            clock_main => clk_main,
             clock_sid_32Mhz => clk_32M00,
-            clock_sid_dac => clk_32M00,
+            clock_sid_dac => clk_dac,
             reset => not RSTn,
             reset_vid => '0',
             din => cpu_dout,
@@ -344,7 +346,7 @@ begin
         O_PC   => i8255_pc_data(3 downto 0),
         RESET  => RSTn,
         ENA    => cpu_clken,
-        CLK    => clk_16M00);
+        CLK    => clk_main);
 
     -- Port A
     --   bits 7..4 (output) determine the 6847 graphics mode
@@ -374,12 +376,12 @@ begin
     i8255_pc_idata <= vdg_fs_n & (key_repeat and kbd_pc(6)) & cas_in & cas_tone & i8255_pc_data (3 downto 0);
 
     -- Cassette divider
-    -- 16 MHz / 13 / 16 / 16 = 4807 Hz
-    process(clk_16M00)
+    -- 32 MHz / 2 / 13 / 16 / 16 = 4807 Hz
+    process(clk_32M00)
     begin
-        if rising_edge(clk_16M00) then
+        if rising_edge(clk_32M00) then
             if cas_divider = 0 then
-                cas_divider <= x"CFF";
+                cas_divider <= x"19FF";
                 cas_tone    <= not cas_tone;
             else
                 cas_divider <= cas_divider - 1;
@@ -396,7 +398,7 @@ begin
 ---------------------------------------------------------------------
 
     input : entity work.keyboard port map(
-        CLOCK      => clk_16M00,
+        CLOCK      => clk_main,
         nRESET     => ERSTn,
         CLKEN_1MHZ => cpu_clken,
         PS2_CLK    => ps2_clk,
@@ -443,7 +445,7 @@ begin
             RESET_L => RSTn,
             I_P2_H  => via1_clken,
             ENA_4   => via4_clken,
-            CLK     => clk_16M00);
+            CLK     => clk_main);
 
         mc6522_ca1    <= '1';
 
@@ -457,7 +459,7 @@ begin
         Inst_spi_comp : entity work.SPI_Port
             port map (
                 nRST    => RSTn,
-                clk     => clk_16M00,
+                clk     => clk_main,
                 enable  => pl8_enable,
                 nwe     => cpu_R_W_n,
                 address => cpu_addr(2 downto 0),
@@ -484,7 +486,7 @@ begin
             CPROGMEMSIZE         => 10240
         )
         port map(
-            clk16M            => clk_16M00,
+            clk16M            => clk_avr,
             nrst              => RSTn,
             portain           => AVRDataOut,
             portaout          => AVRDataIn,
@@ -532,7 +534,7 @@ begin
         ioport <= "111" & Joystick1(5) & Joystick1(0) & Joystick1(1) & Joystick1(2) & Joystick1(3);
 
         Inst_AtomPL8: entity work.AtomPL8 port map(
-            clk               => clk_16M00,
+            clk               => clk_main,
             enable            => pl8_enable,
             nRST              => RSTn,
             RW                => cpu_R_W_n,
@@ -572,9 +574,9 @@ begin
 -- Ram Rom board functionality
 ---------------------------------------------------------------------
 
-    process(clk_16M00)
+    process(clk_main)
     begin
-        if rising_edge(clk_16M00) then
+        if rising_edge(clk_main) then
             if sample_data = '1' then
                 ExternDout1 <= ExternDout;
             end if;
@@ -584,7 +586,7 @@ begin
     Inst_RamRomNone: if (CImplRamRomNone) generate
         Inst_RamRomNone_comp: entity work.RamRom_None
             port map(
-                clock        => clk_16M00,
+                clock        => clk_main,
                 reset_n      => RSTn,
                 -- signals from/to 6502
                 cpu_addr     => cpu_addr,
@@ -604,7 +606,7 @@ begin
     Inst_RamRomPhill: if (CImplRamRomPhill) generate
         Inst_RamRomPhill_comp: entity work.RamRom_Phill
             port map(
-                clock        => clk_16M00,
+                clock        => clk_main,
                 reset_n      => RSTn,
                 -- signals from/to 6502
                 cpu_addr     => cpu_addr,
@@ -624,7 +626,7 @@ begin
     Inst_RamRomAtom2015: if (CImplRamRomAtom2015) generate
         Inst_RamRomAtom2015_comp: entity work.RamRom_Atom2015
             port map(
-                clock        => clk_16M00,
+                clock        => clk_main,
                 reset_n      => RSTn,
                 -- signals from/to 6502
                 cpu_addr     => cpu_addr,
@@ -646,7 +648,7 @@ begin
     Inst_RamRomSchakelKaart: if (CImplRamRomSchakelKaart) generate
         Inst_RamRomSchakelKaart_comp: entity work.RamRom_SchakelKaart
             port map(
-                clock        => clk_16M00,
+                clock        => clk_main,
                 reset_n      => RSTn,
                 -- signals from/to 6502
                 cpu_addr     => cpu_addr,
@@ -747,79 +749,95 @@ begin
 -- Clock enable generator
 --------------------------------------------------------
 
-    process(clk_16M00)
+    process(clk_main)
+        variable mask4        : std_logic_vector(4 downto 0);
+        variable limit        : integer;
+        variable phi2l        : integer;
+        variable phi2h        : integer;
+        variable sampl        : integer;
     begin
         -- Don't include reset here, so 6502 continues to be clocked during reset
-        if rising_edge(clk_16M00) then
-            clken_counter <= clken_counter + 1;
-            if clken_counter = 0 then
-                turbo_synced <= turbo;
+        if rising_edge(clk_main) then
+            -- Counter:
+            --   main_clock = 32MHz
+            --      1MHz 0..31
+            --      2MHz 0..15
+            --      4MHz 0..7
+            --      8MHz 0..3
+
+            --   main_clock = 16MHz
+            --      1MHz 0..15
+            --      2MHz 0..7
+            --      4MHz 0..3
+            --      8MHz not supported
+
+            -- Work out optimal timing
+            --   mask4  - mask to give a 4x speed clock
+            --   limit  - maximum value of clk_counter so it wraps at 1MHz
+            --   phi2l  - when phi2 should go low
+            --   phi2h  - when phi2 should go high
+            --   sample - when sample_data should asserted
+
+            -- none of the variables are stateful
+            if (MainClockSpeed = 32000000) then
+                -- 32MHz
+                case (turbo_synced) is
+                    when "11"   => mask4 := "00000"; limit :=  3; phi2l :=  3; phi2h :=  1; sampl :=  2; -- 8MHz
+                    when "10"   => mask4 := "00001"; limit :=  7; phi2l :=  7; phi2h :=  3; sampl :=  6; -- 4MHz
+                    when "01"   => mask4 := "00011"; limit := 15; phi2l := 15; phi2h :=  7; sampl := 14; -- 2MHz
+                    when others => mask4 := "00111"; limit := 31; phi2l := 31; phi2h := 15; sampl := 30; -- 1MHz
+                end case;
+            else
+                -- 16MHz
+                case (turbo_synced) is
+                    when "10"   => mask4 := "00000"; limit :=  3; phi2l :=  3; phi2h :=  1; sampl :=  2; -- 4MHz
+                    when "01"   => mask4 := "00001"; limit :=  7; phi2l :=  7; phi2h :=  3; sampl :=  6; -- 2MHz
+                    when others => mask4 := "00011"; limit := 15; phi2l := 15; phi2h :=  7; sampl := 14; -- 1MHz
+                end case;
             end if;
-            case (turbo_synced) is
-                when "01" =>
-                    -- 2MHz
-                    -- cpu_clken active on cycle 0, 8
-                    -- address/data changes on cycle 1, 9
-                    -- phi2 active on cycle 4..7, 12..15
-                    -- sample_data active of cycle 7, 15 (i.e. the last cycle of phi2)
-                    cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);
-                    via1_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2);
-                    via4_clken <= clken_counter(0);
-                    if clken_counter(1 downto 0) = 3 then
-                        phi2 <= not clken_counter(2);
-                    end if;
-                    if clken_counter(2 downto 0) = 6 then
-                        sample_data <= '1';
-                    else
-                        sample_data <= '0';
-                    end if;
-                when "10" =>
-                    -- 4MHz
-                    -- cpu_clken active on cycle 0, 4, 8, 12
-                    -- address/data changes on cycle 1, 5, 9, 13
-                    -- phi2 active on cycle 2..3, 6..7, 10..11, 14..15
-                    -- sample_data active of cycle 3, 7, 11, 15  (i.e. the last cycle of phi2)
-                    cpu_clken <= clken_counter(0) and clken_counter(1);
-                    via1_clken <= clken_counter(0) and clken_counter(1);
-                    via4_clken <= '1';
-                    if clken_counter(0) = '1' then
-                        phi2 <= not clken_counter(1);
-                    end if;
-                    if clken_counter(1 downto 0) = 2 then
-                        sample_data <= '1';
-                    else
-                        sample_data <= '0';
-                    end if;
-                when "11" =>
-                    -- 8MHz
-                    -- TODO - this mode is currently unstable
-                    -- cpu_clken active on cycle 0, 2, 4, 6, 8, 10, 12, 14
-                    -- address/data changes on cycle 1, 3, 5, 7, 9, 11, 13, 15
-                    -- phi2 active on cycle 0, 2, 4, 6, 8, 10, 12, 14
-                    -- sample_data active on cycle 0, 2, 4, 6, 8, 10, 12, 14  (i.e. the last cycle of phi2)
-                    cpu_clken <= clken_counter(0);
-                    via1_clken <= clken_counter(0);
-                    via4_clken <= '1';
-                    phi2 <= clken_counter(0);
-                    sample_data <= clken_counter(0);
-                when others =>
-                    -- 1MHz
-                    -- cpu_clken active on cycle 0
-                    -- address/data changes on cycle 1
-                    -- phi2 active on cycle 8..15
-                    -- sample_data active of cycle 15  (i.e. the last cycle of phi2)
-                    cpu_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);
-                    via1_clken <= clken_counter(0) and clken_counter(1) and clken_counter(2) and clken_counter(3);
-                    via4_clken <= clken_counter(0) and clken_counter(1);
-                    if clken_counter(2 downto 0) = 7 then
-                        phi2 <= not clken_counter(3);
-                    end if;
-                    if clken_counter(3 downto 0) = 14 then
-                        sample_data <= '1';
-                    else
-                        sample_data <= '0';
-                    end if;
-            end case;
+
+            if clk_counter = limit then
+                turbo_synced <= turbo; -- only change the timing at the end of the cycle
+                clk_counter <= (others => '0');
+            else
+                clk_counter <= clk_counter + 1;
+            end if;
+
+            -- Asset cpu_clken in cycle 0
+            if clk_counter = limit then
+                cpu_clken <= '1';
+            else
+                cpu_clken <= '0';
+            end if;
+
+            -- Asset via1_clken in cycle 0
+            if clk_counter = limit then
+                via1_clken <= '1';
+            else
+                via1_clken <= '0';
+            end if;
+
+            -- Assert via4 at 4x the rate of via1
+            if (clk_counter and mask4) = (std_logic_vector(to_unsigned(limit,5)) and mask4) then
+                via4_clken <= '1';
+            else
+                via4_clken <= '0';
+            end if;
+
+            -- Asset phi2 at the specified times
+            if clk_counter = phi2h then
+                phi2 <= '1';
+            elsif clk_counter = phi2l then
+                phi2 <= '0';
+            end if;
+
+            -- Assert sample_data at the specified time
+            if clk_counter = sampl then
+                sample_data <= '1';
+            else
+                sample_data <= '0';
+            end if;
+
         end if;
     end process;
 
