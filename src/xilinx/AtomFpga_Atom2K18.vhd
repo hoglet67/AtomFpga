@@ -99,7 +99,7 @@ entity AtomFpga_Atom2K18 is
         mmc_miso       : in    std_logic;
 
         -- LEDs on FPGA Module
-        led            : out   std_logic_vector(8 downto 1);
+        led            : out   std_logic_vector(1 to 8);
 
         -- Switches on FPGA Module
         sw             : in    std_logic_vector(2 downto 1)
@@ -163,6 +163,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal extern_ram      : std_logic;
     signal extern_tube     : std_logic;
     signal extern_via      : std_logic;
+    signal extern_led      : std_logic;
 
     -- Internal Test ROM/RAM
     signal test_romC_data   : std_logic_vector(7 downto 0);
@@ -175,11 +176,15 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal test_ram_data    : std_logic_vector(7 downto 0);
     signal test_ram_enable  : std_logic;
 
-    -- Speedometer
-    signal last_sync        : std_logic;
-    signal instr_count      : unsigned(15 downto 0);
-    signal led_state        : unsigned(3 downto 0);
+    -- Switch debouncing
+    signal sw_pressed      : std_logic_vector(2 downto 1);
 
+    -- LED control/ Speedometer
+    signal led_ctrl_reg    : std_logic_vector(7 downto 0);
+    signal led_data_reg    : std_logic_vector(7 downto 0);
+    signal last_sync       : std_logic;
+    signal instr_count     : unsigned(15 downto 0);
+    signal led_state       : unsigned(3 downto 0);
 
 begin
 
@@ -512,6 +517,8 @@ begin
 
     extern_dout <= test_rom_data when CImplTestRom and test_rom_enable = '1' else
                    test_ram_data when CImplTestRam and test_ram_enable = '1' else
+                   led_data_reg  when extern_led = '1' and extern_a(0) = '1' else
+                   led_ctrl_reg  when extern_led = '1' and extern_a(0) = '0' else
                    bus_d;
 
     ------------------------------------------------
@@ -522,13 +529,14 @@ begin
     extern_ram  <= '1' when extern_ce  = '1' and extern_a(17) = '1'             else '0';
     extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B80" else '0';
     extern_tube <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else '0';
+    extern_led  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE" else '0';
 
     cs_rom_n    <= not(extern_rom);
     cs_ram_n    <= not(extern_ram);
     cs_via_n    <= not(extern_via);
     cs_tube_n   <= not(extern_tube);
 
-    cs_buf_n    <= not(extern_bus and not extern_tube);  -- Tube is on the 3v3 side of the bus
+    cs_buf_n    <= not(extern_bus and not extern_tube and not extern_led);  -- Tube is on the 3v3 side of the bus
     buf_dir     <= rnw;
 
     ------------------------------------------------
@@ -630,11 +638,29 @@ begin
     int_kbd_pb   <= kbd_pb when ps2_kbd_enable = '0' else (others => '1');
     int_kbd_pc   <= kbd_pc when ps2_kbd_enable = '0' else (others => '1');
 
-
     --------------------------------------------------------
-    -- Speed-omemter
-     --------------------------------------------------------
+    -- LED control / speedometer
+    --------------------------------------------------------
 
+    inst_debounce1 : entity work.debounce
+        generic map (
+            counter_size => 19 -- 32ms @ 16MHz
+            )
+        port map (
+            clock   => clock_16,
+            button  => sw(1),
+            pressed => sw_pressed(1)
+            );
+
+    inst_debounce2 : entity work.debounce
+        generic map (
+            counter_size => 19 -- 32ms @ 16MHz
+            )
+        port map (
+            clock   => clock_16,
+            button  => sw(2),
+            pressed => sw_pressed(2)
+            );
 
     process(clock_16, reset_n)
     begin
@@ -643,6 +669,21 @@ begin
             led_state   <= (others => '0');
             led         <= (others => '0');
         elsif rising_edge(clock_16) then
+            -- SW1/2 manually increment/decrement bits 0/1 of the LED control register
+            if sw_pressed(1) = '1' then
+                led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) - 1;
+            elsif sw_pressed(2) = '1' then
+                led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) + 1;
+            end if;
+            -- LED control/data registers
+            if extern_led = '1' and rnw = '0' and phi2 = '1' then
+                if extern_a(0) = '1' then
+                    led_data_reg <= extern_din;
+                else
+                    led_ctrl_reg <= extern_din;
+                end if;
+            end if;
+            -- LED Speedometer
             last_sync <= sync;
             if last_sync = '0' and sync = '1' then
                 instr_count <= instr_count + 1;
@@ -653,24 +694,34 @@ begin
                         led_state <= led_state + 1;
                     end if;
                 end if;
-                case led_state is
-                    when x"0"   => led <= "00000010";
-                    when x"1"   => led <= "00000001";
-                    when x"2"   => led <= "00000010";
-                    when x"3"   => led <= "00000100";
-                    when x"4"   => led <= "00001000";
-                    when x"5"   => led <= "00010000";
-                    when x"6"   => led <= "00100000";
-                    when x"7"   => led <= "01000000";
-                    when x"8"   => led <= "10000000";
-                    when x"9"   => led <= "01000000";
-                    when x"A"   => led <= "00100000";
-                    when x"B"   => led <= "00010000";
-                    when x"C"   => led <= "00001000";
-                    when x"D"   => led <= "00000100";
-                    when others => led <= "00000000";
-                end case;
             end if;
+            -- LED driver logic
+            case led_ctrl_reg(1 downto 0) is
+                when "01" =>
+                    case led_state is
+                        when x"0"   => led <= "01000000";
+                        when x"1"   => led <= "10000000";
+                        when x"2"   => led <= "01000000";
+                        when x"3"   => led <= "00100000";
+                        when x"4"   => led <= "00010000";
+                        when x"5"   => led <= "00001000";
+                        when x"6"   => led <= "00000100";
+                        when x"7"   => led <= "00000010";
+                        when x"8"   => led <= "00000001";
+                        when x"9"   => led <= "00000010";
+                        when x"A"   => led <= "00000100";
+                        when x"B"   => led <= "00001000";
+                        when x"C"   => led <= "00010000";
+                        when x"D"   => led <= "00100000";
+                        when others => led <= "00000000";
+                    end case;
+                when "10" =>
+                    led <= cpu_a(15 downto 8);
+                when "11" =>
+                    led <= cpu_a(7 downto 0);
+                when others =>
+                    led <= led_data_reg;
+            end case;
         end if;
     end process;
 
