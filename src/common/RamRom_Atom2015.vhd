@@ -31,7 +31,9 @@ entity RamRom_Atom2015 is
           ExternWE     : out std_logic;
           ExternA      : out std_logic_vector (18 downto 0);
           ExternDin    : out std_logic_vector (7 downto 0);
-          ExternDout   : in  std_logic_vector (7 downto 0)
+          ExternDout   : in  std_logic_vector (7 downto 0);
+          -- Speed
+          turbo        : out std_logic_vector(1 downto 0)
    );
 end RamRom_Atom2015;
 
@@ -148,11 +150,6 @@ begin
     --
     -- See http://stardot.org.uk/forums/viewtopic.php?f=44&t=9341
     --
-    -- The following are currently un-implemented:
-    --
-    -- - BFFE bit 6 (turbo mode)
-    --   as F1..F4 already allow 1/2/4/8MHz to be selected
-    --
     -------------------------------------------------
 
     WriteProt  <= RegBFFE(7);
@@ -160,5 +157,7 @@ begin
     OSInRam    <= RegBFFE(2);
     ExRamBank  <= RegBFFE(1 downto 0);
     RomLatch   <= RegBFFF(2 downto 0);
+
+    turbo      <= RegBFFE(5) & RegBFFE(6);
 
 end behavioral;

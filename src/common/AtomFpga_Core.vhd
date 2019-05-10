@@ -200,6 +200,9 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal cas_divider       : std_logic_vector(11 downto 0);
     signal cas_tone          : std_logic;
 
+    signal turbo             : std_logic_vector(1 downto 0);
+    signal turbo_synced      : std_logic_vector(1 downto 0);
+
 ----------------------------------------------------
 -- AtoMMC signals
 ----------------------------------------------------
@@ -595,6 +598,7 @@ begin
                 ExternDin    => ExternDin,
                 ExternDout   => ExternDout1
                 );
+        turbo <= key_turbo;
     end generate;
 
     Inst_RamRomPhill: if (CImplRamRomPhill) generate
@@ -614,6 +618,7 @@ begin
                 ExternDin    => ExternDin,
                 ExternDout   => ExternDout1
                 );
+        turbo <= key_turbo;
     end generate;
 
     Inst_RamRomAtom2015: if (CImplRamRomAtom2015) generate
@@ -631,7 +636,9 @@ begin
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
                 ExternDin    => ExternDin,
-                ExternDout   => ExternDout1
+                ExternDout   => ExternDout1,
+                -- turbo mode output bits
+                turbo        => turbo
                 );
     end generate;
 
@@ -652,6 +659,7 @@ begin
                 ExternDin    => ExternDin,
                 ExternDout   => ExternDout1
                 );
+        turbo <= key_turbo;
     end generate;
 
 ---------------------------------------------------------------------
@@ -743,7 +751,10 @@ begin
         -- Don't include reset here, so 6502 continues to be clocked during reset
         if rising_edge(clk_16M00) then
             clken_counter <= clken_counter + 1;
-            case (key_turbo) is
+            if clken_counter = 0 then
+                turbo_synced <= turbo;
+            end if;
+            case (turbo_synced) is
                 when "01" =>
                     -- 2MHz
                     -- cpu_clken active on cycle 0, 8
