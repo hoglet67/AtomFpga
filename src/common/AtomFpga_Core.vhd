@@ -41,68 +41,69 @@ entity AtomFpga_Core is
     );
     port (
         -- Clocking
-        clk_vga        : in    std_logic; -- nominally 25.175MHz VGA clock
-        clk_main       : in    std_logic; -- clock for the main system
-        clk_avr        : in    std_logic; -- clock for the AtoMMC2 AVR
-        clk_dac        : in    std_logic; -- fast clock for the 1-bit DAC
-        clk_32M00      : in    std_logic; -- fixed clock, used for SID and casette
+        clk_vga          : in    std_logic; -- nominally 25.175MHz VGA clock
+        clk_main         : in    std_logic; -- clock for the main system
+        clk_avr          : in    std_logic; -- clock for the AtoMMC2 AVR
+        clk_dac          : in    std_logic; -- fast clock for the 1-bit DAC
+        clk_32M00        : in    std_logic; -- fixed clock, used for SID and casette
         -- Keyboard/mouse
-        kbd_pa         : out   std_logic_vector(3 downto 0);
-        kbd_pb         : in    std_logic_vector(7 downto 0) := (others => '1');
-        kbd_pc         : in    std_logic_vector(6 downto 6) := (others => '1');
-        ps2_clk        : in    std_logic;
-        ps2_data       : in    std_logic;
-        ps2_mouse_clk  : inout std_logic;
-        ps2_mouse_data : inout std_logic;
+        kbd_pa           : out   std_logic_vector(3 downto 0);
+        kbd_pb           : in    std_logic_vector(7 downto 0) := (others => '1');
+        kbd_pc           : in    std_logic_vector(6 downto 6) := (others => '1');
+        ps2_clk          : in    std_logic;
+        ps2_data         : in    std_logic;
+        ps2_mouse_clk    : inout std_logic;
+        ps2_mouse_data   : inout std_logic;
         -- Resets
-        ERSTn          : in    std_logic;
-        IRSTn          : out   std_logic;
+        powerup_reset_n  : in    std_logic := '1'; -- power up reset only (optional)
+        ext_reset_n      : in    std_logic := '1'; -- external bus reset (optional)
+        int_reset_n      : out   std_logic;        -- internal bus reset (e.g. PS/2 break)
         -- Video
-        red            : out   std_logic_vector (2 downto 0);
-        green          : out   std_logic_vector (2 downto 0);
-        blue           : out   std_logic_vector (2 downto 0);
-        vsync          : out   std_logic;
-        hsync          : out   std_logic;
+        red              : out   std_logic_vector (2 downto 0);
+        green            : out   std_logic_vector (2 downto 0);
+        blue             : out   std_logic_vector (2 downto 0);
+        vsync            : out   std_logic;
+        hsync            : out   std_logic;
         -- External 6502 bus interface
-        phi2           : out   std_logic;
-        sync           : out   std_logic;
-        rnw            : out   std_logic;
-        blk_b          : out   std_logic;
-        addr           : out   std_logic_vector(15 downto 0);
-        rdy            : in    std_logic := '1';
-        so             : in    std_logic := '1';
-        irq_n          : in    std_logic := '1';
-        nmi_n          : in    std_logic := '1';
+        phi2             : out   std_logic;
+        sync             : out   std_logic;
+        rnw              : out   std_logic;
+        blk_b            : out   std_logic;
+        addr             : out   std_logic_vector(15 downto 0);
+        rdy              : in    std_logic := '1';
+        so               : in    std_logic := '1';
+        irq_n            : in    std_logic := '1';
+        nmi_n            : in    std_logic := '1';
         -- External Bus/Ram/Rom interface
-        ExternBus      : out   std_logic;
-        ExternCE       : out   std_logic;
-        ExternWE       : out   std_logic;
-        ExternA        : out   std_logic_vector (18 downto 0);
-        ExternDin      : out   std_logic_vector (7 downto 0);
-        ExternDout     : in    std_logic_vector (7 downto 0);
+        ExternBus        : out   std_logic;
+        ExternCE         : out   std_logic;
+        ExternWE         : out   std_logic;
+        ExternA          : out   std_logic_vector (18 downto 0);
+        ExternDin        : out   std_logic_vector (7 downto 0);
+        ExternDout       : in    std_logic_vector (7 downto 0);
         -- Audio
-        sid_audio_d    : out   std_logic_vector (17 downto 0);
-        sid_audio      : out   std_logic;
-        atom_audio     : out   std_logic;
+        sid_audio_d      : out   std_logic_vector (17 downto 0);
+        sid_audio        : out   std_logic;
+        atom_audio       : out   std_logic;
         -- SD Card
-        SDMISO         : in    std_logic;
-        SDSS           : out   std_logic;
-        SDCLK          : out   std_logic;
-        SDMOSI         : out   std_logic;
+        SDMISO           : in    std_logic;
+        SDSS             : out   std_logic;
+        SDCLK            : out   std_logic;
+        SDMOSI           : out   std_logic;
         -- Serial
-        uart_RxD       : in    std_logic;
-        uart_TxD       : out   std_logic;
-        avr_RxD        : in    std_logic;
-        avr_TxD        : out   std_logic;
+        uart_RxD         : in    std_logic;
+        uart_TxD         : out   std_logic;
+        avr_RxD          : in    std_logic;
+        avr_TxD          : out   std_logic;
         -- Cassette
-        cas_in         : in    std_logic := '0';
-        cas_out        : out   std_logic;
+        cas_in           : in    std_logic := '0';
+        cas_out          : out   std_logic;
         -- Misc
-        LED1           : out   std_logic;
-        LED2           : out   std_logic;
-        charSet        : in    std_logic;
-        Joystick1      : in    std_logic_vector (7 downto 0) := (others => '1');
-        Joystick2      : in    std_logic_vector (7 downto 0) := (others => '1')
+        LED1             : out   std_logic;
+        LED2             : out   std_logic;
+        charSet          : in    std_logic;
+        Joystick1        : in    std_logic_vector (7 downto 0) := (others => '1');
+        Joystick2        : in    std_logic_vector (7 downto 0) := (others => '1')
         );
 end AtomFpga_Core;
 
@@ -254,8 +255,8 @@ begin
                      irq_n;
 
     -- reset logic
-    RSTn          <= ERSTn and key_break;
-    IRSTn         <= RSTn;
+    RSTn          <= key_break and powerup_reset_n and ext_reset_n;
+    int_reset_n   <= key_break;
 
     -- write enables
     gated_we      <= not_cpu_R_W_n;
@@ -399,7 +400,7 @@ begin
 
     input : entity work.keyboard port map(
         CLOCK      => clk_main,
-        nRESET     => ERSTn,
+        nRESET     => powerup_reset_n,
         CLKEN_1MHZ => cpu_clken,
         PS2_CLK    => ps2_clk,
         PS2_DATA   => ps2_data,

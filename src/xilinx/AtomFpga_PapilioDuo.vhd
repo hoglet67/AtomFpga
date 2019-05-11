@@ -66,7 +66,6 @@ architecture behavioral of AtomFpga_PapilioDuo is
 
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
-    signal reset_n         : std_logic;
     signal powerup_reset_n : std_logic;
     signal hard_reset_n    : std_logic;
     signal reset_counter   : std_logic_vector(9 downto 0);
@@ -134,8 +133,9 @@ begin
         ps2_data            => ps2_kbd_data,
         ps2_mouse_clk       => ps2_mse_clk,
         ps2_mouse_data      => ps2_mse_data,
-        ERSTn               => hard_reset_n,
-        IRSTn               => reset_n,
+        powerup_reset_n     => powerup_reset_n,
+        ext_reset_n         => hard_reset_n,
+        int_reset_n         => open,
         red                 => red(3 downto 1),
         green               => green(3 downto 1),
         blue                => blue(3 downto 1),

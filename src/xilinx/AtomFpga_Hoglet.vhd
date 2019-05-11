@@ -57,7 +57,6 @@ architecture behavioral of AtomFpga_Hoglet is
     signal clock_16   : std_logic;
     signal clock_25   : std_logic;
     signal clock_32   : std_logic;
-    signal reset_n    : std_logic;
     signal Phi2       : std_logic;
 
     signal RamCE      : std_logic;
@@ -118,8 +117,9 @@ begin
         ps2_data            => ps2_data,
         ps2_mouse_clk       => ps2_mouse_clk,
         ps2_mouse_data      => ps2_mouse_data,
-        ERSTn               => ERSTn,
-        IRSTn               => reset_n,
+        powerup_reset_n     => ERSTn,
+        ext_reset_n         => '1',
+        int_reset_n         => open,
         red(2)              => red(2),
         red(1 downto 0)     => open,
         green(2 downto 1)   => green(2 downto 1),

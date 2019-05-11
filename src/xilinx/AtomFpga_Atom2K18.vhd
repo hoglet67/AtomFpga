@@ -44,7 +44,7 @@ entity AtomFpga_Atom2K18 is
         bus_sync       : out   std_logic;
         bus_nmi_n      : in    std_logic;
         bus_irq_n      : in    std_logic;
-        bus_rst_n      : in    std_logic;
+        bus_rst_n      : inout std_logic;
         bus_rdy        : in    std_logic;
         bus_so         : in    std_logic;
 
@@ -122,7 +122,8 @@ architecture behavioral of AtomFpga_Atom2K18 is
 
     -- Reset generation
     signal reset_n         : std_logic;
-    signal hard_reset_n    : std_logic;
+    signal int_reset_n     : std_logic;
+    signal ext_reset_n     : std_logic;
     signal powerup_reset_n : std_logic;
     signal reset_counter   : std_logic_vector(9 downto 0);
 
@@ -292,9 +293,20 @@ begin
                 reset_counter <= reset_counter + 1;
             end if;
             powerup_reset_n <= reset_counter(reset_counter'high);
-            hard_reset_n    <= reset_counter(reset_counter'high) and bus_rst_n;
         end if;
     end process;
+
+    -- logically or the powerup and bus resets, to pass down to the core
+    ext_reset_n <= powerup_reset_n and bus_rst_n;
+
+    -- logically or the internal and external resets, for use in this file
+    -- (not currently used)
+    reset_n <= ext_reset_n and int_reset_n;
+
+    -- Drive the external reset low when there's a power up reset, or
+    -- when int_reset_n (currently just F10 on the PS/2 keyboard).
+    -- Otherwise, it becomes and input (there's a 3K3 external pullup)
+    bus_rst_n <= '0' when powerup_reset_n = '0' or int_reset_n = '0' else 'Z';
 
     ------------------------------------------------
     -- Atom FPGA Core
@@ -336,8 +348,9 @@ begin
         ps2_mouse_clk       => ps2_mouse_clk,
         ps2_mouse_data      => ps2_mouse_data,
 
-        ERSTn               => hard_reset_n,
-        IRSTn               => reset_n,
+        powerup_reset_n     => powerup_reset_n,
+        ext_reset_n         => ext_reset_n,
+        int_reset_n         => int_reset_n,
 
         red(2)              => vga_red1,
         red(1)              => vga_red2,
@@ -664,13 +677,9 @@ begin
             pressed => sw_pressed(2)
             );
 
-    process(clock_32, reset_n)
+    process(clock_32)
     begin
-        if reset_n = '0' then
-            instr_count <= (others => '0');
-            led_state   <= (others => '0');
-            led         <= (others => '0');
-        elsif rising_edge(clock_32) then
+        if rising_edge(clock_32) then
             -- SW1/2 manually increment/decrement bits 0/1 of the LED control register
             if sw_pressed(1) = '1' then
                 led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) - 1;
