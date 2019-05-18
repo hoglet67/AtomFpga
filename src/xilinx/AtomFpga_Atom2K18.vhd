@@ -102,7 +102,11 @@ entity AtomFpga_Atom2K18 is
         led            : out   std_logic_vector(1 to 8);
 
         -- Switches on FPGA Module
-        sw             : in    std_logic_vector(2 downto 1)
+        sw             : in    std_logic_vector(2 downto 1);
+
+        -- USB Uart on FPGA Module
+        avr_tx         : out   std_logic;
+        avr_rx         : in    std_logic
         );
 
 end AtomFpga_Atom2K18;
@@ -393,8 +397,8 @@ begin
         uart_RxD            => serial_rx,
         uart_TxD            => serial_tx,
 
-        avr_RxD             => '1',
-        avr_TxD             => open,
+        avr_RxD             => avr_rx,
+        avr_TxD             => avr_tx,
 
         cas_in              => cas_in,
         cas_out             => cas_out,
