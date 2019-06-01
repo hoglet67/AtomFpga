@@ -1,4 +1,5 @@
 *~
 #*
-sddos.rom
-sddos.lst
+AVR/
+PIC/
+*.lst

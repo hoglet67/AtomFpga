@@ -11,9 +11,11 @@
 ; v03.22 !!!!!!!!!!! Corrected stack overflow interpreter !!!!!!!!
 ; v03.24 !!!!!!!!!!! PHS - Merged in routines for AVR/AtomClone !!
 ; v03.25 !!!!!!!!!!! *RUN file and *file problem now solved !!!!!!
-; v03.26 !!!!!!!!!!! Several problems with AVR build solved !!!!!!
-; v03.27 ??
-; v03.28 !!!!!!!!!!! Exxx version with autoboot, *FORMAT fixed !!!
+; v03.26 !!!!!!!!!!! Fixed problem with FASTCMD macro on AVR !!!!!
+; v03.27 !!!!!!!!!!! Fixed problem with sd_drivestatus_r on AVR !!
+; v03.28 !!!!!!!!!!! Exxx with autoboot, *FORMAT, *EXEC fixed !!!!
+; v03.29 !!!!!!!!!!! Common build for A000/E000 PIC/AVR !!!!!!!!!!
+;
 ;        Fxxx patch needed for autobooting SDDOS at #Exxx
 ;
 ;        1. Changes execution address of DOS command from $E00D to $EFCC
@@ -102,12 +104,14 @@ wait_key        = $FE94
 OSWRCH          = $FFF4
 OSCRLF          = $FFED
 
-RDCVEC          = $20a
-FKIDX       = $3CA
-
 ;=================================================================
 ; BOOT ROUTINE
 ;=================================================================
+
+.ifdef EOOO
+
+RDCVEC          = $20A
+FKIDX           = $3CA
 
    ; test ctrl - if pressed, don't initialise
    ;
@@ -200,6 +204,8 @@ fakekeys:
    .byte "*MENU"
    .byte $0d,0
 
+.endif
+
 ;=================================================================
 ; COMMAND INTERPRETER
 ;=================================================================
@@ -224,7 +230,7 @@ comint4:        INX
                 DEX
                 BCS comint3
 
-comint5:         STY $3                 ; Store addresspointer
+comint5:        STY $3                 ; Store addresspointer
                 STA $53
                 LDA com_tab+1,X
                 STA $52
@@ -670,7 +676,7 @@ format:         JSR get_drivenr                 ; Read disknumber
                 JSR chk_end_command
 
                 LDA drivenr                     ; Read disk status
-        JSR sd_drivestatus_r
+                JSR sd_drivestatus_r
                 JSR chk_disk
 
                 JSR prttxt
@@ -703,15 +709,15 @@ form1:          STA catbuf,X
                 LDA #<400
                 STA catbuf+$107
 
-        LDA cur_drive
-        STA work
-        LDA drivenr
-        STA cur_drive
+                LDA cur_drive
+                STA work
+                LDA drivenr
+                STA cur_drive
                 JSR catalog_w                   ; Save catalog from $2000
                 JSR diskchange                  ; Set diskchangeflag
-        LDA work
-        STA cur_drive
-        RTS
+                LDA work
+                STA cur_drive
+                RTS
 
 ;-----------------------------------------------------------------
 ; *LOAD <filename>,<loadaddress>
@@ -1829,16 +1835,23 @@ ddisks3:        JSR OSCRLF
 ;
 ; List all changed DOS DOS and SDDOS commands with there entry
 ;-----------------------------------------------------------------
-
 dhelp:
                 JSR chk_end_command
                 JSR OSCRLF
                 JSR prttxt                      ; Print header
 version:
-                .byte   "SDDOS V3.28E [TURBO] (C)KC 2017"
+                .byte   "SDDOS V3.29"
+.ifdef E000
+                .byte   "E"
+.else
+                .byte   "A"
+.endif
 .ifdef AVR
                 .byte   " AVR"
+.else
+                .byte   " PIC"
 .endif
+                .byte   "    (C)KC 2019"
                 NOP
                 JSR OSCRLF
                 JSR OSCRLF

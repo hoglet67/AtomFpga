@@ -1,9 +1,0 @@
-MEMORY
-{
-   ROM1:  start = $A000, size = $1000, fill = yes, fillval = $ff;
-}
-
-SEGMENTS
-{
-   CODE:    load = ROM1, type = ro;
-}
