@@ -1856,7 +1856,7 @@ version:
 .else
                 .byte   " PIC"
 .endif
-                .byte   "    (C)KC 2019"
+                .byte   "     (C)KC 2019"
                 NOP
                 JSR OSCRLF
                 JSR OSCRLF
