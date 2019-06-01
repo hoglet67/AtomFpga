@@ -37,16 +37,16 @@
 ;=================================================================
 
 .ifdef ALTADDR
-AREG_BASE			=	$b408
+AREG_BASE           =   $b408
 .else
-AREG_BASE			=	$b400
+AREG_BASE           =   $b400
 .endif
 
-ACMD_REG			=	AREG_BASE+CMD_REG
-ALATCH_REG          =	AREG_BASE+LATCH_REG             
-AREAD_DATA_REG      =	AREG_BASE+READ_DATA_REG             
-AWRITE_DATA_REG     =	AREG_BASE+WRITE_DATA_REG             
-ASTATUS_REG			= 	AREG_BASE+STATUS_REG	
+ACMD_REG            =   AREG_BASE+CMD_REG
+ALATCH_REG          =   AREG_BASE+LATCH_REG             
+AREAD_DATA_REG      =   AREG_BASE+READ_DATA_REG             
+AWRITE_DATA_REG     =   AREG_BASE+WRITE_DATA_REG             
+ASTATUS_REG         =   AREG_BASE+STATUS_REG    
 
 
 ;=================================================================
@@ -103,7 +103,7 @@ OSWRCH          = $FFF4
 OSCRLF          = $FFED
 
 RDCVEC          = $20a
-FKIDX		= $3CA
+FKIDX       = $3CA
 
 ;=================================================================
 ; BOOT ROUTINE
@@ -143,7 +143,7 @@ shorttitle:
    bit $b001
    bmi unpatched
 
-patchosrdch:		; Shift key pressed, start *MENU
+patchosrdch:        ; Shift key pressed, start *MENU
    lda   #<osrdchcode
    sta   RDCVEC
    lda   #>osrdchcode
@@ -169,10 +169,10 @@ osrdchcode:
    cld
    stx   $e4
    sty   $e5
-	
+    
    ldx   FKIDX
    lda   fakekeys,x
-   cmp	#$0d
+   cmp  #$0d
    beq   unpatch
 
    inx
@@ -192,9 +192,9 @@ osrdchcode_unhook:
    lda   #$fe
    sta   RDCVEC+1
    
-   lda 	#$0d
+   lda  #$0d
    pha
-   jmp 	$fe5c
+   jmp  $fe5c
 
 fakekeys:
    .byte "*MENU"
@@ -210,7 +210,7 @@ comint1:        LDY $5E
 comint2:        INX
                 INY
 
-comint3:		LDA com_tab,X          ; Lookup command
+comint3:        LDA com_tab,X          ; Lookup command
                 BMI comint5
                 CMP ($05),Y
                 BEQ comint2
@@ -301,89 +301,89 @@ star_com5:      STY $9A
 ; COMMAND TABLE
 ;=================================================================
 
-com_tab:        .byte 	"SDDOS" 
-                FNADDR 	sddos
-				FNADDR	no_com_found			; End of command table
+com_tab:        .byte   "SDDOS" 
+                FNADDR  sddos
+                FNADDR  no_com_found            ; End of command table
 
 ; *DOS commands
 dos_tab:
-                .byte 	"CAT"
-                FNADDR	cat
+                .byte   "CAT"
+                FNADDR  cat
                 
-				.byte 	"DELETE"
-                FNADDR	delete
+                .byte   "DELETE"
+                FNADDR  delete
                 
-				.byte 	"DIR"
-                FNADDR	dir
+                .byte   "DIR"
+                FNADDR  dir
                 
-				.byte 	"DRIVE"
-                FNADDR	drive
-				
-                .byte 	"FORMAT"
-                FNADDR	format
-				
-                .byte 	"INFO"
-                FNADDR	info
-				
-                .byte 	"INFALL"
-                FNADDR	infall
-				
-                .byte 	"LOAD"
-                FNADDR	load
-				
-                .byte 	"LOCK"
-                FNADDR	lock
-				
-                .byte 	"MON"
-                FNADDR	mon
-				
-                .byte 	"NOMON"
-                FNADDR	nomon
-				
-                .byte 	"RUN"
-                FNADDR	run
-				
-                .byte 	"SAVE"
-                FNADDR	save
-				
-                .byte 	"SET"
-                FNADDR	set
-				
-                .byte 	"TITLE"
-                FNADDR	title
-				
-                .byte 	"UNLOCK"
-                FNADDR	unlock
+                .byte   "DRIVE"
+                FNADDR  drive
                 
-				.byte 	"USE"
-                FNADDR	use
+                .byte   "FORMAT"
+                FNADDR  format
+                
+                .byte   "INFO"
+                FNADDR  info
+                
+                .byte   "INFALL"
+                FNADDR  infall
+                
+                .byte   "LOAD"
+                FNADDR  load
+                
+                .byte   "LOCK"
+                FNADDR  lock
+                
+                .byte   "MON"
+                FNADDR  mon
+                
+                .byte   "NOMON"
+                FNADDR  nomon
+                
+                .byte   "RUN"
+                FNADDR  run
+                
+                .byte   "SAVE"
+                FNADDR  save
+                
+                .byte   "SET"
+                FNADDR  set
+                
+                .byte   "TITLE"
+                FNADDR  title
+                
+                .byte   "UNLOCK"
+                FNADDR  unlock
+                
+                .byte   "USE"
+                FNADDR  use
 
 ; *SDDOS commands
-sddos_tab:      .byte 	"COS"
-                FNADDR	cos
-				
-                .byte 	"DOS"
-                FNADDR	dos
-				
-                .byte 	"DIN"
-                FNADDR	din
-				
-                .byte 	"DOUT"
-                FNADDR	dout
-				
-                .byte 	"DCAT"
-                FNADDR	dcat
-				
-                .byte 	"DDISKS"
-                FNADDR	ddisks
-				
-                .byte 	"DHELP"
-                FNADDR	dhelp
-				
-                .byte 	"DVER"
-                FNADDR	dversion
+sddos_tab:      .byte   "COS"
+                FNADDR  cos
+                
+                .byte   "DOS"
+                FNADDR  dos
+                
+                .byte   "DIN"
+                FNADDR  din
+                
+                .byte   "DOUT"
+                FNADDR  dout
+                
+                .byte   "DCAT"
+                FNADDR  dcat
+                
+                .byte   "DDISKS"
+                FNADDR  ddisks
+                
+                .byte   "DHELP"
+                FNADDR  dhelp
+                
+                .byte   "DVER"
+                FNADDR  dversion
 
-				FNADDR	exec_file	; Check for file
+                FNADDR  exec_file   ; Check for file
 
 ;=================================================================
 ; DOS COMMANDS
@@ -670,7 +670,7 @@ format:         JSR get_drivenr                 ; Read disknumber
                 JSR chk_end_command
                
                 LDA drivenr                     ; Read disk status
-		JSR sd_drivestatus_r
+        JSR sd_drivestatus_r
                 JSR chk_disk
 
                 JSR prttxt
@@ -703,15 +703,15 @@ form1:          STA catbuf,X
                 LDA #<400
                 STA catbuf+$107
 
-		LDA cur_drive
-		STA work
-		LDA drivenr
-		STA cur_drive
+        LDA cur_drive
+        STA work
+        LDA drivenr
+        STA cur_drive
                 JSR catalog_w                   ; Save catalog from $2000
                 JSR diskchange                  ; Set diskchangeflag
-		LDA work
-		STA cur_drive
-		RTS
+        LDA work
+        STA cur_drive
+        RTS
 
 ;-----------------------------------------------------------------
 ; *LOAD <filename>,<loadaddress>
@@ -1690,57 +1690,57 @@ dout:           JSR get_drivenr                 ; Read drivenr
 ;                eg R (list SD-diskimage titles starting with R)
 ;-----------------------------------------------------------------
 
-dsk_filter:	
-			.byte	"*.DSK",$00				; look for dsk files
+dsk_filter: 
+            .byte   "*.DSK",$00             ; look for dsk files
 dcat:
             JSR read_filename               ; Read diskimage name into $140
                 
             jsr PREPPUTTOB407         ; Reset globalbufferpointer
-			ldx	#0
-			
+            ldx #0
+            
 dcat_loop_m:
            lda $140,x
            inx
            cmp #$0d
-		   beq	dcat_send_filter
+           beq  dcat_send_filter
            writeport AWRITE_DATA_REG ; Globalbuffer(1..)=filename
            jmp dcat_loop_m
 
 dcat_send_filter:
-			ldx		#$ff
+            ldx     #$ff
 dcat_send_filter_loop:
-			inx
-			lda		dsk_filter,x				; pickup byte
-			writeport AWRITE_DATA_REG
-            cmp		#$00						; end ?
-			bne		dcat_send_filter_loop		; nope keep going
+            inx
+            lda     dsk_filter,x                ; pickup byte
+            writeport AWRITE_DATA_REG
+            cmp     #$00                        ; end ?
+            bne     dcat_send_filter_loop       ; nope keep going
 
 
-			SLOWCMDI 	CMD_DIR_OPEN			;  open directory
+            SLOWCMDI    CMD_DIR_OPEN            ;  open directory
 
 GetNextLoop:
-			SLOWCMDI	CMD_DIR_READ        	; get directory item
-			cmp   		#STATUS_COMPLETE    	; all done
-			bne			@printit
-			rts
-			
+            SLOWCMDI    CMD_DIR_READ            ; get directory item
+            cmp         #STATUS_COMPLETE        ; all done
+            bne         @printit
+            rts
+            
 @printit:
-			jsr   		getasciizstringto140    ; a = 0 on exit
+            jsr         getasciizstringto140    ; a = 0 on exit
 
-			readport    AREAD_DATA_REG		; $b406 ; get attribute byte
-			and   		#2                      ; hidden?
-			bne   		pause
-			
-			ldy			#0
-			lda			NAME					; preload first char
+            readport    AREAD_DATA_REG      ; $b406 ; get attribute byte
+            and         #2                      ; hidden?
+            bne         pause
+            
+            ldy         #0
+            lda         NAME                    ; preload first char
 @printloop:
-			jsr			OSWRCH					; write it to screen
-			iny
-			lda			NAME,y					; get char
-			bne			@printloop
+            jsr         OSWRCH                  ; write it to screen
+            iny
+            lda         NAME,y                  ; get char
+            bne         @printloop
 
-			jsr			OSCRLF					; print eol
-			
+            jsr         OSCRLF                  ; print eol
+            
 
 pause:
                 bit  $b002                   ; stick here while REPT/shift/ctrl pressed
@@ -1754,26 +1754,26 @@ pause:
                 bcs   GetNextLoop
 
                 jmp  OSCRLF 
-				rts
-				
+                rts
+                
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
 ; Read an asciiz string to name buffer at $140
 ;
 ; on exit y = character count not including terminating 0
 ;
-;	bug: this will keep reading until it hits a 0, if there is not one, it will
-;		 keep going forever......
+;   bug: this will keep reading until it hits a 0, if there is not one, it will
+;        keep going forever......
 getasciizstringto140:
-   jsr				PREPGETFRB406
+   jsr              PREPGETFRB406
 
-   ldy  			#$ff
+   ldy              #$ff
 
 @loop:
    iny
-   readport      	AREAD_DATA_REG	; $b406
-   sta  			NAME,y
-   bne  			@loop
+   readport         AREAD_DATA_REG  ; $b406
+   sta              NAME,y
+   bne              @loop
 
    rts
 
@@ -1786,12 +1786,12 @@ getasciizstringto140:
 
 ddisks:         JSR chk_end_command
 
-                SLOWCMDI CMD_GET_IMG_NAME		; Command read imagenames
+                SLOWCMDI CMD_GET_IMG_NAME       ; Command read imagenames
                 
                 FASTCMDI CMD_INIT_READ          ; Reset pointer
                 
-				pha
-				
+                pha
+                
                 LDX #0                         ; Set drivenr
                 STX drivenr
                 JSR OSCRLF 
@@ -1801,11 +1801,11 @@ ddisks1:        LDA drivenr                    ; Print drivenr
                 LDA #':'                       ; Print ':'
                 JSR OSWRCH
 
-				LDA drivenr                    ; get drivenr
+                LDA drivenr                    ; get drivenr
                 cmp #0
-				bne	ddisks4						; nope skip
-				pla								; retrieve fist character
-				jmp	ddisks4a
+                bne ddisks4                     ; nope skip
+                pla                             ; retrieve fist character
+                jmp ddisks4a
 
 ddisks4:        readport AREAD_DATA_REG
 ddisks4a:       BEQ ddisks3
@@ -1831,15 +1831,15 @@ ddisks3:        JSR OSCRLF
 ;-----------------------------------------------------------------
 
 dhelp:
-				JSR chk_end_command
+                JSR chk_end_command
                 JSR OSCRLF 
                 JSR prttxt                      ; Print header
 version:
-                .byte 	"SDDOS V3.28E [TURBO] (C)KC 2017"
+                .byte   "SDDOS V3.28E [TURBO] (C)KC 2017"
 .ifdef AVR
-				.byte	" AVR"
+                .byte   " AVR"
 .endif
-				NOP
+                NOP
                 JSR OSCRLF 
                 JSR OSCRLF 
 
@@ -2111,27 +2111,27 @@ LE0FB:          LSR A
 WaitUntilRead:
     pha
 WaitUntilRead1:
-	lda		ASTATUS_REG			; Read status reg
-	and		#MMC_MCU_READ		; Been read yet ?
-	bne		WaitUntilRead1		; nope keep waiting
+    lda     ASTATUS_REG         ; Read status reg
+    and     #MMC_MCU_READ       ; Been read yet ?
+    bne     WaitUntilRead1      ; nope keep waiting
     pla
-	rts
+    rts
 
 WaitUntilWritten:
     pha
 WaitUntilWritten1:
-	lda		ASTATUS_REG			; Read status reg
-	and		#MMC_MCU_WROTE		; Been written yet ?
-	beq		WaitUntilWritten1	; nope keep waiting
+    lda     ASTATUS_REG         ; Read status reg
+    and     #MMC_MCU_WROTE      ; Been written yet ?
+    beq     WaitUntilWritten1   ; nope keep waiting
     pla
-	rts
+    rts
 
 WaitWhileBusy:
     pha
 WaitWhileBusy1:
-	lda		ASTATUS_REG			; Read status reg
-	and		#MMC_MCU_BUSY		; MCU still busy ?
-	bne		WaitWhileBusy1		; yes keep waiting
+    lda     ASTATUS_REG         ; Read status reg
+    and     #MMC_MCU_BUSY       ; MCU still busy ?
+    bne     WaitWhileBusy1      ; yes keep waiting
     pla
-	rts
+    rts
 .endif
