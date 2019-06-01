@@ -3,7 +3,7 @@
 ; v01.07 !!!!!!!!!!! FINAL VERSION FOR SDROM v1 !!!!!!!!!!!!!!!!!!
 ; v02.00 !!!!!!!!!!! FINAL VERSION FOR SDROM v2 !!!!!!!!!!!!!!!!!!
 ; v02.10 !!!!!!!!!!! FINAL VERSION FOR SDROM v2.1 !!!!!!!!!!!!!!!!
-; v02.20 !!!!!!!!!!! FINAL VERSION FOR SDROM v2.2 !!!!!!!!!!!!!!!! 
+; v02.20 !!!!!!!!!!! FINAL VERSION FOR SDROM v2.2 !!!!!!!!!!!!!!!!
 ; v03.00 !!!!!!!!!!! AtoMMC2 interface version !!!!!!!!!!!!!!!!!!!
 ; v03.10 !!!!!!!!!!! *DVER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ; v03.20 !!!!!!!!!!! *RUN file and *file problem solved !!!!!!!!!!
@@ -43,10 +43,10 @@ AREG_BASE           =   $b400
 .endif
 
 ACMD_REG            =   AREG_BASE+CMD_REG
-ALATCH_REG          =   AREG_BASE+LATCH_REG             
-AREAD_DATA_REG      =   AREG_BASE+READ_DATA_REG             
-AWRITE_DATA_REG     =   AREG_BASE+WRITE_DATA_REG             
-ASTATUS_REG         =   AREG_BASE+STATUS_REG    
+ALATCH_REG          =   AREG_BASE+LATCH_REG
+AREAD_DATA_REG      =   AREG_BASE+READ_DATA_REG
+AWRITE_DATA_REG     =   AREG_BASE+WRITE_DATA_REG
+ASTATUS_REG         =   AREG_BASE+STATUS_REG
 
 
 ;=================================================================
@@ -68,7 +68,7 @@ tmp_ptr5        = $D6
 tmp_ptr6        = $D7
 cur_drive       = $EE
 mon_flag        = $EF
- 
+
 data            = $80
 drivenr         = data
 disknr          = data+2
@@ -115,7 +115,7 @@ FKIDX       = $3CA
    bvs initialise
 
    ; don't initialise the firmware
-   ; the E000 build 
+   ; the E000 build
    jmp   $c2b2             ; set #2900 text space and enter command handler
 
 initialise:
@@ -169,7 +169,7 @@ osrdchcode:
    cld
    stx   $e4
    sty   $e5
-    
+
    ldx   FKIDX
    lda   fakekeys,x
    cmp  #$0d
@@ -191,7 +191,7 @@ osrdchcode_unhook:
    sta   RDCVEC
    lda   #$fe
    sta   RDCVEC+1
-   
+
    lda  #$0d
    pha
    jmp  $fe5c
@@ -295,13 +295,13 @@ star_com5:      STY $9A
                 LDA #$0D
                 STA ($5),Y
 
-                RTS 
+                RTS
 
 ;=================================================================
 ; COMMAND TABLE
 ;=================================================================
 
-com_tab:        .byte   "SDDOS" 
+com_tab:        .byte   "SDDOS"
                 FNADDR  sddos
                 FNADDR  no_com_found            ; End of command table
 
@@ -309,77 +309,77 @@ com_tab:        .byte   "SDDOS"
 dos_tab:
                 .byte   "CAT"
                 FNADDR  cat
-                
+
                 .byte   "DELETE"
                 FNADDR  delete
-                
+
                 .byte   "DIR"
                 FNADDR  dir
-                
+
                 .byte   "DRIVE"
                 FNADDR  drive
-                
+
                 .byte   "FORMAT"
                 FNADDR  format
-                
+
                 .byte   "INFO"
                 FNADDR  info
-                
+
                 .byte   "INFALL"
                 FNADDR  infall
-                
+
                 .byte   "LOAD"
                 FNADDR  load
-                
+
                 .byte   "LOCK"
                 FNADDR  lock
-                
+
                 .byte   "MON"
                 FNADDR  mon
-                
+
                 .byte   "NOMON"
                 FNADDR  nomon
-                
+
                 .byte   "RUN"
                 FNADDR  run
-                
+
                 .byte   "SAVE"
                 FNADDR  save
-                
+
                 .byte   "SET"
                 FNADDR  set
-                
+
                 .byte   "TITLE"
                 FNADDR  title
-                
+
                 .byte   "UNLOCK"
                 FNADDR  unlock
-                
+
                 .byte   "USE"
                 FNADDR  use
 
 ; *SDDOS commands
 sddos_tab:      .byte   "COS"
                 FNADDR  cos
-                
+
                 .byte   "DOS"
                 FNADDR  dos
-                
+
                 .byte   "DIN"
                 FNADDR  din
-                
+
                 .byte   "DOUT"
                 FNADDR  dout
-                
+
                 .byte   "DCAT"
                 FNADDR  dcat
-                
+
                 .byte   "DDISKS"
                 FNADDR  ddisks
-                
+
                 .byte   "DHELP"
                 FNADDR  dhelp
-                
+
                 .byte   "DVER"
                 FNADDR  dversion
 
@@ -449,7 +449,7 @@ cat3:           jsr $FFF4
                 jsr $FFF4
 
 cat4:           ldy #$00
-                jsr cat7 
+                jsr cat7
                 bcc cat14
 cat5:           jsr LE109              ; Y=Y-8
                 lda $2008,Y
@@ -583,7 +583,7 @@ delete:         JSR chk_name           ; Check legal name
                 JSR chk_disk_wp        ; Check disk protected
                 JSR file_info          ; Print file info
 
-                LDY $9A     
+                LDY $9A
                 JSR file_del           ; Delete file from catalog
 
                 JSR catalog_w          ; Save catalog from $2000
@@ -604,7 +604,7 @@ delete1:        JSR prttxt             ; Error, file was protected
 
 dir:            JSR drive              ; Check if <drvno> given
                 JMP catalog_r          ; If changed, read catalog
-  
+
 ;-----------------------------------------------------------------
 ; *DRIVE <drvno>
 ;
@@ -648,7 +648,7 @@ info:           JSR chk_name            ; Check legal name
 infall:         JSR catalog_r          ; Read catalog into $2000
                 LDY #0
                 STY $9A
-                
+
 infall1:        JSR file_info1          ; Print file info
                 LDY $9A
                 JSR LE100              ; Pointer to next file
@@ -668,7 +668,7 @@ infall1:        JSR file_info1          ; Print file info
 
 format:         JSR get_drivenr                 ; Read disknumber
                 JSR chk_end_command
-               
+
                 LDA drivenr                     ; Read disk status
         JSR sd_drivestatus_r
                 JSR chk_disk
@@ -682,11 +682,11 @@ format:         JSR get_drivenr                 ; Read disknumber
                 PHA
                 JSR OSWRCH
                 PLA
-                CMP #'Y'              
+                CMP #'Y'
                 BEQ form2
-                JMP OSCRLF 
+                JMP OSCRLF
 
-form2:          JSR OSCRLF 
+form2:          JSR OSCRLF
 
                 LDA #' '                        ; Clear title
                 LDX #0
@@ -728,7 +728,7 @@ form1:          STA catbuf,X
 load:           JSR read_filename      ; Copy filename into $140
 
                 LDX #$9C               ; Read loadaddress at $9C
-                JSR read_opt_addr      
+                JSR read_opt_addr
                 BEQ load1              ; If no loadaddress, jump
 load2:
                 LDA #$FF               ; Mark loadaddress given
@@ -783,7 +783,7 @@ lodvec1:        LDA catbuf+$108,Y      ; Copy fileinfo to $9C
                 JSR file_info          ; Print file info
 
 lodvec2:        LDA backup_qual        ; Restore qual
-                STA qual                
+                STA qual
                 RTS
 
 ;-----------------------------------------------------------------
@@ -845,7 +845,7 @@ lock:           SEC                    ; Set lockflag
 ;-----------------------------------------------------------------
 
 mon:            LDX #0                 ; Monitorflag=true
-mon2:            
+mon2:
                 JSR chk_end_command    ; Check end of command
                 STX mon_flag           ; Set Monitorflag
 
@@ -943,7 +943,7 @@ SAVVEC:         JSR name_check         ; Check legal name
                 JSR catalog_r          ; Read catalog into $2000
                 JSR chk_disk_wp        ; Check disk protected
                 JSR lookup1            ; Find name in catalog
-                BCC savvec1            
+                BCC savvec1
                 JSR file_del           ; Delete file from catalog
 
 savvec1:        LDA $A0                ; Save startadres
@@ -1015,7 +1015,7 @@ savvec8:        LDA $A5,X
                 INX
                 CPX #8
                 BNE savvec8
- 
+
 savvec9:        LDA $9B,X              ; Save addresses
                 DEY
                 STA catbuf+$108,Y
@@ -1145,7 +1145,7 @@ set:            LDY $3                 ; Load commandpointer
 
 title:          JSR read_filename      ; Copy filename into $140
                 JSR catalog_r          ; Read catalog into $2000
-               
+
                 LDX #$FF               ; Check string length<=13
 title1:         INX
                 LDA NAME,X
@@ -1159,7 +1159,7 @@ title2:         JSR prttxt             ; Error, NAME
                 .byte "NAME?"
                 NOP
                 BRK
- 
+
 title3:         JSR status_disk_r
                 JSR chk_disk_wp        ; Check disk protected
 
@@ -1292,7 +1292,7 @@ exec_file1:
 ;
 ; Input:  Y = pointer just after command
 ;
-; Output: $100 contains parameter string 
+; Output: $100 contains parameter string
 ;-----------------------------------------------------------------
 
 copy_parm:      JSR skip_space         ; Skip spaces
@@ -1334,7 +1334,7 @@ chk_wp:         AND #$1               ; Check if not write protect
                 NOP
                 BRK
 
-chk_wp1:  
+chk_wp1:
                 RTS
 
 ;-----------------------------------------------------------------
@@ -1380,7 +1380,7 @@ name_check5:    JMP title2             ; Error, NAME?
 
 name_lookup:    JSR lookup1            ; Find filename in catalog
                 BCS name_check4
-                
+
                 JSR prttxt
                 .byte "FILE?"
                 NOP
@@ -1471,7 +1471,7 @@ file_info4:     JSR prtspc             ; Print space
                 JSR prtdigit           ; Print sector>255
                 LDA catbuf+$104,Y
                 JSR prthex             ; Print sector
-                JSR OSCRLF 
+                JSR OSCRLF
 
 file_info5:     RTS
 
@@ -1565,7 +1565,7 @@ file_del2:      JMP delete1
 ;     *DOS                  , Init DOS
 ;     *DIN <drvnr>,<dsknr>  , Mount disk image <dsknr> to drive <drvnr>
 ;     *DOUT <drvnr>         , Unmount disk image <dsknr> from drive <drvnr>
-;     *DCAT <filter>        , List disk images files starting with letter <filter>               
+;     *DCAT <filter>        , List disk images files starting with letter <filter>
 ;     *DDISKS               , List linked drives and disk images
 ;     *DPROT <dsknr>        , Protect disk <dsknr>
 ;     *DUNPROT <dsknr>      , Unprotect disk <dsknr>
@@ -1690,14 +1690,14 @@ dout:           JSR get_drivenr                 ; Read drivenr
 ;                eg R (list SD-diskimage titles starting with R)
 ;-----------------------------------------------------------------
 
-dsk_filter: 
+dsk_filter:
             .byte   "*.DSK",$00             ; look for dsk files
 dcat:
             JSR read_filename               ; Read diskimage name into $140
-                
+
             jsr PREPPUTTOB407         ; Reset globalbufferpointer
             ldx #0
-            
+
 dcat_loop_m:
            lda $140,x
            inx
@@ -1723,14 +1723,14 @@ GetNextLoop:
             cmp         #STATUS_COMPLETE        ; all done
             bne         @printit
             rts
-            
+
 @printit:
             jsr         getasciizstringto140    ; a = 0 on exit
 
             readport    AREAD_DATA_REG      ; $b406 ; get attribute byte
             and         #2                      ; hidden?
             bne         pause
-            
+
             ldy         #0
             lda         NAME                    ; preload first char
 @printloop:
@@ -1740,22 +1740,22 @@ GetNextLoop:
             bne         @printloop
 
             jsr         OSCRLF                  ; print eol
-            
+
 
 pause:
                 bit  $b002                   ; stick here while REPT/shift/ctrl pressed
-                bvc  pause 
+                bvc  pause
                 lda  $b001
                 rol  a                       ; shift/rept pressed?
-                bcc  pause 
+                bcc  pause
                 rol   a
-                bcc  pause 
+                bcc  pause
                 rol  a                       ; esc pressed?
                 bcs   GetNextLoop
 
-                jmp  OSCRLF 
+                jmp  OSCRLF
                 rts
-                
+
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
 ; Read an asciiz string to name buffer at $140
@@ -1787,14 +1787,14 @@ getasciizstringto140:
 ddisks:         JSR chk_end_command
 
                 SLOWCMDI CMD_GET_IMG_NAME       ; Command read imagenames
-                
+
                 FASTCMDI CMD_INIT_READ          ; Reset pointer
-                
+
                 pha
-                
+
                 LDX #0                         ; Set drivenr
                 STX drivenr
-                JSR OSCRLF 
+                JSR OSCRLF
 
 ddisks1:        LDA drivenr                    ; Print drivenr
                 JSR prtdigit
@@ -1822,7 +1822,7 @@ ddisks3:        JSR OSCRLF
                 CMP #4
                 BNE ddisks1
 
-                JMP OSCRLF 
+                JMP OSCRLF
 
 ;-----------------------------------------------------------------
 ; DHELP
@@ -1832,7 +1832,7 @@ ddisks3:        JSR OSCRLF
 
 dhelp:
                 JSR chk_end_command
-                JSR OSCRLF 
+                JSR OSCRLF
                 JSR prttxt                      ; Print header
 version:
                 .byte   "SDDOS V3.28E [TURBO] (C)KC 2017"
@@ -1840,8 +1840,8 @@ version:
                 .byte   " AVR"
 .endif
                 NOP
-                JSR OSCRLF 
-                JSR OSCRLF 
+                JSR OSCRLF
+                JSR OSCRLF
 
                 LDY #0                          ; Pointer after SDDOS
 dhelp1:         LDX #15
@@ -1877,7 +1877,7 @@ dhelp4:         LDA dos_tab,Y                 ; Print linkadres
                 BEQ dhelp6
 dhelp5:         JMP dhelp1
 
-dhelp6:         JMP OSCRLF 
+dhelp6:         JMP OSCRLF
 
 ;-----------------------------------------------------------------
 ; *DVERSION
@@ -1918,7 +1918,7 @@ dversion:
 ;=================================================================
 ;
 ;   Statusbyte: bit 0 = 0 "READ/WRITE"
-;                       1 "READ ONY 
+;                       1 "READ ONY
 ;               $FF "NO VALID DISK"
 ;=================================================================
 
@@ -1965,7 +1965,7 @@ catalog_r1:
                 JSR sd_sector_r                    ; Read sector 1
 
 catalog_r6:     RTS
-      
+
 ;-----------------------------------------------------------------
 catalog_w:
                 JSR status_disk_r
@@ -1977,7 +1977,7 @@ catalog_w:
                 JSR sd_sector_w                    ; Write sector
 
                 LDA cur_drive                   ; Clear diskchangeflag
-                ORA #changebit 
+                ORA #changebit
                 STA cur_drive
 
                 RTS
@@ -1995,7 +1995,7 @@ catalog_w:
 
 get_drivenr:    JSR read_num                    ; Read parameter
                 STA drivenr                     ; Error if drivenr>3
-                CMP #4       
+                CMP #4
                 BCS get_drivenr1
                 LDA drivenr
                 RTS
@@ -2033,7 +2033,7 @@ chk_name1:      JSR name_check         ; Check legal name
                 RTS
 
 ;-----------------------------------------------------------------
-; Check for end of command, #0D 
+; Check for end of command, #0D
 ;-----------------------------------------------------------------
 
 chk_end_command: LDY $3
