@@ -327,12 +327,12 @@ begin
         CImplHWScrolling        => true,
         CImplMouse              => true,
         CImplUart               => true,
-        CImplDoubleVideo        => false,    -- make room for ROMs for testing
+        CImplDoubleVideo        => true,
         CImplRamRomNone         => false,
         CImplRamRomPhill        => false,
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
-        CImplVIA                => false,
+        CImplVIA                => true,  -- use internal VIA so 8MHz operation is stable
         MainClockSpeed          => 32000000,
         DefaultBaud             => 115200
      )
