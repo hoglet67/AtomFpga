@@ -36,6 +36,7 @@ entity AtomFpga_Core is
        CImplRamRomAtom2015     : boolean;
        CImplRamRomSchakelKaart : boolean;
        CImplVIA                : boolean := true;
+       CImplProfilingCounters  : boolean := false;
        MainClockSpeed          : integer;
        DefaultBaud             : integer
     );
@@ -156,6 +157,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal reg_enable        : std_logic;
     signal sid_enable        : std_logic;
     signal uart_enable       : std_logic;
+    signal counter_enable    : std_logic;
     signal gated_we          : std_logic;
     signal video_ram_we      : std_logic;
     signal reg_we            : std_logic;
@@ -223,6 +225,19 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal ioport            : std_logic_vector (7 downto 0);
     signal LED1n             : std_logic;
     signal LED2n             : std_logic;
+
+----------------------------------------------------
+-- Profiling Counter Signals
+----------------------------------------------------
+
+    signal p_counter_ctrl    : std_logic_vector  (7 downto 0);
+    signal p_counter_data    : std_logic_vector  (7 downto 0);
+    signal p_divider_latch   : std_logic_vector (31 downto 0);
+    signal p_divider_counter : std_logic_vector (31 downto 0);
+    signal p_profile_counter : std_logic_vector (31 downto 0);
+    signal p_reset           : std_logic;
+    signal p_pause           : std_logic;
+    signal p_reset_last      : std_logic;
 
 --------------------------------------------------------------------
 --                   here it begin :)
@@ -667,6 +682,63 @@ begin
     end generate;
 
 ---------------------------------------------------------------------
+-- Profiling Counters
+---------------------------------------------------------------------
+
+    Inst_ProfilingCounters: if (CImplProfilingCounters) generate
+
+        p_reset <= p_counter_ctrl(0);
+        p_pause <= p_counter_ctrl(1);
+
+        process(clk_main)
+        begin
+            if rising_edge(clk_main) then
+                -- Detect falling edge of reset
+                p_reset_last <= p_reset;
+                if (p_reset_last = '1' and p_reset = '0') or (p_pause = '0' and p_divider_counter = 0) then
+                    -- Reload the divider on falling edge of reset, or when it reaches 0
+                    p_divider_counter <= p_divider_latch - 1;
+                elsif p_pause = '0' then
+                    -- Otherwise decrent divider if not paused
+                    p_divider_counter <= p_divider_counter - 1;
+                end if;
+                -- Clock main counter when divider reaches 0
+                if p_divider_counter = 0 and p_reset = '0' and p_pause = '0' then
+                    p_profile_counter <= p_profile_counter + 1;
+                end if;
+                -- CPU Writes to Counter Registers
+                if cpu_clken = '1' and counter_enable = '1' and cpu_R_W_n = '0' then
+                    case cpu_addr(3 downto 0) is
+                        when x"0" => p_counter_ctrl <= cpu_dout;
+                        when x"4" => p_divider_latch(7 downto 0)     <= cpu_dout;
+                        when x"5" => p_divider_latch(15 downto 8)    <= cpu_dout;
+                        when x"6" => p_divider_latch(23 downto 16)   <= cpu_dout;
+                        when x"7" => p_divider_latch(31 downto 24)   <= cpu_dout;
+                        when x"8" => p_profile_counter(7 downto 0)   <= cpu_dout;
+                        when x"9" => p_profile_counter(15 downto 8)  <= cpu_dout;
+                        when x"A" => p_profile_counter(23 downto 16) <= cpu_dout;
+                        when x"B" => p_profile_counter(31 downto 24) <= cpu_dout;
+                        when others => null;
+                    end case;
+                end if;
+                -- CPU Reads from Counter Registers
+                case cpu_addr(3 downto 0) is
+                    when x"0" => p_counter_data <= p_counter_ctrl;
+                    when x"4" => p_counter_data <= p_divider_latch(7 downto 0);
+                    when x"5" => p_counter_data <= p_divider_latch(15 downto 8);
+                    when x"6" => p_counter_data <= p_divider_latch(23 downto 16);
+                    when x"7" => p_counter_data <= p_divider_latch(31 downto 24);
+                    when x"8" => p_counter_data <= p_profile_counter(7 downto 0);
+                    when x"9" => p_counter_data <= p_profile_counter(15 downto 8);
+                    when x"A" => p_counter_data <= p_profile_counter(23 downto 16);
+                    when x"B" => p_counter_data <= p_profile_counter(31 downto 24);
+                    when others => p_counter_data <= x"00";
+                end case;
+            end if;
+        end process;
+    end generate;
+
+---------------------------------------------------------------------
 -- Device enables
 ---------------------------------------------------------------------
 
@@ -680,6 +752,7 @@ begin
         pl8_enable        <= '0';
         reg_enable        <= '0';
         uart_enable       <= '0';
+        counter_enable    <= '0';
         ext_ramrom_enable <= '0';
         ext_bus_enable    <= '0';
 
@@ -712,6 +785,12 @@ begin
                     sid_enable <= '1';
                 elsif cpu_addr(11 downto 5) & '0' = x"DE" then -- 0xBDEx, 0xBDFx GODIL Registers
                     reg_enable <= '1';
+                elsif cpu_addr(11 downto 4)       = x"FE" then -- 0xBFEx Profiling Counters
+                    if CImplProfilingCounters then
+                        counter_enable <= '1';
+                    else
+                        ext_bus_enable <= '1';
+                    end if;
                 elsif cpu_addr(11 downto 4)       = x"FF" then -- 0xBFFx RomLatch
                     ext_ramrom_enable <= '1';
                 elsif cpu_addr(11 downto 8)      /= x"D"  then -- any non-mapped 0xBxxx address is deemed external
@@ -744,6 +823,7 @@ begin
         pl8_data        when pl8_enable = '1'  and CImplAtoMMC2    else
         extern_data     when ext_ramrom_enable = '1'               else
         extern_data     when ext_bus_enable = '1'                  else
+        p_counter_data  when counter_enable = '1' and CImplProfilingCounters else
         x"f1";          -- un-decoded locations
 
 --------------------------------------------------------
