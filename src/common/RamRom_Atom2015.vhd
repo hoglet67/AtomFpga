@@ -135,7 +135,6 @@ begin
     RomLatchProcess : process (reset_n, clock)
     begin
         if reset_n = '0' then
-            RegBFFE(5) <= '0';
             RegBFFE(3 downto 0) <= (others => '0');
             RegBFFF <= (others => '0');
         elsif rising_edge(clock) then
