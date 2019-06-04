@@ -17,8 +17,8 @@ NET "clock_25" TNM_NET = "clk_domain_25";
 
 TIMESPEC "TS_CrossDomain_32_16" = FROM "clk_domain_32" TO "clk_domain_16" TIG;
 TIMESPEC "TS_CrossDomain_16_32" = FROM "clk_domain_16" TO "clk_domain_32" TIG;
-TIMESPEC "TS_CrossDomain_16_25" = FROM "clk_domain_16" TO "clk_domain_25" TIG;
-TIMESPEC "TS_CrossDomain_25_16" = FROM "clk_domain_25" TO "clk_domain_16" TIG;
+TIMESPEC "TS_CrossDomain_32_25" = FROM "clk_domain_32" TO "clk_domain_25" TIG;
+TIMESPEC "TS_CrossDomain_25_32" = FROM "clk_domain_25" TO "clk_domain_32" TIG;
 
 # Clock
 NET "clk_50"         LOC = "P50"   | IOSTANDARD = LVCMOS33 ;
