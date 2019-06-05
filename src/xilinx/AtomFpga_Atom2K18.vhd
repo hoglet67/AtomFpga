@@ -333,7 +333,7 @@ begin
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
         CImplVIA                => true,  -- use internal VIA so 8MHz operation is stable
-        CImplProfilingCounters  => true,  -- 32-bit profiling counters at #BFEx
+        CImplProfilingCounters  => true,  -- 32-bit profiling counters at #BDAx
         MainClockSpeed          => 32000000,
         DefaultBaud             => 115200
      )

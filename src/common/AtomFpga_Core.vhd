@@ -779,18 +779,18 @@ begin
                     else
                         ext_bus_enable <= '1';
                     end if;
+                elsif cpu_addr(11 downto 4)       = x"DA" then -- 0xBDAx Profiling Counters
+                    if CImplProfilingCounters then
+                        counter_enable <= '1';
+                    else
+                        ext_bus_enable <= '1';
+                    end if;
                 elsif cpu_addr(11 downto 4)       = x"DB" then -- 0xBDBx UART
                     uart_enable <= '1';
                 elsif cpu_addr(11 downto 5) & '0' = x"DC" then -- 0xBDCx, 0xBDDx SID
                     sid_enable <= '1';
                 elsif cpu_addr(11 downto 5) & '0' = x"DE" then -- 0xBDEx, 0xBDFx GODIL Registers
                     reg_enable <= '1';
-                elsif cpu_addr(11 downto 4)       = x"FE" then -- 0xBFEx Profiling Counters
-                    if CImplProfilingCounters then
-                        counter_enable <= '1';
-                    else
-                        ext_bus_enable <= '1';
-                    end if;
                 elsif cpu_addr(11 downto 4)       = x"FF" then -- 0xBFFx RomLatch
                     ext_ramrom_enable <= '1';
                 elsif cpu_addr(11 downto 8)      /= x"D"  then -- any non-mapped 0xBxxx address is deemed external
