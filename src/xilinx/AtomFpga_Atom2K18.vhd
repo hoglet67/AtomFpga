@@ -547,7 +547,7 @@ begin
 
     extern_rom  <= '1' when extern_ce  = '1' and extern_a(17) = '0'             else '0';
     extern_ram  <= '1' when extern_ce  = '1' and extern_a(17) = '1'             else '0';
-    extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B80" else '0';
+    extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B81" else '0';
     extern_tube <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else '0';
     extern_led  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE" else '0';
 
