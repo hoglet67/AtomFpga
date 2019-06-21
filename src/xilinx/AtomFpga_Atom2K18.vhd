@@ -207,6 +207,9 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal rtc_cnt         : std_logic_vector(19 downto 0);
     signal rtc_irq_n       : std_logic := '1';
 
+    -- Interrupt logic
+    signal irq_n           : std_logic := '1';
+
 begin
 
     ------------------------------------------------
@@ -401,7 +404,7 @@ begin
         blk_b               => bus_blk_b,
         rdy                 => bus_rdy,
         so                  => bus_so,
-        irq_n               => bus_irq_n,
+        irq_n               => irq_n,
         nmi_n               => bus_nmi_n,
         addr                => cpu_a,           -- used only for mapping test ROM/RAM
 
@@ -574,6 +577,12 @@ begin
                    rtc_control   when extern_rtc = '1' and extern_a(2 downto 0) = "110" else
                    rtc_irq_flags when extern_rtc = '1' and extern_a(2 downto 0) = "111" else
                    bus_d;
+
+    ------------------------------------------------
+    -- Interrupt logic
+    ------------------------------------------------
+
+    irq_n <= bus_irq_n and rtc_irq_n;
 
     ------------------------------------------------
     -- External device chip selects
