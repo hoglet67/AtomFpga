@@ -779,99 +779,101 @@ begin
 
     process (clock_rtc)
     begin
-        if rising_edge(clock_rtc) and rtc_control(7) = '0' then
-            rtc_cnt <= rtc_cnt + 1;
-            if rtc_cnt = 800000 then
-                rtc_cnt <= x"00000";
-                rtc_10hz <= rtc_10hz + 1;
-                if  rtc_control(0) = '1' then
-                    rtc_irq_flags(0) <= '1';
-                    rtc_irq_flags(7) <= '1';
+        if rising_edge(clock_rtc) then
+
+            if rtc_control(7) = '0' then
+                rtc_cnt <= rtc_cnt + 1;
+                if rtc_cnt = 800000 then
+                    rtc_cnt <= x"00000";
+                    rtc_10hz <= rtc_10hz + 1;
+                    if  rtc_control(0) = '1' then
+                        rtc_irq_flags(0) <= '1';
+                        rtc_irq_flags(7) <= '1';
+                    end if;
                 end if;
-            end if;
-            if rtc_10hz = 10 then
-                rtc_seconds <= rtc_seconds + 1;
-                rtc_10hz <= x"0";
-                if rtc_control(1) = '1' then
-                    rtc_irq_flags(1) <= '1';
-                    rtc_irq_flags(7) <= '1';
+                if rtc_10hz = 10 then
+                    rtc_seconds <= rtc_seconds + 1;
+                    rtc_10hz <= x"0";
+                    if rtc_control(1) = '1' then
+                        rtc_irq_flags(1) <= '1';
+                        rtc_irq_flags(7) <= '1';
+                    end if;
                 end if;
-            end if;
-            if rtc_seconds = 60 then
-                rtc_minutes <= rtc_minutes + 1;
-                rtc_seconds <= x"00";
-                if rtc_control(2) = '1' then
-                    rtc_irq_flags(2) <= '1';
-                    rtc_irq_flags(7) <= '1';
+                if rtc_seconds = 60 then
+                    rtc_minutes <= rtc_minutes + 1;
+                    rtc_seconds <= x"00";
+                    if rtc_control(2) = '1' then
+                        rtc_irq_flags(2) <= '1';
+                        rtc_irq_flags(7) <= '1';
+                    end if;
                 end if;
-            end if;
-            if rtc_minutes = 60 then
-                rtc_hours <= rtc_hours + 1;
-                rtc_minutes <= x"00";
-                if rtc_control(3) = '1' then
-                    rtc_irq_flags(3) <= '1';
-                    rtc_irq_flags(7) <= '1';
+                if rtc_minutes = 60 then
+                    rtc_hours <= rtc_hours + 1;
+                    rtc_minutes <= x"00";
+                    if rtc_control(3) = '1' then
+                        rtc_irq_flags(3) <= '1';
+                        rtc_irq_flags(7) <= '1';
+                    end if;
                 end if;
-            end if;
-            if rtc_hours = 24 then
-                rtc_day <= rtc_day + 1;
-                rtc_hours <= x"00";
-                if rtc_control(4) = '1' then
-                    rtc_irq_flags(4) <= '1';
-                    rtc_irq_flags(7) <= '1';
+                if rtc_hours = 24 then
+                    rtc_day <= rtc_day + 1;
+                    rtc_hours <= x"00";
+                    if rtc_control(4) = '1' then
+                        rtc_irq_flags(4) <= '1';
+                        rtc_irq_flags(7) <= '1';
+                    end if;
                 end if;
-            end if;
-            if (rtc_day = 31 and (rtc_month = 4 or rtc_month = 6 or rtc_month = 9 or rtc_month = 11))
-                or (rtc_day = 30 and rtc_month = 2 and rtc_year(1 downto 0) = "00")
-                or (rtc_day = 29 and rtc_month = 2 and (rtc_year(1) = '1' or rtc_year(0) = '1'))          or (rtc_day = 32) then
-                rtc_month <= rtc_month + 1;
-                rtc_day <= x"01";
-                if rtc_control(5) = '1' then
-                    rtc_irq_flags(5) <= '1';
-                    rtc_irq_flags(7) <= '1';
+                if (rtc_day = 31 and (rtc_month = 4 or rtc_month = 6 or rtc_month = 9 or rtc_month = 11))
+                    or (rtc_day = 30 and rtc_month = 2 and rtc_year(1 downto 0) = "00")
+                    or (rtc_day = 29 and rtc_month = 2 and (rtc_year(1) = '1' or rtc_year(0) = '1'))          or (rtc_day = 32) then
+                    rtc_month <= rtc_month + 1;
+                    rtc_day <= x"01";
+                    if rtc_control(5) = '1' then
+                        rtc_irq_flags(5) <= '1';
+                        rtc_irq_flags(7) <= '1';
+                    end if;
                 end if;
-            end if;
-            if rtc_month = 13 then
-                rtc_year <= rtc_year + 1;
-                rtc_month <= x"01";
-                if rtc_control(6) = '1' then
-                    rtc_irq_flags(6) <= '1';
-                    rtc_irq_flags(7) <= '1';
+                if rtc_month = 13 then
+                    rtc_year <= rtc_year + 1;
+                    rtc_month <= x"01";
+                    if rtc_control(6) = '1' then
+                        rtc_irq_flags(6) <= '1';
+                        rtc_irq_flags(7) <= '1';
+                    end if;
                 end if;
             end if;
 
-        end if;
+            -- write RTC control/data registers
+            if extern_rtc = '1' and rnw = '0' and phi2 = '1' then
+                case extern_a(2 downto 0) is
+                    when "000" =>
+                        rtc_year <= extern_din;
+                    when "001" =>
+                        rtc_month <= extern_din;
+                    when "010" =>
+                        rtc_day <= extern_din;
+                    when "011" =>
+                        rtc_hours <= extern_din;
+                    when "100" =>
+                        rtc_minutes <= extern_din;
+                    when "101" =>
+                        rtc_seconds <= extern_din;
+                    when "110" =>
+                        rtc_control <= extern_din;
+                    when others =>
+                        rtc_irq_flags <= x"00";
+                end case;
+            end if;
 
-        -- write RTC control/data registers
-        if extern_rtc = '1' and rnw = '0' and phi2 = '1' then
-            case extern_a(2 downto 0) is
-                when "000" =>
-                    rtc_year <= extern_din;
-                when "001" =>
-                    rtc_month <= extern_din;
-                when "010" =>
-                    rtc_day <= extern_din;
-                when "011" =>
-                    rtc_hours <= extern_din;
-                when "100" =>
-                    rtc_minutes <= extern_din;
-                when "101" =>
-                    rtc_seconds <= extern_din;
-                when "110" =>
-                    rtc_control <= extern_din;
-                when others =>
-                    rtc_irq_flags <= x"00";
-            end case;
-        end if;
+            if reset_n = '0' then
+                rtc_control <= x"00";
+                rtc_irq_flags <= x"00";
+            end if;
 
-        rtc_irq_n <= not(rtc_irq_flags(7));
-
-        if reset_n = '0' then
-            rtc_control <= x"00";
-            rtc_irq_flags <= x"00";
-            rtc_irq_n <= '1';
         end if;
 
     end process;
+
+    rtc_irq_n <= not(rtc_irq_flags(7));
 
 end behavioral;
