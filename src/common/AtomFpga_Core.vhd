@@ -74,6 +74,7 @@ entity AtomFpga_Core is
         rdy              : in    std_logic := '1';
         so               : in    std_logic := '1';
         irq_n            : in    std_logic := '1';
+        rtc_irq          : in    std_logic := '1';
         nmi_n            : in    std_logic := '1';
         -- External Bus/Ram/Rom interface
         ExternBus        : out   std_logic;
@@ -238,12 +239,6 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal p_reset           : std_logic;
     signal p_pause           : std_logic;
     signal p_reset_last      : std_logic;
-
-----------------------------------------------------
--- Real Time Clock signals
-----------------------------------------------------
-
-    signal rtc_irq           : std_logic := '1';
 
 --------------------------------------------------------------------
 --                   here it begins :)

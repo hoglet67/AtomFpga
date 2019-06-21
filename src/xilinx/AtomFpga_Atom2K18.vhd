@@ -402,6 +402,7 @@ begin
         rdy                 => bus_rdy,
         so                  => bus_so,
         irq_n               => bus_irq_n,
+        rtc_irq             => rtc_irq,
         nmi_n               => bus_nmi_n,
         addr                => cpu_a,           -- used only for mapping test ROM/RAM
 
