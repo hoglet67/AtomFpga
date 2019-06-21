@@ -116,14 +116,12 @@ architecture behavioral of AtomFpga_Atom2K18 is
     -- Clock generation
     signal clk0            : std_logic;
     signal clk1            : std_logic;
-    signal clk2            : std_logic;
     signal clkfb           : std_logic;
     signal clkfb_buf       : std_logic;
     signal clkin_buf       : std_logic;
     signal clock_16        : std_logic;
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
-    signal clock_rtc       : std_logic;
 
     -- Reset generation
     signal reset_n         : std_logic;
@@ -203,7 +201,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal rtc_irq_flags   : std_logic_vector(7 downto 0);
     signal rtc_control     : std_logic_vector(7 downto 0);
     signal rtc_10hz        : std_logic_vector(3 downto 0);
-    signal rtc_cnt         : std_logic_vector(19 downto 0);
+    signal rtc_cnt         : std_logic_vector(21 downto 0);
     signal rtc_irq_n       : std_logic := '1';
 
     -- Interrupt logic
@@ -250,7 +248,6 @@ begin
             CLKFBOUT            => clkfb,
             CLKOUT0             => clk0,
             CLKOUT1             => clk1,
-            CLKOUT2             => clk2,
             RST                 => '0',
             -- Input clock control
             CLKFBIN             => clkfb_buf,
@@ -273,12 +270,6 @@ begin
         port map (
             I => clk1,
             O => clock_32
-            );
-
-    inst_clk2_buf : BUFG
-        port map (
-            I => clk2,
-            O => clock_rtc
             );
 
     inst_DCM : DCM
@@ -777,19 +768,20 @@ begin
     -- RTC Real Time Clock
     --------------------------------------------------------
 
-    process (clock_rtc)
+    process (clock_32)
     begin
-        if rising_edge(clock_rtc) then
+        if rising_edge(clock_32) then
 
             if rtc_control(7) = '0' then
-                rtc_cnt <= rtc_cnt + 1;
-                if rtc_cnt = 800000 then
-                    rtc_cnt <= x"00000";
+                if rtc_cnt = 3199999 then
+                    rtc_cnt <= (others => '0');
                     rtc_10hz <= rtc_10hz + 1;
                     if  rtc_control(0) = '1' then
                         rtc_irq_flags(0) <= '1';
                         rtc_irq_flags(7) <= '1';
                     end if;
+                else
+                    rtc_cnt <= rtc_cnt + 1;
                 end if;
                 if rtc_10hz = 10 then
                     rtc_seconds <= rtc_seconds + 1;
