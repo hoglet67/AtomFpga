@@ -117,7 +117,6 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal clk0            : std_logic;
     signal clk1            : std_logic;
     signal clk2            : std_logic;
---  signal clkrtc          : std_logic;
     signal clkfb           : std_logic;
     signal clkfb_buf       : std_logic;
     signal clkin_buf       : std_logic;
@@ -243,9 +242,6 @@ begin
             CLKOUT2_DIVIDE       => 100,     -- 800 / 100 = 8MHz
             CLKOUT2_PHASE        => 0.000,
             CLKOUT2_DUTY_CYCLE   => 0.500,
---          CLKRTC_DIVIDE        => 8000000, -- 800 / 8000000 = 100 Hz
---          CLKRTC_PHASE         => 0.000,
---          CLKRTC_DUTY_CYCLE    => 0.500,
             CLKIN_PERIOD         => 20.000,
             REF_JITTER           => 0.010
             )
@@ -255,7 +251,6 @@ begin
             CLKOUT0             => clk0,
             CLKOUT1             => clk1,
             CLKOUT2             => clk2,
---          CLKRTC              => clkrtc,
             RST                 => '0',
             -- Input clock control
             CLKFBIN             => clkfb_buf,
@@ -285,13 +280,6 @@ begin
             I => clk2,
             O => clock_rtc
             );
-
-
---    inst_clkrtc_buf : BUFG
---        port map (
---            I => clkrtc,
---            O => clock_rtc
---            );
 
     inst_DCM : DCM
         generic map (
@@ -789,7 +777,7 @@ begin
     -- RTC Real Time Clock
     --------------------------------------------------------
 
-    process (clock_32, clock_rtc)
+    process (clock_rtc)
     begin
         if rising_edge(clock_rtc) and rtc_control(7) = '0' then
             rtc_cnt <= rtc_cnt + 1;
