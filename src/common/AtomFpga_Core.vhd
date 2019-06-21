@@ -239,8 +239,14 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal p_pause           : std_logic;
     signal p_reset_last      : std_logic;
 
+----------------------------------------------------
+-- Real Time Clock signals
+----------------------------------------------------
+
+    signal rtc_irq           : std_logic := '1';
+
 --------------------------------------------------------------------
---                   here it begin :)
+--                   here it begins :)
 --------------------------------------------------------------------
 
 begin
@@ -266,8 +272,8 @@ begin
         DO(7 downto 0) => cpu_dout(7 downto 0));
 
     not_cpu_R_W_n <= not cpu_R_W_n;
-    cpu_IRQ_n     <= irq_n and mc6522_irq when CImplVIA else
-                     irq_n;
+    cpu_IRQ_n     <= irq_n and mc6522_irq and rtc_irq when CImplVIA else
+                     irq_n and rtc_irq;
 
     -- reset logic
     RSTn          <= key_break and powerup_reset_n and ext_reset_n;
