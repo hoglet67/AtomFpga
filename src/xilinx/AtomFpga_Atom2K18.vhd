@@ -116,13 +116,15 @@ architecture behavioral of AtomFpga_Atom2K18 is
     -- Clock generation
     signal clk0            : std_logic;
     signal clk1            : std_logic;
---  signal clk2            : std_logic;
+    signal clk2            : std_logic;
+--  signal clkrtc          : std_logic;
     signal clkfb           : std_logic;
     signal clkfb_buf       : std_logic;
     signal clkin_buf       : std_logic;
     signal clock_16        : std_logic;
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
+    signal clock_rtc       : std_logic;
 
     -- Reset generation
     signal reset_n         : std_logic;
@@ -169,6 +171,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal extern_tube     : std_logic;
     signal extern_via      : std_logic;
     signal extern_led      : std_logic;
+    signal extern_rtc      : std_logic;
 
     -- Internal Test ROM/RAM
     signal test_romC_data   : std_logic_vector(7 downto 0);
@@ -190,6 +193,19 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal last_sync       : std_logic;
     signal instr_count     : unsigned(15 downto 0);
     signal led_state       : unsigned(3 downto 0);
+
+    -- RTC
+    signal rtc_seconds     : std_logic_vector(7 downto 0);
+    signal rtc_minutes     : std_logic_vector(7 downto 0);
+    signal rtc_hours       : std_logic_vector(7 downto 0);
+    signal rtc_day         : std_logic_vector(7 downto 0) := x"01";
+    signal rtc_month       : std_logic_vector(7 downto 0) := x"01";
+    signal rtc_year        : std_logic_vector(7 downto 0);
+    signal rtc_irq_flags   : std_logic_vector(7 downto 0);
+    signal rtc_control     : std_logic_vector(7 downto 0);
+    signal rtc_10hz        : std_logic_vector(3 downto 0);
+    signal rtc_cnt         : std_logic_vector(19 downto 0);
+    signal rtc_irq         : std_logic := '1';
 
 begin
 
@@ -221,9 +237,12 @@ begin
             CLKOUT1_DIVIDE       => 25,      -- 800 / 25 = 32MHz
             CLKOUT1_PHASE        => 0.000,
             CLKOUT1_DUTY_CYCLE   => 0.500,
---          CLKOUT2_DIVIDE       => 32,      -- 800 / 32 = 25MHz
---          CLKOUT2_PHASE        => 0.000,
---          CLKOUT2_DUTY_CYCLE   => 0.500,
+            CLKOUT2_DIVIDE       => 100,     -- 800 / 100 = 8MHz
+            CLKOUT2_PHASE        => 0.000,
+            CLKOUT2_DUTY_CYCLE   => 0.500,
+--          CLKRTC_DIVIDE        => 8000000, -- 800 / 8000000 = 100 Hz
+--          CLKRTC_PHASE         => 0.000,
+--          CLKRTC_DUTY_CYCLE    => 0.500,
             CLKIN_PERIOD         => 20.000,
             REF_JITTER           => 0.010
             )
@@ -232,7 +251,8 @@ begin
             CLKFBOUT            => clkfb,
             CLKOUT0             => clk0,
             CLKOUT1             => clk1,
---          CLKOUT2             => clk2,
+            CLKOUT2             => clk2,
+--          CLKRTC              => clkrtc,
             RST                 => '0',
             -- Input clock control
             CLKFBIN             => clkfb_buf,
@@ -257,12 +277,18 @@ begin
             O => clock_32
             );
 
---  inst_clk2_buf : BUFG
---      port map (
---          I => clk2,
---          O => clock_25
---          );
+    inst_clk2_buf : BUFG
+        port map (
+            I => clk2,
+            O => clock_rtc
+            );
 
+
+--    inst_clkrtc_buf : BUFG
+--        port map (
+--            I => clkrtc,
+--            O => clock_rtc
+--            );
 
     inst_DCM : DCM
         generic map (
@@ -539,6 +565,14 @@ begin
                    test_ram_data when CImplTestRam and test_ram_enable = '1' else
                    led_data_reg  when extern_led = '1' and extern_a(0) = '1' else
                    led_ctrl_reg  when extern_led = '1' and extern_a(0) = '0' else
+                   rtc_year      when extern_rtc = '1' and extern_a(2 downto 0) = "000" else
+                   rtc_month     when extern_rtc = '1' and extern_a(2 downto 0) = "001" else
+                   rtc_day       when extern_rtc = '1' and extern_a(2 downto 0) = "010" else
+                   rtc_hours     when extern_rtc = '1' and extern_a(2 downto 0) = "011" else
+                   rtc_minutes   when extern_rtc = '1' and extern_a(2 downto 0) = "100" else
+                   rtc_seconds   when extern_rtc = '1' and extern_a(2 downto 0) = "101" else
+                   rtc_control   when extern_rtc = '1' and extern_a(2 downto 0) = "110" else
+                   rtc_irq_flags when extern_rtc = '1' and extern_a(2 downto 0) = "111" else
                    bus_d;
 
     ------------------------------------------------
@@ -550,6 +584,7 @@ begin
     extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B81" else '0';
     extern_tube <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else '0';
     extern_led  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE" else '0';
+    extern_rtc  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD" else '0';
 
     cs_rom_n    <= not(extern_rom);
     cs_ram_n    <= not(extern_ram);
@@ -741,4 +776,104 @@ begin
         end if;
     end process;
 
+    --------------------------------------------------------
+    -- RTC Real Time Clock
+    --------------------------------------------------------
+
+    process (clock_32, clock_rtc)
+    begin
+       if rising_edge(clock_rtc) and rtc_control(7) = '0' then
+         rtc_cnt <= rtc_cnt + 1;
+         if rtc_cnt = 800000 then
+            rtc_cnt <= x"00000";
+            rtc_10hz <= rtc_10hz + 1;
+            if  rtc_control(0) = '1' then
+               rtc_irq_flags(0) <= '1';
+               rtc_irq_flags(7) <= '1';
+            end if;
+         end if;
+         if rtc_10hz = 10 then
+            rtc_seconds <= rtc_seconds + 1;
+            rtc_10hz <= x"0";
+            if rtc_control(1) = '1' then
+               rtc_irq_flags(1) <= '1';
+               rtc_irq_flags(7) <= '1';
+            end if;
+         end if;
+         if rtc_seconds = 60 then
+            rtc_minutes <= rtc_minutes + 1;
+            rtc_seconds <= x"00";
+            if rtc_control(2) = '1' then
+               rtc_irq_flags(2) <= '1';
+               rtc_irq_flags(7) <= '1';
+            end if;
+         end if;
+         if rtc_minutes = 60 then
+            rtc_hours <= rtc_hours + 1;
+            rtc_minutes <= x"00";
+            if rtc_control(3) = '1' then
+               rtc_irq_flags(3) <= '1';
+               rtc_irq_flags(7) <= '1';
+            end if;
+         end if;
+         if rtc_hours = 24 then
+            rtc_day <= rtc_day + 1;
+            rtc_hours <= x"00";
+            if rtc_control(4) = '1' then
+               rtc_irq_flags(4) <= '1';
+               rtc_irq_flags(7) <= '1';
+            end if;
+         end if;
+         if (rtc_day = 31 and (rtc_month = 4 or rtc_month = 6 or rtc_month = 9 or rtc_month = 11))
+            or (rtc_day = 30 and rtc_month = 2 and rtc_year(1 downto 0) = "00")
+            or (rtc_day = 29 and rtc_month = 2 and (rtc_year(1) = '1' or rtc_year(0) = '1'))          or (rtc_day = 32) then
+            rtc_month <= rtc_month + 1;
+            rtc_day <= x"01";
+            if rtc_control(5) = '1' then
+               rtc_irq_flags(5) <= '1';
+               rtc_irq_flags(7) <= '1';
+            end if;
+         end if;
+         if rtc_month = 13 then
+            rtc_year <= rtc_year + 1;
+            rtc_month <= x"01";
+            if rtc_control(6) = '1' then
+               rtc_irq_flags(6) <= '1';
+               rtc_irq_flags(7) <= '1';
+            end if;
+         end if;
+
+   end if;
+
+   -- write RTC control/data registers
+   if extern_rtc = '1' and rnw = '0' and phi2 = '1' then
+      case extern_a(2 downto 0) is
+      when "000" =>
+         rtc_year <= extern_din;
+      when "001" =>
+         rtc_month <= extern_din;
+      when "010" =>
+         rtc_day <= extern_din;
+      when "011" =>
+         rtc_hours <= extern_din;
+      when "100" =>
+         rtc_minutes <= extern_din;
+      when "101" =>
+         rtc_seconds <= extern_din;
+      when "110" =>
+         rtc_control <= extern_din;
+      when others =>
+         rtc_irq_flags <= x"00";
+      end case;
+   end if;
+
+   rtc_irq <= not(rtc_irq_flags(7));
+
+   if reset_n = '0' then
+      rtc_control <= x"00";
+      rtc_irq_flags <= x"00";
+      rtc_irq <= '1';
+   end if;
+
+   end process;
 end behavioral;
