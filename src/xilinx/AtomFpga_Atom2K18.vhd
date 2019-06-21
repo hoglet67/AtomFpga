@@ -205,7 +205,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal rtc_control     : std_logic_vector(7 downto 0);
     signal rtc_10hz        : std_logic_vector(3 downto 0);
     signal rtc_cnt         : std_logic_vector(19 downto 0);
-    signal rtc_irq         : std_logic := '1';
+    signal rtc_irq_n       : std_logic := '1';
 
 begin
 
@@ -867,12 +867,12 @@ begin
             end case;
         end if;
 
-        rtc_irq <= not(rtc_irq_flags(7));
+        rtc_irq_n <= not(rtc_irq_flags(7));
 
         if reset_n = '0' then
             rtc_control <= x"00";
             rtc_irq_flags <= x"00";
-            rtc_irq <= '1';
+            rtc_irq_n <= '1';
         end if;
 
     end process;
