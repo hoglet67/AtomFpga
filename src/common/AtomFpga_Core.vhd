@@ -121,6 +121,8 @@ architecture BEHAVIORAL of AtomFpga_Core is
 -------------------------------------------------
 -- CPU signals
 -------------------------------------------------
+    signal powerup_reset_n_sync : std_logic;
+    signal ext_reset_n_sync     : std_logic;
     signal RSTn              : std_logic;
     signal cpu_R_W_n         : std_logic;
     signal not_cpu_R_W_n     : std_logic;
@@ -268,10 +270,16 @@ begin
     not_cpu_R_W_n <= not cpu_R_W_n;
     cpu_IRQ_n     <= irq_n and mc6522_irq when CImplVIA else
                      irq_n;
-
     -- reset logic
-    RSTn          <= key_break and powerup_reset_n and ext_reset_n;
-    int_reset_n   <= key_break;
+    process(clk_main)
+    begin
+        if rising_edge(clk_main) then
+            powerup_reset_n_sync <= powerup_reset_n;
+            ext_reset_n_sync     <= ext_reset_n;
+            RSTn                 <= key_break and powerup_reset_n_sync and ext_reset_n_sync;
+            int_reset_n          <= key_break;
+        end if;
+    end process;
 
     -- write enables
     gated_we      <= not_cpu_R_W_n;
@@ -415,7 +423,7 @@ begin
 
     input : entity work.keyboard port map(
         CLOCK      => clk_main,
-        nRESET     => powerup_reset_n,
+        nRESET     => powerup_reset_n_sync,
         CLKEN_1MHZ => cpu_clken,
         PS2_CLK    => ps2_clk,
         PS2_DATA   => ps2_data,
