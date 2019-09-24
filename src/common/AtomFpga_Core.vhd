@@ -130,6 +130,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal cpu_din           : std_logic_vector (7 downto 0);
     signal cpu_dout          : std_logic_vector (7 downto 0);
     signal cpu_IRQ_n         : std_logic;
+    signal ExternDin1        : std_logic_vector (7 downto 0);
     signal ExternDout1       : std_logic_vector (7 downto 0);
 
 ---------------------------------------------------
@@ -621,7 +622,7 @@ begin
                 ExternCE     => ExternCE,
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
-                ExternDin    => ExternDin,
+                ExternDin    => ExternDin1,
                 ExternDout   => ExternDout1
                 );
         turbo <= key_turbo;
@@ -641,7 +642,7 @@ begin
                 ExternCE     => ExternCE,
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
-                ExternDin    => ExternDin,
+                ExternDin    => ExternDin1,
                 ExternDout   => ExternDout1
                 );
         turbo <= key_turbo;
@@ -661,7 +662,7 @@ begin
                 ExternCE     => ExternCE,
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
-                ExternDin    => ExternDin,
+                ExternDin    => ExternDin1,
                 ExternDout   => ExternDout1,
                 -- turbo mode control
                 turbo_in     => key_turbo,
@@ -683,11 +684,13 @@ begin
                 ExternCE     => ExternCE,
                 ExternWE     => ExternWE,
                 ExternA      => ExternA,
-                ExternDin    => ExternDin,
+                ExternDin    => ExternDin1,
                 ExternDout   => ExternDout1
                 );
         turbo <= key_turbo;
     end generate;
+
+    ExternDin <= ExternDin1 when cpu_R_W_n = '0' else cpu_din;
 
 ---------------------------------------------------------------------
 -- Profiling Counters
