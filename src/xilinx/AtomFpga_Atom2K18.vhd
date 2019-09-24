@@ -190,6 +190,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal last_sync       : std_logic;
     signal instr_count     : unsigned(15 downto 0);
     signal led_state       : unsigned(3 downto 0);
+    signal led_data        : std_logic_vector(7 downto 0);
 
     -- RTC
     signal rtc_seconds     : std_logic_vector(7 downto 0);
@@ -203,9 +204,14 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal rtc_10hz        : std_logic_vector(3 downto 0);
     signal rtc_cnt         : std_logic_vector(21 downto 0);
     signal rtc_irq_n       : std_logic := '1';
+    signal rtc_data        : std_logic_vector(7 downto 0);
 
     -- Interrupt logic
     signal irq_n           : std_logic := '1';
+
+    -- Debug mode
+    signal remote_access   : std_logic;
+    signal debug_mode      : std_logic;
 
 begin
 
@@ -533,7 +539,18 @@ begin
     bus_rnw     <= rnw;
     bus_sync    <= sync;
     bus_a       <= extern_a;
-    bus_d       <= extern_din when rnw = '0' else "ZZZZZZZZ";
+
+    -- Enable data out of the FPGA onto the 3.3V databus in the following cases:
+    -- case 1. all writes from the "core"
+    -- case 2. reads that are internal to the "core", when debug mode enables
+    -- case 3. reads of the led registers, when debug mode enabled
+    -- case 4. reads of the rtc registers, when debug mode enabled
+    -- TODO: test_rom_data and test_ram_data should be included here (or dropped)
+    bus_d       <= extern_din when phi2 = '1' and rnw = '0'                                                 else
+                   extern_din when phi2 = '1' and extern_ce = '0' and extern_bus = '0' and debug_mode = '1' else
+                   led_data   when phi2 = '1' and extern_led = '1'                     and debug_mode = '1' else
+                   rtc_data   when phi2 = '1' and extern_rtc = '1'                     and debug_mode = '1' else
+                   "ZZZZZZZZ";
 
     bus_nrds    <= '0' when extern_ce  = '1' and extern_we = '0' and phi2 = '1' else -- RamRom
                    '0' when extern_bus = '1' and rnw       = '1' and phi2 = '1' else -- Bus
@@ -543,18 +560,11 @@ begin
                    '0' when extern_bus = '1' and rnw       = '0' and phi2 = '1' else -- Bus
                    '1';
 
+    -- data back into the Atom Core
     extern_dout <= test_rom_data when CImplTestRom and test_rom_enable = '1' else
                    test_ram_data when CImplTestRam and test_ram_enable = '1' else
-                   led_data_reg  when extern_led = '1' and extern_a(0) = '1' else
-                   led_ctrl_reg  when extern_led = '1' and extern_a(0) = '0' else
-                   rtc_year      when extern_rtc = '1' and extern_a(2 downto 0) = "000" else
-                   rtc_month     when extern_rtc = '1' and extern_a(2 downto 0) = "001" else
-                   rtc_day       when extern_rtc = '1' and extern_a(2 downto 0) = "010" else
-                   rtc_hours     when extern_rtc = '1' and extern_a(2 downto 0) = "011" else
-                   rtc_minutes   when extern_rtc = '1' and extern_a(2 downto 0) = "100" else
-                   rtc_seconds   when extern_rtc = '1' and extern_a(2 downto 0) = "101" else
-                   rtc_control   when extern_rtc = '1' and extern_a(2 downto 0) = "110" else
-                   rtc_irq_flags when extern_rtc = '1' and extern_a(2 downto 0) = "111" else
+                   led_data      when                       extern_led = '1' else
+                   rtc_data      when                       extern_rtc = '1' else
                    bus_d;
 
     ------------------------------------------------
@@ -579,9 +589,22 @@ begin
     cs_via_n    <= not(extern_via);
     cs_tube_n   <= not(extern_tube);
 
-    cs_buf_n    <= not(extern_bus and not extern_tube and not extern_led);  -- Tube is on the 3v3 side of the bus
-    buf_dir     <= rnw;
+    -- A remote access is to a device on the far side of the data buffers
+    -- The tube is on the near side of the data buffers, so exclude
+    -- The LED and RTC registers are internal to this module, so exclude
+    remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and extern_led = '0' and extern_rtc = '0' else '0';
 
+    -- In normal mode, enable the data buffers only for remote accesses.
+    -- In debug mode, enable the data buffers all the time.
+    cs_buf_n    <= '0' when phi2 = '1' and                         debug_mode = '1' else
+                   '0' when phi2 = '1' and remote_access = '1' and debug_mode = '0' else
+                   '1';
+
+    -- In normal mode, the direction is inward for reads, outward for writes.
+    -- In debug mode, the direction is inward for remote reads, outward for everything else.
+    buf_dir     <= '1' when remote_access = '1' and rnw = '1' and debug_mode = '1' else
+                   '0' when debug_mode = '1' else
+                    rnw;
     ------------------------------------------------
     -- Audio mixer
     ------------------------------------------------
@@ -764,6 +787,13 @@ begin
         end if;
     end process;
 
+    led_data <= led_ctrl_reg when extern_a(0) = '0' else
+                led_data_reg when extern_a(1) = '1' else
+                x"00";
+
+    -- Enable debug mode (logic analyzer output to data bus) in knight rider mode
+    debug_mode <= '1' when led_ctrl_reg(1 downto 0) = "01" else '0';
+
     --------------------------------------------------------
     -- RTC Real Time Clock
     --------------------------------------------------------
@@ -865,6 +895,16 @@ begin
         end if;
 
     end process;
+
+    rtc_data <= rtc_year      when extern_a(2 downto 0) = "000" else
+                rtc_month     when extern_a(2 downto 0) = "001" else
+                rtc_day       when extern_a(2 downto 0) = "010" else
+                rtc_hours     when extern_a(2 downto 0) = "011" else
+                rtc_minutes   when extern_a(2 downto 0) = "100" else
+                rtc_seconds   when extern_a(2 downto 0) = "101" else
+                rtc_control   when extern_a(2 downto 0) = "110" else
+                rtc_irq_flags when extern_a(2 downto 0) = "111" else
+                x"00";
 
     rtc_irq_n <= not(rtc_irq_flags(7));
 
