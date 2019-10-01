@@ -116,6 +116,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal clk_counter       : std_logic_vector(4 downto 0);
     signal cpu_cycle         : std_logic;
     signal cpu_clken         : std_logic;
+    signal pia_clken         : std_logic;
     signal sample_data       : std_logic;
 
 -------------------------------------------------
@@ -370,7 +371,7 @@ begin
         I_PC   => i8255_pc_idata(7 downto 4),
         O_PC   => i8255_pc_data(3 downto 0),
         RESET  => RSTn,
-        ENA    => cpu_clken,
+        ENA    => pia_clken,
         CLK    => clk_main);
 
     -- Port A
@@ -895,14 +896,21 @@ begin
                 clk_counter <= clk_counter + 1;
             end if;
 
-            -- Asset cpu_clken in cycle 0
+            -- Assert cpu_clken in cycle 0
             if clk_counter = limit then
                 cpu_clken <= '1';
             else
                 cpu_clken <= '0';
             end if;
 
-            -- Asset via1_clken in cycle 0
+            -- Assert pia_clken in anti-phase with cpu_clken
+            if clk_counter = phi2h then
+                pia_clken <= '1';
+            else
+                pia_clken <= '0';
+            end if;
+
+            -- Assert via1_clken in cycle 0
             if clk_counter = limit then
                 via1_clken <= '1';
             else
@@ -916,7 +924,7 @@ begin
                 via4_clken <= '0';
             end if;
 
-            -- Asset phi2 at the specified times
+            -- Assert phi2 at the specified times
             if clk_counter = phi2h then
                 phi2 <= '1';
             elsif clk_counter = phi2l then
