@@ -791,8 +791,9 @@ begin
                 led_data_reg when extern_a(1) = '1' else
                 x"00";
 
-    -- Enable debug mode (logic analyzer output to data bus) in knight rider mode
-    debug_mode <= '1' when led_ctrl_reg(1 downto 0) = "01" else '0';
+    -- Enable debug mode (logic analyzer output to data bus)in address mode
+    -- (when the LEDs are showing the low or high address bus)
+    debug_mode <= led_ctrl_reg(1);
 
     --------------------------------------------------------
     -- RTC Real Time Clock
