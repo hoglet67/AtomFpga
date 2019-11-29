@@ -803,7 +803,7 @@ begin
                     sid_enable <= '1';
                 elsif cpu_addr(11 downto 5) & '0' = x"DE" then -- 0xBDEx, 0xBDFx GODIL Registers
                     reg_enable <= '1';
-                elsif cpu_addr(11 downto 4)       = x"FF" then -- 0xBFFx RomLatch
+                elsif cpu_addr(11 downto 2) & "00"= x"FFC" then -- 0xBFFC-BFFF RomLatch
                     ext_ramrom_enable <= '1';
                 elsif cpu_addr(11 downto 8)      /= x"D"  then -- any non-mapped 0xBxxx address is deemed external
                     ext_bus_enable <= '1';                     -- apart from 0xBDxx which are deemed reserved
