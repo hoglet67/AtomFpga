@@ -167,8 +167,10 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal extern_ram      : std_logic;
     signal extern_tube     : std_logic;
     signal extern_via      : std_logic;
-    signal extern_led      : std_logic;
-    signal extern_rtc      : std_logic;
+
+    -- Internal devices
+    signal intern_led      : std_logic;
+    signal intern_rtc      : std_logic;
 
     -- Internal Test ROM/RAM
     signal test_romC_data   : std_logic_vector(7 downto 0);
@@ -548,8 +550,8 @@ begin
     -- TODO: test_rom_data and test_ram_data should be included here (or dropped)
     bus_d       <= extern_din when phi2 = '1' and rnw = '0'                                                 else
                    extern_din when phi2 = '1' and extern_ce = '0' and extern_bus = '0' and debug_mode = '1' else
-                   led_data   when phi2 = '1' and extern_led = '1'                     and debug_mode = '1' else
-                   rtc_data   when phi2 = '1' and extern_rtc = '1'                     and debug_mode = '1' else
+                   led_data   when phi2 = '1' and intern_led = '1'                     and debug_mode = '1' else
+                   rtc_data   when phi2 = '1' and intern_rtc = '1'                     and debug_mode = '1' else
                    "ZZZZZZZZ";
 
     bus_nrds    <= '0' when extern_ce  = '1' and extern_we = '0' and phi2 = '1' else -- RamRom
@@ -563,8 +565,8 @@ begin
     -- data back into the Atom Core
     extern_dout <= test_rom_data when CImplTestRom and test_rom_enable = '1' else
                    test_ram_data when CImplTestRam and test_ram_enable = '1' else
-                   led_data      when                       extern_led = '1' else
-                   rtc_data      when                       extern_rtc = '1' else
+                   led_data      when                       intern_led = '1' else
+                   rtc_data      when                       intern_rtc = '1' else
                    bus_d;
 
     ------------------------------------------------
@@ -581,8 +583,8 @@ begin
     extern_ram  <= '1' when extern_ce  = '1' and extern_a(17) = '1'             else '0';
     extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B81" else '0';
     extern_tube <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else '0';
-    extern_led  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE" else '0';
-    extern_rtc  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD" else '0';
+    intern_led  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE" else '0';
+    intern_rtc  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD" else '0';
 
     cs_rom_n    <= not(extern_rom);
     cs_ram_n    <= not(extern_ram);
@@ -592,7 +594,7 @@ begin
     -- A remote access is to a device on the far side of the data buffers
     -- The tube is on the near side of the data buffers, so exclude
     -- The LED and RTC registers are internal to this module, so exclude
-    remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and extern_led = '0' and extern_rtc = '0' else '0';
+    remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and intern_led = '0' and intern_rtc = '0' else '0';
 
     -- In normal mode, enable the data buffers only for remote accesses.
     -- In debug mode, enable the data buffers all the time.
@@ -738,7 +740,7 @@ begin
                 led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) + 1;
             end if;
             -- LED control/data registers
-            if extern_led = '1' and rnw = '0' and phi2 = '1' then
+            if intern_led = '1' and rnw = '0' and phi2 = '1' then
                 if extern_a(0) = '1' then
                     led_data_reg <= extern_din;
                 else
@@ -867,7 +869,7 @@ begin
             end if;
 
             -- write RTC control/data registers
-            if extern_rtc = '1' and rnw = '0' and phi2 = '1' then
+            if intern_rtc = '1' and rnw = '0' and phi2 = '1' then
                 case extern_a(2 downto 0) is
                     when "000" =>
                         rtc_year <= extern_din;
