@@ -167,21 +167,25 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal extern_ram      : std_logic;
     signal extern_tube     : std_logic;
     signal extern_via      : std_logic;
+    signal extern_pam      : std_logic; -- enable for #B1xx
 
     -- Internal devices
     signal intern_led      : std_logic;
     signal intern_rtc      : std_logic;
+    signal intern_pam_reg0 : std_logic; -- enable for #BFFA
+    signal intern_pam_reg1 : std_logic; -- enable for #BFFB
+    signal pam_page        : std_logic_vector(8 downto 0);
 
     -- Internal Test ROM/RAM
-    signal test_romC_data   : std_logic_vector(7 downto 0);
-    signal test_romD_data   : std_logic_vector(7 downto 0);
-    signal test_romE_data   : std_logic_vector(7 downto 0);
-    signal test_romF_data   : std_logic_vector(7 downto 0);
-    signal test_rom_data    : std_logic_vector(7 downto 0);
-    signal test_rom_enable  : std_logic;
-    signal test_ram_addr    : std_logic_vector(12 downto 0);
-    signal test_ram_data    : std_logic_vector(7 downto 0);
-    signal test_ram_enable  : std_logic;
+    signal test_romC_data  : std_logic_vector(7 downto 0);
+    signal test_romD_data  : std_logic_vector(7 downto 0);
+    signal test_romE_data  : std_logic_vector(7 downto 0);
+    signal test_romF_data  : std_logic_vector(7 downto 0);
+    signal test_rom_data   : std_logic_vector(7 downto 0);
+    signal test_rom_enable : std_logic;
+    signal test_ram_addr   : std_logic_vector(12 downto 0);
+    signal test_ram_data   : std_logic_vector(7 downto 0);
+    signal test_ram_enable : std_logic;
 
     -- Switch debouncing
     signal sw_pressed      : std_logic_vector(2 downto 1);
@@ -540,7 +544,9 @@ begin
     bus_phi2    <= phi2;
     bus_rnw     <= rnw;
     bus_sync    <= sync;
-    bus_a       <= extern_a;
+
+    bus_a       <= "00" & pam_page & extern_a(7 downto 0) when extern_pam = '1' else
+                   extern_a;
 
     -- Enable data out of the FPGA onto the 3.3V databus in the following cases:
     -- case 1. all writes from the "core"
@@ -548,10 +554,12 @@ begin
     -- case 3. reads of the led registers, when debug mode enabled
     -- case 4. reads of the rtc registers, when debug mode enabled
     -- TODO: test_rom_data and test_ram_data should be included here (or dropped)
-    bus_d       <= extern_din when phi2 = '1' and rnw = '0'                                                 else
-                   extern_din when phi2 = '1' and extern_ce = '0' and extern_bus = '0' and debug_mode = '1' else
-                   led_data   when phi2 = '1' and intern_led = '1'                     and debug_mode = '1' else
-                   rtc_data   when phi2 = '1' and intern_rtc = '1'                     and debug_mode = '1' else
+    bus_d       <= extern_din               when phi2 = '1' and rnw = '0'                                                 else
+                   extern_din               when phi2 = '1' and extern_ce = '0' and extern_bus = '0' and debug_mode = '1' else
+                   led_data                 when phi2 = '1' and intern_led = '1'                     and debug_mode = '1' else
+                   rtc_data                 when phi2 = '1' and intern_rtc = '1'                     and debug_mode = '1' else
+                   pam_page(7 downto 0)     when phi2 = '1' and intern_pam_reg0 = '1'                and debug_mode = '1' else
+                   "0000000" & pam_page(8)  when phi2 = '1' and intern_pam_reg1 = '1'                and debug_mode = '1' else
                    "ZZZZZZZZ";
 
     bus_nrds    <= '0' when extern_ce  = '1' and extern_we = '0' and phi2 = '1' else -- RamRom
@@ -563,10 +571,12 @@ begin
                    '1';
 
     -- data back into the Atom Core
-    extern_dout <= test_rom_data when CImplTestRom and test_rom_enable = '1' else
-                   test_ram_data when CImplTestRam and test_ram_enable = '1' else
-                   led_data      when                       intern_led = '1' else
-                   rtc_data      when                       intern_rtc = '1' else
+    extern_dout <= test_rom_data           when CImplTestRom and test_rom_enable = '1' else
+                   test_ram_data           when CImplTestRam and test_ram_enable = '1' else
+                   led_data                when                       intern_led = '1' else
+                   rtc_data                when                       intern_rtc = '1' else
+                   pam_page(7 downto 0)    when                  intern_pam_reg0 = '1' else
+                   "0000000" & pam_page(8) when                  intern_pam_reg1 = '1' else
                    bus_d;
 
     ------------------------------------------------
@@ -576,15 +586,50 @@ begin
     irq_n <= bus_irq_n and rtc_irq_n;
 
     ------------------------------------------------
+    -- Page Access Memory (PAM)
+    ------------------------------------------------
+    process(clock_32)
+    begin
+        if rising_edge(clock_32) then
+            if rnw = '0' and phi2 = '1' then
+                if intern_pam_reg0 = '1' then
+                    pam_page(7 downto 0) <= extern_din;
+                end if;
+                if intern_pam_reg1 = '1' then
+                    pam_page(8) <= extern_din(0);
+                end if;
+            end if;
+        end if;
+    end process;
+
+    ------------------------------------------------
+    -- Internal device chip selects
+    ------------------------------------------------
+
+    intern_led      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE"  else '0';
+    intern_rtc      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD"  else '0';
+    intern_pam_reg0 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFFA" else '0';
+    intern_pam_reg1 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFFB" else '0';
+
+    ------------------------------------------------
     -- External device chip selects
     ------------------------------------------------
 
-    extern_rom  <= '1' when extern_ce  = '1' and extern_a(17) = '0'             else '0';
-    extern_ram  <= '1' when extern_ce  = '1' and extern_a(17) = '1'             else '0';
-    extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B81" else '0';
-    extern_tube <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else '0';
-    intern_led  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE" else '0';
-    intern_rtc  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD" else '0';
+    extern_rom  <= '1' when extern_ce  = '1' and extern_a(17) = '0'             else
+                   '0';
+
+    extern_ram  <= '1' when extern_ce  = '1' and extern_a(17) = '1'             else
+                   '1' when extern_pam = '1'                                    else
+                   '0';
+
+    extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B81" else
+                   '0';
+
+    extern_tube <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else
+                   '0';
+
+    extern_pam  <= '1' when extern_bus = '1' and extern_a(15 downto 8) = x"B1"  else
+                   '0';
 
     cs_rom_n    <= not(extern_rom);
     cs_ram_n    <= not(extern_ram);
@@ -594,7 +639,8 @@ begin
     -- A remote access is to a device on the far side of the data buffers
     -- The tube is on the near side of the data buffers, so exclude
     -- The LED and RTC registers are internal to this module, so exclude
-    remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and intern_led = '0' and intern_rtc = '0' else '0';
+    remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and extern_pam = '0' and
+                              intern_led = '0' and intern_rtc = '0' and intern_pam_reg0 = '0' and intern_pam_reg1 = '0' else '0';
 
     -- In normal mode, enable the data buffers only for remote accesses.
     -- In debug mode, enable the data buffers all the time.
