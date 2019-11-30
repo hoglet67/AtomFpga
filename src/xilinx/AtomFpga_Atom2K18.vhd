@@ -168,14 +168,15 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal extern_tube     : std_logic;
     signal extern_via      : std_logic;
     signal extern_pam      : std_logic; -- enable for #B1xx
-    signal extern_sam      : std_logic; -- enable for #BFF8
+    signal extern_sam_rd   : std_logic; -- enable for #BFF0
+    signal extern_sam_wr   : std_logic; -- enable for #BFF1
 
     -- Internal devices
     signal intern_led      : std_logic;
     signal intern_rtc      : std_logic;
-    signal intern_pam_reg0 : std_logic; -- enable for #BFFA
-    signal intern_pam_reg1 : std_logic; -- enable for #BFFB
-    signal intern_sam_reg  : std_logic; -- enable for #BFF9
+    signal intern_pam_reg0 : std_logic; -- enable for #BFF8
+    signal intern_pam_reg1 : std_logic; -- enable for #BFF9
+    signal intern_sam_reg  : std_logic; -- enable for #BFF2
 
     -- PAM relayed signals
     signal pam_page        : std_logic_vector(8 downto 0);
@@ -187,7 +188,11 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal sam_wr_addr     : std_logic_vector(17 downto 0);
     signal sam_wr_next     : std_logic_vector(17 downto 0);
     signal sam_wr_inc      : std_logic;
-    signal sam_status      : std_logic_vector(2 downto 0);
+    signal sam_empty       : std_logic;
+    signal sam_full        : std_logic;
+    signal sam_underflow   : std_logic;
+    signal sam_overflow    : std_logic;
+    signal sam_status      : std_logic_vector(7 downto 0);
 
     -- Internal Test ROM/RAM
     signal test_romC_data  : std_logic_vector(7 downto 0);
@@ -558,9 +563,9 @@ begin
     bus_rnw     <= rnw;
     bus_sync    <= sync;
 
-    bus_a       <= "1" & sam_rd_addr                      when extern_sam = '1' and rnw = '1' else
-                   "1" & sam_wr_addr                      when extern_sam = '1' and rnw = '0' else
-                   "00" & pam_page & extern_a(7 downto 0) when extern_pam = '1'               else
+    bus_a       <= "1" & sam_rd_addr                      when extern_sam_rd = '1' and rnw = '1' else
+                   "1" & sam_wr_addr                      when extern_sam_wr = '1' and rnw = '0' else
+                   "00" & pam_page & extern_a(7 downto 0) when extern_pam = '1'                  else
                    extern_a;
 
     -- Enable data out of the FPGA onto the 3.3V databus in the following cases:
@@ -573,7 +578,7 @@ begin
                    extern_din               when phi2 = '1' and extern_ce = '0' and extern_bus = '0' and debug_mode = '1' else
                    led_data                 when phi2 = '1' and intern_led = '1'                     and debug_mode = '1' else
                    rtc_data                 when phi2 = '1' and intern_rtc = '1'                     and debug_mode = '1' else
-                   "00000" & sam_status     when phi2 = '1' and intern_sam_reg = '1'                 and debug_mode = '1' else
+                   sam_status               when phi2 = '1' and intern_sam_reg = '1'                 and debug_mode = '1' else
                    pam_page(7 downto 0)     when phi2 = '1' and intern_pam_reg0 = '1'                and debug_mode = '1' else
                    "0000000" & pam_page(8)  when phi2 = '1' and intern_pam_reg1 = '1'                and debug_mode = '1' else
                    "ZZZZZZZZ";
@@ -591,7 +596,7 @@ begin
                    test_ram_data           when CImplTestRam and test_ram_enable = '1' else
                    led_data                when                       intern_led = '1' else
                    rtc_data                when                       intern_rtc = '1' else
-                   "00000" & sam_status    when                   intern_sam_reg = '1' else
+                   sam_status              when                   intern_sam_reg = '1' else
                    pam_page(7 downto 0)    when                  intern_pam_reg0 = '1' else
                    "0000000" & pam_page(8) when                  intern_pam_reg1 = '1' else
                    bus_d;
@@ -606,48 +611,52 @@ begin
     -- Sequential Access Memory (SAM)
     ------------------------------------------------
 
-    -- There are only three status bits:
-
+    -- Status byte
+    sam_status <= sam_empty & sam_full & "0000" & sam_underflow & sam_overflow;
 
     process(clock_32)
     begin
         if rising_edge(clock_32) then
             if intern_sam_reg = '1' and rnw = '0' and phi2 = '1' then
-                -- a write to the SAM control register resets everything
-                sam_rd_inc  <= '0';
-                sam_wr_inc  <= '0';
-                sam_rd_addr <= (others => '0');
-                sam_wr_addr <= (others => '0');
-                sam_status  <= "000";
-            elsif extern_sam = '1' and phi2 = '1' then
-                if rnw = '1' then
-                    -- a read from the SAM data register
+                -- a write of '1' to SAM control register bit 0 clears the overflow error
+                if extern_din(0) = '1' then
+                    sam_overflow <= '0';
+                end if;
+                -- a write of '1' to SAM control register bit 1 clears the underflow error
+                if extern_din(1) = '1' then
+                    sam_underflow <= '0';
+                end if;
+                -- a write of '1' to SAM control register bit 2 resets everything
+                if extern_din(2) = '1' then
+                    sam_rd_inc    <= '0';
+                    sam_wr_inc    <= '0';
+                    sam_rd_addr   <= (others => '0');
+                    sam_wr_addr   <= (others => '0');
+                    sam_underflow <= '0';
+                    sam_overflow  <= '0';
+                end if;
+            elsif extern_sam_rd = '1' and rnw = '1' and phi2 = '1' then
+                -- a read from the SAM data register
+                if sam_empty = '0' then
                     sam_rd_inc <= '1';
                 else
-                    -- a write to the SAM data register
+                    sam_underflow <= '1';
+                end if;
+            elsif extern_sam_wr = '1' and rnw = '0' and phi2 = '1' then
+                -- a write to the SAM data register
+                if sam_full = '0' then
                     sam_wr_inc <= '1';
+                else
+                    sam_overflow <= '1';
                 end if;
             elsif phi2 = '0' then
                 -- Handle the update of the SAM addresses as soon as Phi2 goes
                 -- low at the start of the next bus cycle
-                sam_wr_addr <= sam_wr_next;
-                sam_rd_addr <= sam_rd_next;
-                -- Update the status bits
-                -- bit 0: 0 = buffer is empty, 1 = data available (we don't know how much and we don't care)
-                -- bit 1: 0 = normal, goes to 1 when the read and write pointer are equal after a write instruction (i.e. buffer full / overflow)
-                -- bit 2: 0 = normal, goes to 1 when the read and write pointer are equal after a read instruction (i.e. buffer empty)
                 if sam_rd_inc = '1' then
-                    if sam_rd_next = sam_wr_next then
-                        sam_status <= "100";
-                    else
-                        sam_status <= "001";
-                    end if;
-                elsif sam_wr_inc = '1' then
-                    if sam_rd_next = sam_wr_next then
-                        sam_status <= "010";
-                    else
-                        sam_status <= "001";
-                    end if;
+                    sam_rd_addr <= sam_rd_next;
+                end if;
+                if sam_wr_inc = '1' then
+                    sam_wr_addr <= sam_wr_next;
                 end if;
                 -- clear the inc flags, so we only increment by one
                 sam_rd_inc <= '0';
@@ -656,24 +665,31 @@ begin
         end if;
     end process;
 
-    -- combinatorial logic for next rd address
-    process(sam_rd_addr, sam_rd_inc)
+    -- combinatorial logic for full,empty flags
+    process(sam_rd_addr, sam_wr_addr)
     begin
-        if sam_rd_inc = '1' then
-            sam_rd_next <= sam_rd_addr + 1;
+        if sam_rd_addr = sam_wr_addr then
+            sam_empty <= '1';
         else
-            sam_rd_next <= sam_rd_addr;
+            sam_empty <= '0';
+        end if;
+        if sam_wr_next = sam_rd_addr then
+            sam_full <= '1';
+        else
+            sam_full <= '0';
         end if;
     end process;
 
-    -- combinatorial logic for next write address
-    process(sam_wr_addr, sam_wr_inc)
+    -- combinatorial logic for next rd address
+    process(sam_rd_addr)
     begin
-        if sam_wr_inc = '1' then
-            sam_wr_next <= sam_wr_addr + 1;
-        else
-            sam_wr_next <= sam_wr_addr;
-        end if;
+        sam_rd_next <= sam_rd_addr + 1;
+    end process;
+
+    -- combinatorial logic for next write address
+    process(sam_wr_addr)
+    begin
+        sam_wr_next <= sam_wr_addr + 1;
     end process;
 
     ------------------------------------------------
@@ -700,33 +716,36 @@ begin
 
     intern_led      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE"  else '0';
     intern_rtc      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD"  else '0';
-    intern_sam_reg  <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF9" else '0';
-    intern_pam_reg0 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFFA" else '0';
-    intern_pam_reg1 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFFB" else '0';
+    intern_sam_reg  <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF2" else '0';
+    intern_pam_reg0 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF8" else '0';
+    intern_pam_reg1 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF9" else '0';
 
     ------------------------------------------------
     -- External device chip selects
     ------------------------------------------------
 
-    extern_rom  <= '1' when extern_ce  = '1' and extern_a(17) = '0'             else
-                   '0';
+    extern_rom    <= '1' when extern_ce  = '1' and extern_a(17) = '0'             else
+                     '0';
 
-    extern_ram  <= '1' when extern_ce  = '1' and extern_a(17) = '1'             else
-                   '1' when extern_sam = '1'                                    else
-                   '1' when extern_pam = '1'                                    else
-                   '0';
+    extern_ram    <= '1' when extern_ce  = '1' and extern_a(17) = '1'             else
+                     '1' when extern_sam_rd = '1' or extern_sam_wr = '1'          else
+                     '1' when extern_pam = '1'                                    else
+                     '0';
 
-    extern_via  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B81" else
-                   '0';
+    extern_via    <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B81" else
+                     '0';
 
-    extern_tube <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else
-                   '0';
+    extern_tube   <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else
+                     '0';
 
-    extern_sam  <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF8" else
-                   '0';
+    extern_sam_rd <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF0" else
+                     '0';
 
-    extern_pam  <= '1' when extern_bus = '1' and extern_a(15 downto 8) = x"B1"  else
-                   '0';
+    extern_sam_wr <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF1" else
+                     '0';
+
+    extern_pam    <= '1' when extern_bus = '1' and extern_a(15 downto 8) = x"B1" else
+                     '0';
 
     cs_rom_n    <= not(extern_rom);
     cs_ram_n    <= not(extern_ram);
@@ -736,7 +755,7 @@ begin
     -- A remote access is to a device on the far side of the data buffers
     -- The tube is on the near side of the data buffers, so exclude
     -- The LED and RTC registers are internal to this module, so exclude
-    remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and extern_sam = '0' and extern_pam = '0' and
+    remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and extern_sam_rd = '0' and extern_sam_wr = '0' and extern_pam = '0' and
                               intern_led = '0' and intern_rtc = '0' and intern_sam_reg = '0' and intern_pam_reg0 = '0' and intern_pam_reg1 = '0' else '0';
 
     -- In normal mode, enable the data buffers only for remote accesses.
