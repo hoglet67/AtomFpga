@@ -65,6 +65,7 @@ entity AtomFpga_Core is
         blue             : out   std_logic_vector (2 downto 0);
         vsync            : out   std_logic;
         hsync            : out   std_logic;
+        blank            : out   std_logic;
         -- External 6502 bus interface
         phi2             : out   std_logic;
         sync             : out   std_logic;
@@ -147,8 +148,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal vdg_blue          : std_logic;
     signal vdg_hsync         : std_logic;
     signal vdg_vsync         : std_logic;
-    signal vdg_hblank        : std_logic;
-    signal vdg_vblank        : std_logic;
+    signal vdg_blank         : std_logic;
 
 ----------------------------------------------------
 -- Device enables
@@ -346,6 +346,7 @@ begin
             final_blue => vdg_blue,
             final_vsync => vdg_vsync,
             final_hsync => vdg_hsync,
+            final_blank => vdg_blank,
             charSet => charSet
             );
 
@@ -355,6 +356,7 @@ begin
     blue(2 downto 0)  <= vdg_blue & vdg_blue & vdg_blue;
     vsync             <= vdg_vsync;
     hsync             <= vdg_hsync;
+    blank             <= vdg_blank;
 
 ---------------------------------------------------------------------
 -- 8255 PIA
