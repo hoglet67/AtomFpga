@@ -144,6 +144,9 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal extern_ce       : std_logic;
     signal extern_we       : std_logic;
 
+    -- Video
+    signal vga_blank       : std_logic;
+
     -- Audio mixer and DAC
     constant dacwidth      : integer := 16; -- this needs to match the MCP4822 frame size
 
@@ -406,6 +409,7 @@ begin
         blue(0)             => open,
         vsync               => vga_vsync,
         hsync               => vga_hsync,
+        blank               => vga_blank,
 
         phi2                => phi2,
         sync                => sync,
@@ -1072,5 +1076,10 @@ begin
                 x"00";
 
     rtc_irq_n <= not(rtc_irq_flags(7));
+
+    --vga_red1  <= '0';
+    --vga_red2  <= '0';
+    --vga_blue1 <= '0' when vga_blank = '1' else '1';
+    --vga_blue2 <= '0' when vga_blank = '1' else '1';
 
 end behavioral;
