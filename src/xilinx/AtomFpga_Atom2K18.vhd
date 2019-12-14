@@ -201,6 +201,8 @@ architecture behavioral of AtomFpga_Atom2K18 is
 
     -- Video
     signal vga_blank       : std_logic;
+    signal hsync_vga       : std_logic;
+    signal vsync_vga       : std_logic;
     signal red_vga         : std_logic_vector(2 downto 0);
     signal green_vga       : std_logic_vector(2 downto 0);
     signal blue_vga        : std_logic_vector(2 downto 0);
@@ -433,8 +435,8 @@ begin
         red                 => red_vga,
         green               => green_vga,
         blue                => blue_vga,
-        vsync               => vga_vsync,
-        hsync               => vga_hsync,
+        vsync               => vsync_vga,
+        hsync               => hsync_vga,
         blank               => vga_blank,
 
         phi2                => phi2,
@@ -1172,132 +1174,141 @@ begin
        end if;
     end process;
 
-    process
+    logical_colour <= red_vga(2) & green_vga(2) & green_vga(1) & blue_vga(2);
+
+    -- Making this a synchronous process should improve the timing
+    -- and potentially make the
+    process (clock_25)
     begin
-      logical_colour <= red_vga(2) & green_vga(2) & green_vga(1) & blue_vga(2);
-      if (vga_blank = '1') then
-         vga_red1   <= '0';
-         vga_red2   <= '0';
-         vga_green1 <= '0';
-         vga_green2 <= '0';
-         vga_blue1  <= '0';
-         vga_blue2  <= '0';
-      else
-         case logical_colour is
-            when "0000" =>
-               vga_red1   <= palette0(7);
-               vga_red2   <= palette0(6);
-               vga_green1 <= palette0(5);
-               vga_green2 <= palette0(4);
-               vga_blue1  <= palette0(3);
-               vga_blue2  <= palette0(2);
-            when "0001" =>
-               vga_red1   <= palette1(7);
-               vga_red2   <= palette1(6);
-               vga_green1 <= palette1(5);
-               vga_green2 <= palette1(4);
-               vga_blue1  <= palette1(3);
-               vga_blue2  <= palette1(2);
-            when "0010" =>
-               vga_red1   <= palette2(7);
-               vga_red2   <= palette2(6);
-               vga_green1 <= palette2(5);
-               vga_green2 <= palette2(4);
-               vga_blue1  <= palette2(3);
-               vga_blue2  <= palette2(2);
-            when "0011" =>
-               vga_red1   <= palette3(7);
-               vga_red2   <= palette3(6);
-               vga_green1 <= palette3(5);
-               vga_green2 <= palette3(4);
-               vga_blue1  <= palette3(3);
-               vga_blue2  <= palette3(2);
-            when "0100" =>
-               vga_red1   <= palette4(7);
-               vga_red2   <= palette4(6);
-               vga_green1 <= palette4(5);
-               vga_green2 <= palette4(4);
-               vga_blue1  <= palette4(3);
-               vga_blue2  <= palette4(2);
-            when "0101" =>
-               vga_red1   <= palette5(7);
-               vga_red2   <= palette5(6);
-               vga_green1 <= palette5(5);
-               vga_green2 <= palette5(4);
-               vga_blue1  <= palette5(3);
-               vga_blue2  <= palette5(2);
-            when "0110" =>
-               vga_red1   <= palette6(7);
-               vga_red2   <= palette6(6);
-               vga_green1 <= palette6(5);
-               vga_green2 <= palette6(4);
-               vga_blue1  <= palette6(3);
-               vga_blue2  <= palette6(2);
-            when "0111" =>
-               vga_red1   <= palette7(7);
-               vga_red2   <= palette7(6);
-               vga_green1 <= palette7(5);
-               vga_green2 <= palette7(4);
-               vga_blue1  <= palette7(3);
-               vga_blue2  <= palette7(2);
-            when "1000" =>
-               vga_red1   <= palette8(7);
-               vga_red2   <= palette8(6);
-               vga_green1 <= palette8(5);
-               vga_green2 <= palette8(4);
-               vga_blue1  <= palette8(3);
-               vga_blue2  <= palette8(2);
-            when "1001" =>
-               vga_red1   <= palette9(7);
-               vga_red2   <= palette9(6);
-               vga_green1 <= palette9(5);
-               vga_green2 <= palette9(4);
-               vga_blue1  <= palette9(3);
-               vga_blue2  <= palette9(2);
-            when "1010" =>
-               vga_red1   <= palette10(7);
-               vga_red2   <= palette10(6);
-               vga_green1 <= palette10(5);
-               vga_green2 <= palette10(4);
-               vga_blue1  <= palette10(3);
-               vga_blue2  <= palette10(2);
-            when "1011" =>
-               vga_red1   <= palette11(7);
-               vga_red2   <= palette11(6);
-               vga_green1 <= palette11(5);
-               vga_green2 <= palette11(4);
-               vga_blue1  <= palette11(3);
-               vga_blue2  <= palette11(2);
-            when "1100" =>
-               vga_red1   <= palette12(7);
-               vga_red2   <= palette12(6);
-               vga_green1 <= palette12(5);
-               vga_green2 <= palette12(4);
-               vga_blue1  <= palette12(3);
-               vga_blue2  <= palette12(2);
-            when "1101" =>
-               vga_red1   <= palette13(7);
-               vga_red2   <= palette13(6);
-               vga_green1 <= palette13(5);
-               vga_green2 <= palette13(4);
-               vga_blue1  <= palette13(3);
-               vga_blue2  <= palette13(2);
-            when "1110" =>
-               vga_red1   <= palette14(7);
-               vga_red2   <= palette14(6);
-               vga_green1 <= palette14(5);
-               vga_green2 <= palette14(4);
-               vga_blue1  <= palette14(3);
-               vga_blue2  <= palette14(2);
-            when others =>
-               vga_red1   <= red_vga(2);
-               vga_red2   <= red_vga(1);
-               vga_green1 <= green_vga(2);
-               vga_green2 <= green_vga(1);
-               vga_blue1  <= blue_vga(2);
-               vga_blue2  <= blue_vga(1);
-          end case;
-       end if;
+        if rising_edge(clock_25) then
+            if (vga_blank = '1') then
+                vga_red1   <= '0';
+                vga_red2   <= '0';
+                vga_green1 <= '0';
+                vga_green2 <= '0';
+                vga_blue1  <= '0';
+                vga_blue2  <= '0';
+            else
+                case logical_colour is
+                    when "0000" =>
+                        vga_red1   <= palette0(7);
+                        vga_red2   <= palette0(6);
+                        vga_green1 <= palette0(5);
+                        vga_green2 <= palette0(4);
+                        vga_blue1  <= palette0(3);
+                        vga_blue2  <= palette0(2);
+                    when "0001" =>
+                        vga_red1   <= palette1(7);
+                        vga_red2   <= palette1(6);
+                        vga_green1 <= palette1(5);
+                        vga_green2 <= palette1(4);
+                        vga_blue1  <= palette1(3);
+                        vga_blue2  <= palette1(2);
+                    when "0010" =>
+                        vga_red1   <= palette2(7);
+                        vga_red2   <= palette2(6);
+                        vga_green1 <= palette2(5);
+                        vga_green2 <= palette2(4);
+                        vga_blue1  <= palette2(3);
+                        vga_blue2  <= palette2(2);
+                    when "0011" =>
+                        vga_red1   <= palette3(7);
+                        vga_red2   <= palette3(6);
+                        vga_green1 <= palette3(5);
+                        vga_green2 <= palette3(4);
+                        vga_blue1  <= palette3(3);
+                        vga_blue2  <= palette3(2);
+                    when "0100" =>
+                        vga_red1   <= palette4(7);
+                        vga_red2   <= palette4(6);
+                        vga_green1 <= palette4(5);
+                        vga_green2 <= palette4(4);
+                        vga_blue1  <= palette4(3);
+                        vga_blue2  <= palette4(2);
+                    when "0101" =>
+                        vga_red1   <= palette5(7);
+                        vga_red2   <= palette5(6);
+                        vga_green1 <= palette5(5);
+                        vga_green2 <= palette5(4);
+                        vga_blue1  <= palette5(3);
+                        vga_blue2  <= palette5(2);
+                    when "0110" =>
+                        vga_red1   <= palette6(7);
+                        vga_red2   <= palette6(6);
+                        vga_green1 <= palette6(5);
+                        vga_green2 <= palette6(4);
+                        vga_blue1  <= palette6(3);
+                        vga_blue2  <= palette6(2);
+                    when "0111" =>
+                        vga_red1   <= palette7(7);
+                        vga_red2   <= palette7(6);
+                        vga_green1 <= palette7(5);
+                        vga_green2 <= palette7(4);
+                        vga_blue1  <= palette7(3);
+                        vga_blue2  <= palette7(2);
+                    when "1000" =>
+                        vga_red1   <= palette8(7);
+                        vga_red2   <= palette8(6);
+                        vga_green1 <= palette8(5);
+                        vga_green2 <= palette8(4);
+                        vga_blue1  <= palette8(3);
+                        vga_blue2  <= palette8(2);
+                    when "1001" =>
+                        vga_red1   <= palette9(7);
+                        vga_red2   <= palette9(6);
+                        vga_green1 <= palette9(5);
+                        vga_green2 <= palette9(4);
+                        vga_blue1  <= palette9(3);
+                        vga_blue2  <= palette9(2);
+                    when "1010" =>
+                        vga_red1   <= palette10(7);
+                        vga_red2   <= palette10(6);
+                        vga_green1 <= palette10(5);
+                        vga_green2 <= palette10(4);
+                        vga_blue1  <= palette10(3);
+                        vga_blue2  <= palette10(2);
+                    when "1011" =>
+                        vga_red1   <= palette11(7);
+                        vga_red2   <= palette11(6);
+                        vga_green1 <= palette11(5);
+                        vga_green2 <= palette11(4);
+                        vga_blue1  <= palette11(3);
+                        vga_blue2  <= palette11(2);
+                    when "1100" =>
+                        vga_red1   <= palette12(7);
+                        vga_red2   <= palette12(6);
+                        vga_green1 <= palette12(5);
+                        vga_green2 <= palette12(4);
+                        vga_blue1  <= palette12(3);
+                        vga_blue2  <= palette12(2);
+                    when "1101" =>
+                        vga_red1   <= palette13(7);
+                        vga_red2   <= palette13(6);
+                        vga_green1 <= palette13(5);
+                        vga_green2 <= palette13(4);
+                        vga_blue1  <= palette13(3);
+                        vga_blue2  <= palette13(2);
+                    when "1110" =>
+                        vga_red1   <= palette14(7);
+                        vga_red2   <= palette14(6);
+                        vga_green1 <= palette14(5);
+                        vga_green2 <= palette14(4);
+                        vga_blue1  <= palette14(3);
+                        vga_blue2  <= palette14(2);
+                    when others =>
+                        vga_red1   <= red_vga(2);
+                        vga_red2   <= red_vga(1);
+                        vga_green1 <= green_vga(2);
+                        vga_green2 <= green_vga(1);
+                        vga_blue1  <= blue_vga(2);
+                        vga_blue2  <= blue_vga(1);
+                end case;
+            end if;
+            -- Also register hsync/vsync so they are correctly
+            -- aligned with the colour changes
+            vga_hsync <= hsync_vga;
+            vga_vsync <= vsync_vga;
+        end if;
     end process;
 
     palette_data  <= palette0  when extern_a(3 downto 0) = "0000" else
