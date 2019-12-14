@@ -627,6 +627,7 @@ begin
                    test_ram_data           when CImplTestRam and test_ram_enable = '1' else
                    led_data                when                       intern_led = '1' else
                    rtc_data                when                       intern_rtc = '1' else
+                   palette_data            when                   intern_palette = '1' else
                    sam_status              when                   intern_sam_reg = '1' else
                    pam_page(7 downto 0)    when                  intern_pam_reg0 = '1' else
                    "0000000" & pam_page(8) when                  intern_pam_reg1 = '1' else
@@ -788,7 +789,7 @@ begin
     -- The tube is on the near side of the data buffers, so exclude
     -- The LED and RTC registers are internal to this module, so exclude
     remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and extern_sam_rd = '0' and extern_sam_wr = '0' and extern_pam = '0' and
-                              intern_led = '0' and intern_rtc = '0' and intern_sam_reg = '0' and intern_pam_reg0 = '0' and intern_pam_reg1 = '0' else '0';
+                              intern_led = '0' and intern_rtc = '0' and intern_palette = '0' and intern_sam_reg = '0' and intern_pam_reg0 = '0' and intern_pam_reg1 = '0' else '0';
 
     -- In normal mode, enable the data buffers only for remote accesses.
     -- In debug mode, enable the data buffers all the time.
