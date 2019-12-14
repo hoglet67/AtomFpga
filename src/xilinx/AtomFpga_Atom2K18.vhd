@@ -362,15 +362,14 @@ begin
                 reset_counter <= reset_counter + 1;
             end if;
             powerup_reset_n <= reset_counter(reset_counter'high);
+            -- logically or the internal and external resets, for use in this file
+            -- this is now synchronised to the 32MHz clock
+            reset_n <= ext_reset_n and int_reset_n;
         end if;
     end process;
 
     -- logically or the powerup and bus resets, to pass down to the core
     ext_reset_n <= powerup_reset_n and bus_rst_n;
-
-    -- logically or the internal and external resets, for use in this file
-    -- (not currently used)
-    reset_n <= ext_reset_n and int_reset_n;
 
     -- Drive the external reset low when there's a power up reset, or
     -- when int_reset_n (currently just F10 on the PS/2 keyboard).
