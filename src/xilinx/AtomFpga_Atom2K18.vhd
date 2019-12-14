@@ -190,9 +190,9 @@ architecture behavioral of AtomFpga_Atom2K18 is
         0  => "000000",
         1  => "000011",
         2  => "000100",
-        3  => "001111",
+        3  => "000111",
         4  => "001000",
-        5  => "001111",
+        5  => "001011",
         6  => "001100",
         7  => "001111",
         8  => "110000",
@@ -1127,9 +1127,9 @@ begin
                 palette(0)  <= "000000";
                 palette(1)  <= "000011";
                 palette(2)  <= "000100";
-                palette(3)  <= "001111";
+                palette(3)  <= "000111";
                 palette(4)  <= "001000";
-                palette(5)  <= "001111";
+                palette(5)  <= "001011";
                 palette(6)  <= "001100";
                 palette(7)  <= "001111";
                 palette(8)  <= "110000";
@@ -1168,12 +1168,12 @@ begin
         end if;
     end process;
 
-    vga_red1   <= physical_colour(5);
-    vga_red2   <= physical_colour(4);
-    vga_green1 <= physical_colour(3);
-    vga_green2 <= physical_colour(2);
-    vga_blue1  <= physical_colour(1);
-    vga_blue2  <= physical_colour(0);
+    vga_red2   <= physical_colour(5);
+    vga_red1   <= physical_colour(4);
+    vga_green2 <= physical_colour(3);
+    vga_green1 <= physical_colour(2);
+    vga_blue2  <= physical_colour(1);
+    vga_blue1  <= physical_colour(0);
 
     palette_data  <= palette(conv_integer(extern_a(3 downto 0))) & "00";
 
