@@ -178,7 +178,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal intern_pam_reg1 : std_logic; -- enable for #BFF9
     signal intern_sam_reg  : std_logic; -- enable for #BFF2
     signal intern_palette  : std_logic; -- enable for #B01x
-    
+
     -- Colour palette registers
     signal palette_data    : std_logic_vector(7 downto 0);
     signal logical_colour  : std_logic_vector(3 downto 0);
@@ -198,7 +198,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal palette13       : std_logic_vector(7 downto 0) := "11101100";
     signal palette14       : std_logic_vector(7 downto 0) := "11110000";
     signal palette15       : std_logic_vector(7 downto 0) := "11111100";
-    
+
     -- Video
     signal vga_blank       : std_logic;
     signal red_vga         : std_logic_vector(2 downto 0);
@@ -1172,7 +1172,7 @@ begin
        end if;
     end process;
 
-    process 
+    process
     begin
       logical_colour <= red_vga(2) & green_vga(2) & green_vga(1) & blue_vga(2);
       if (vga_blank = '1') then
@@ -1182,7 +1182,7 @@ begin
          vga_green2 <= '0';
          vga_blue1  <= '0';
          vga_blue2  <= '0';
-      else 
+      else
          case logical_colour is
             when "0000" =>
                vga_red1   <= palette0(7);
@@ -1299,7 +1299,7 @@ begin
           end case;
        end if;
     end process;
-    
+
     palette_data  <= palette0  when extern_a(3 downto 0) = "0000" else
                      palette1  when extern_a(3 downto 0) = "0001" else
                      palette2  when extern_a(3 downto 0) = "0010" else
@@ -1317,5 +1317,5 @@ begin
                      palette14 when extern_a(3 downto 0) = "1110" else
                      palette15 when extern_a(3 downto 0) = "1111" else
                      x"00";
-                  
+
 end behavioral;
