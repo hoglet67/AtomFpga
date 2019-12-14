@@ -182,22 +182,28 @@ architecture behavioral of AtomFpga_Atom2K18 is
     -- Colour palette registers
     signal palette_data    : std_logic_vector(7 downto 0);
     signal logical_colour  : std_logic_vector(3 downto 0);
-    signal palette0        : std_logic_vector(7 downto 0) := "00000000";
-    signal palette1        : std_logic_vector(7 downto 0) := "00001100";
-    signal palette2        : std_logic_vector(7 downto 0) := "00010000";
-    signal palette3        : std_logic_vector(7 downto 0) := "00111100";
-    signal palette4        : std_logic_vector(7 downto 0) := "00100000";
-    signal palette5        : std_logic_vector(7 downto 0) := "00111100";
-    signal palette6        : std_logic_vector(7 downto 0) := "00110000";
-    signal palette7        : std_logic_vector(7 downto 0) := "00111100";
-    signal palette8        : std_logic_vector(7 downto 0) := "11000000";
-    signal palette9        : std_logic_vector(7 downto 0) := "11001100";
-    signal palette10       : std_logic_vector(7 downto 0) := "11010000";
-    signal palette11       : std_logic_vector(7 downto 0) := "11011100";
-    signal palette12       : std_logic_vector(7 downto 0) := "11100000";
-    signal palette13       : std_logic_vector(7 downto 0) := "11101100";
-    signal palette14       : std_logic_vector(7 downto 0) := "11110000";
-    signal palette15       : std_logic_vector(7 downto 0) := "11111100";
+    signal physical_colour : std_logic_vector(5 downto 0);
+
+    type palette_type is array (0 to 15) of std_logic_vector(5 downto 0);
+
+    signal palette : palette_type := (
+        0  => "000000",
+        1  => "000011",
+        2  => "000100",
+        3  => "001111",
+        4  => "001000",
+        5  => "001111",
+        6  => "001100",
+        7  => "001111",
+        8  => "110000",
+        9  => "110011",
+        10 => "110100",
+        11 => "110111",
+        12 => "111000",
+        13 => "111011",
+        14 => "111100",
+        15 => "111111"
+        );
 
     -- Video
     signal vga_blank       : std_logic;
@@ -1114,195 +1120,46 @@ begin
 
     process (clock_32)
     begin
-       if rising_edge(clock_32) then
-          if reset_n = '0' then
-             palette0  <= "00000000";
-             palette1  <= "00001100";
-             palette2  <= "00010000";
-             palette3  <= "00111100";
-             palette4  <= "00100000";
-             palette5  <= "00111100";
-             palette6  <= "00110000";
-             palette7  <= "00111100";
-             palette8  <= "11000000";
-             palette9  <= "11001100";
-             palette10 <= "11010000";
-             palette11 <= "11011100";
-             palette12 <= "11100000";
-             palette13 <= "11101100";
-             palette14 <= "11110000";
-             palette15 <= "11111100";
-         else
-             -- write colour palette registers
-             if intern_palette = '1' and rnw = '0' and phi2 = '1' then
-                case extern_a(3 downto 0) is
-                   when "0000" =>
-                      palette0 <= extern_din;
-                   when "0001" =>
-                      palette1 <= extern_din;
-                   when "0010" =>
-                      palette2 <= extern_din;
-                   when "0011" =>
-                      palette3 <= extern_din;
-                   when "0100" =>
-                      palette4 <= extern_din;
-                   when "0101" =>
-                      palette5 <= extern_din;
-                   when "0110" =>
-                      palette6 <= extern_din;
-                   when "0111" =>
-                      palette7 <= extern_din;
-                   when "1000" =>
-                      palette8 <= extern_din;
-                   when "1001" =>
-                      palette9 <= extern_din;
-                   when "1010" =>
-                      palette10 <= extern_din;
-                   when "1011" =>
-                      palette11 <= extern_din;
-                   when "1100" =>
-                      palette12 <= extern_din;
-                   when "1101" =>
-                      palette13 <= extern_din;
-                   when "1110" =>
-                      palette14 <= extern_din;
-                   when others =>
-                      palette15 <= extern_din;
-                end case;
-             end if;
-          end if;
-       end if;
+        if rising_edge(clock_32) then
+            if reset_n = '0' then
+                -- initializing like this mean the palette will be
+                -- implemented with LUTs rather than as a block RAM
+                palette(0)  <= "000000";
+                palette(1)  <= "000011";
+                palette(2)  <= "000100";
+                palette(3)  <= "001111";
+                palette(4)  <= "001000";
+                palette(5)  <= "001111";
+                palette(6)  <= "001100";
+                palette(7)  <= "001111";
+                palette(8)  <= "110000";
+                palette(9)  <= "110011";
+                palette(10) <= "110100";
+                palette(11) <= "110111";
+                palette(12) <= "111000";
+                palette(13) <= "111011";
+                palette(14) <= "111100";
+                palette(15) <= "111111";
+            else
+                -- write colour palette registers
+                if intern_palette = '1' and rnw = '0' and phi2 = '1' then
+                    palette(conv_integer(extern_a(3 downto 0))) <= extern_din(7 downto 2);
+                end if;
+            end if;
+        end if;
     end process;
 
     logical_colour <= red_vga(2) & green_vga(2) & green_vga(1) & blue_vga(2);
 
     -- Making this a synchronous process should improve the timing
-    -- and potentially make the
+    -- and potentially make the pixels more defined
     process (clock_25)
     begin
         if rising_edge(clock_25) then
-            if (vga_blank = '1') then
-                vga_red1   <= '0';
-                vga_red2   <= '0';
-                vga_green1 <= '0';
-                vga_green2 <= '0';
-                vga_blue1  <= '0';
-                vga_blue2  <= '0';
+            if vga_blank = '1' then
+                physical_colour <= (others => '0');
             else
-                case logical_colour is
-                    when "0000" =>
-                        vga_red1   <= palette0(7);
-                        vga_red2   <= palette0(6);
-                        vga_green1 <= palette0(5);
-                        vga_green2 <= palette0(4);
-                        vga_blue1  <= palette0(3);
-                        vga_blue2  <= palette0(2);
-                    when "0001" =>
-                        vga_red1   <= palette1(7);
-                        vga_red2   <= palette1(6);
-                        vga_green1 <= palette1(5);
-                        vga_green2 <= palette1(4);
-                        vga_blue1  <= palette1(3);
-                        vga_blue2  <= palette1(2);
-                    when "0010" =>
-                        vga_red1   <= palette2(7);
-                        vga_red2   <= palette2(6);
-                        vga_green1 <= palette2(5);
-                        vga_green2 <= palette2(4);
-                        vga_blue1  <= palette2(3);
-                        vga_blue2  <= palette2(2);
-                    when "0011" =>
-                        vga_red1   <= palette3(7);
-                        vga_red2   <= palette3(6);
-                        vga_green1 <= palette3(5);
-                        vga_green2 <= palette3(4);
-                        vga_blue1  <= palette3(3);
-                        vga_blue2  <= palette3(2);
-                    when "0100" =>
-                        vga_red1   <= palette4(7);
-                        vga_red2   <= palette4(6);
-                        vga_green1 <= palette4(5);
-                        vga_green2 <= palette4(4);
-                        vga_blue1  <= palette4(3);
-                        vga_blue2  <= palette4(2);
-                    when "0101" =>
-                        vga_red1   <= palette5(7);
-                        vga_red2   <= palette5(6);
-                        vga_green1 <= palette5(5);
-                        vga_green2 <= palette5(4);
-                        vga_blue1  <= palette5(3);
-                        vga_blue2  <= palette5(2);
-                    when "0110" =>
-                        vga_red1   <= palette6(7);
-                        vga_red2   <= palette6(6);
-                        vga_green1 <= palette6(5);
-                        vga_green2 <= palette6(4);
-                        vga_blue1  <= palette6(3);
-                        vga_blue2  <= palette6(2);
-                    when "0111" =>
-                        vga_red1   <= palette7(7);
-                        vga_red2   <= palette7(6);
-                        vga_green1 <= palette7(5);
-                        vga_green2 <= palette7(4);
-                        vga_blue1  <= palette7(3);
-                        vga_blue2  <= palette7(2);
-                    when "1000" =>
-                        vga_red1   <= palette8(7);
-                        vga_red2   <= palette8(6);
-                        vga_green1 <= palette8(5);
-                        vga_green2 <= palette8(4);
-                        vga_blue1  <= palette8(3);
-                        vga_blue2  <= palette8(2);
-                    when "1001" =>
-                        vga_red1   <= palette9(7);
-                        vga_red2   <= palette9(6);
-                        vga_green1 <= palette9(5);
-                        vga_green2 <= palette9(4);
-                        vga_blue1  <= palette9(3);
-                        vga_blue2  <= palette9(2);
-                    when "1010" =>
-                        vga_red1   <= palette10(7);
-                        vga_red2   <= palette10(6);
-                        vga_green1 <= palette10(5);
-                        vga_green2 <= palette10(4);
-                        vga_blue1  <= palette10(3);
-                        vga_blue2  <= palette10(2);
-                    when "1011" =>
-                        vga_red1   <= palette11(7);
-                        vga_red2   <= palette11(6);
-                        vga_green1 <= palette11(5);
-                        vga_green2 <= palette11(4);
-                        vga_blue1  <= palette11(3);
-                        vga_blue2  <= palette11(2);
-                    when "1100" =>
-                        vga_red1   <= palette12(7);
-                        vga_red2   <= palette12(6);
-                        vga_green1 <= palette12(5);
-                        vga_green2 <= palette12(4);
-                        vga_blue1  <= palette12(3);
-                        vga_blue2  <= palette12(2);
-                    when "1101" =>
-                        vga_red1   <= palette13(7);
-                        vga_red2   <= palette13(6);
-                        vga_green1 <= palette13(5);
-                        vga_green2 <= palette13(4);
-                        vga_blue1  <= palette13(3);
-                        vga_blue2  <= palette13(2);
-                    when "1110" =>
-                        vga_red1   <= palette14(7);
-                        vga_red2   <= palette14(6);
-                        vga_green1 <= palette14(5);
-                        vga_green2 <= palette14(4);
-                        vga_blue1  <= palette14(3);
-                        vga_blue2  <= palette14(2);
-                    when others =>
-                        vga_red1   <= red_vga(2);
-                        vga_red2   <= red_vga(1);
-                        vga_green1 <= green_vga(2);
-                        vga_green2 <= green_vga(1);
-                        vga_blue1  <= blue_vga(2);
-                        vga_blue2  <= blue_vga(1);
-                end case;
+                physical_colour <= palette(conv_integer(logical_colour));
             end if;
             -- Also register hsync/vsync so they are correctly
             -- aligned with the colour changes
@@ -1311,22 +1168,13 @@ begin
         end if;
     end process;
 
-    palette_data  <= palette0  when extern_a(3 downto 0) = "0000" else
-                     palette1  when extern_a(3 downto 0) = "0001" else
-                     palette2  when extern_a(3 downto 0) = "0010" else
-                     palette3  when extern_a(3 downto 0) = "0011" else
-                     palette4  when extern_a(3 downto 0) = "0100" else
-                     palette5  when extern_a(3 downto 0) = "0101" else
-                     palette6  when extern_a(3 downto 0) = "0110" else
-                     palette7  when extern_a(3 downto 0) = "0111" else
-                     palette8  when extern_a(3 downto 0) = "1000" else
-                     palette9  when extern_a(3 downto 0) = "1001" else
-                     palette10 when extern_a(3 downto 0) = "1010" else
-                     palette11 when extern_a(3 downto 0) = "1011" else
-                     palette12 when extern_a(3 downto 0) = "1100" else
-                     palette13 when extern_a(3 downto 0) = "1101" else
-                     palette14 when extern_a(3 downto 0) = "1110" else
-                     palette15 when extern_a(3 downto 0) = "1111" else
-                     x"00";
+    vga_red1   <= physical_colour(5);
+    vga_red2   <= physical_colour(4);
+    vga_green1 <= physical_colour(3);
+    vga_green2 <= physical_colour(2);
+    vga_blue1  <= physical_colour(1);
+    vga_blue2  <= physical_colour(0);
+
+    palette_data  <= palette(conv_integer(extern_a(3 downto 0))) & "00";
 
 end behavioral;
