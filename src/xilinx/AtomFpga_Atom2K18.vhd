@@ -177,7 +177,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal intern_pam_reg0 : std_logic; -- enable for #BFF8
     signal intern_pam_reg1 : std_logic; -- enable for #BFF9
     signal intern_sam_reg  : std_logic; -- enable for #BFF2
-    signal intern_palette  : std_logic; -- enable for #B01x
+    signal intern_palette  : std_logic; -- enable for #BD0x
 
     -- Colour palette registers
     signal palette_data    : std_logic_vector(7 downto 0);
@@ -759,7 +759,7 @@ begin
     intern_sam_reg  <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF2" else '0';
     intern_pam_reg0 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF8" else '0';
     intern_pam_reg1 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF9" else '0';
-    intern_palette  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B01"  else '0';
+    intern_palette  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BD0"  else '0';
 
     ------------------------------------------------
     -- External device chip selects
