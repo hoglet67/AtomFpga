@@ -1,7 +1,7 @@
 --************************************************************************************************
 -- Top entity for AVR microcontroller (for synthesis) with JTAG OCD and DMAs
 -- Version 0.5 (Version for Xilinx)
--- Designed by Ruslan Lepetenok 
+-- Designed by Ruslan Lepetenok
 -- Modified 31.05.2006
 --************************************************************************************************
 
@@ -38,7 +38,8 @@ use WORK.MemAccessCompPack.all;
 entity AVR8 is
 generic (
      CDATAMEMSIZE : integer;
-     CPROGMEMSIZE : integer
+     CPROGMEMSIZE : integer;
+     FILENAME     : string
 );
 port (
 	 nrst   : in    std_logic;						--Uncomment this to connect reset to an external pushbutton. Must be defined in ucf.
@@ -59,7 +60,7 @@ port (
 	 spi_cs_n : out std_logic;
 	 spi_misoi : in std_logic;
 
-	-- UART 
+	-- UART
 	rxd    : in    std_logic;
 	txd    : out   std_logic
 
@@ -84,7 +85,7 @@ constant CImplExtIRQ				: boolean := TRUE;	--AVR8 Interrupt Unit
 
 -- ############################## Signals connected directly to the core ##########################################
 
-signal core_cpuwait  : std_logic;                    
+signal core_cpuwait  : std_logic;
 
 -- Program memory
 signal core_pc   : std_logic_vector (15 downto 0); -- PROM address
@@ -92,7 +93,7 @@ signal core_inst : std_logic_vector (15 downto 0); -- PROM data
 
 -- I/O registers
 signal core_adr  : std_logic_vector (15 downto 0);
-signal core_iore : std_logic;                    
+signal core_iore : std_logic;
 signal core_iowe : std_logic;
 
 -- Data memery
@@ -158,7 +159,7 @@ signal sleepi   : std_logic;
 signal irqok    : std_logic;
 signal globint  : std_logic;
 
-signal nrst_clksw : std_logic; -- Separate reset for clock gating module 
+signal nrst_clksw : std_logic; -- Separate reset for clock gating module
 
 -- Watchdog related signals
 signal wdtmout 	  : std_logic; -- Watchdog overflow
@@ -184,19 +185,19 @@ signal nrst_cp64m_tmp   : std_logic;
 
 signal ram_cp2_n        : std_logic;
 
-signal sleep_mode       : std_logic; 
+signal sleep_mode       : std_logic;
 
 -- "EEPROM" related signals
-signal EEPrgSel : std_logic; 
+signal EEPrgSel : std_logic;
 signal EEAdr    : std_logic_vector(11 downto 0);
 signal EEWrData : std_logic_vector(7 downto 0);
 signal EERdData : std_logic_vector(7 downto 0);
-signal EEWr     : std_logic; 
+signal EEWr     : std_logic;
 
 
 -- New
-signal busmin   : MastersOutBus_Type;                            
-signal busmwait : std_logic_vector(CNumOfBusMasters-1 downto 0) := (others => '0'); 
+signal busmin   : MastersOutBus_Type;
+signal busmwait : std_logic_vector(CNumOfBusMasters-1 downto 0) := (others => '0');
 
 signal slv_outs : SlavesOutBus_Type;
 
@@ -209,19 +210,19 @@ signal udma_mack    : std_logic;
 signal mem_mux_out   : std_logic_vector (7 downto 0);
 
 -- Place Holder Signals for JTAG instead of connecting them externally
-signal TRSTn         : std_logic;     
-signal TMS         : std_logic;     
-signal TCK          : std_logic;      
+signal TRSTn         : std_logic;
+signal TMS         : std_logic;
+signal TCK          : std_logic;
 signal TDI           : std_logic;
 signal TDO           : std_logic;
 
 -- AES
 
-signal aes_mack         : std_logic;        
+signal aes_mack         : std_logic;
 
 
 -- Address decoder
-signal stb_IO        : std_logic;   
+signal stb_IO        : std_logic;
 signal stb_IOmod     : std_logic_vector (CNumOfSlaves-1 downto 0);
 
 signal ram_ce      	 : std_logic;
@@ -229,7 +230,7 @@ signal ram_ce      	 : std_logic;
 signal slv_cpuwait   : std_logic;
 
 -- Memory i/f
-signal mem_ramadr       : std_logic_vector (15 downto 0);  
+signal mem_ramadr       : std_logic_vector (15 downto 0);
 signal mem_ram_dbus_in  : std_logic_vector (7 downto 0);
 signal mem_ram_dbus_out : std_logic_vector (7 downto 0);
 signal mem_ramwe        : std_logic;
@@ -284,22 +285,22 @@ signal uart_out_en   : std_logic;
 
 -- SPI
 constant c_spi_slvs_num  : integer := 1;
---signal spi_misoi         : std_logic;     
-signal spi_mosii         : std_logic; 	
-signal spi_scki          : std_logic; 	 
-signal spi_ss_b          : std_logic;      
-signal spi_misoo         : std_logic;     
---signal spi_mosio         : std_logic;     
---signal spi_scko          : std_logic;      
-signal spi_spe           : std_logic;       
-signal spi_spimaster     : std_logic; 
+--signal spi_misoi         : std_logic;
+signal spi_mosii         : std_logic;
+signal spi_scki          : std_logic;
+signal spi_ss_b          : std_logic;
+signal spi_misoo         : std_logic;
+--signal spi_mosio         : std_logic;
+--signal spi_scko          : std_logic;
+signal spi_spe           : std_logic;
+signal spi_spimaster     : std_logic;
 signal spi_dbusout		 : std_logic_vector (7 downto 0);
 signal spi_out_en   : std_logic;
 
 -- Slave selects
 signal spi_slv_sel_n     : std_logic_vector(c_spi_slvs_num-1 downto 0);
 -- SPI
-               
+
 -- ###############################################################################################################
 
 -- ############################## Define Signals for User Cores ##################################################
@@ -313,7 +314,7 @@ begin
 -- Added for Synopsys compatibility
 gnd <= '0';
 vcc  <= '1';
--- Added for Synopsys compatibility	
+-- Added for Synopsys compatibility
 
 --nrst <= '1';										--Comment this to connect reset to an external pushbutton.
 
@@ -365,18 +366,18 @@ AVR_Core_Inst:component AVR_Core port map(
 		dbusin   => core_dbusin,
 		dbusout  => core_dbusout,
 	-- Interrupts
-		irqlines => core_irqlines, 
+		irqlines => core_irqlines,
 		irqack   => core_irqack,
-		irqackad => core_irqackad, 
+		irqackad => core_irqackad,
 	--Sleep Control
 		sleepi   => sleepi,
 		irqok	   => irqok,
 		globint  => globint,
 	--Watchdog
 		wdri	   => core_wdri);
-										  
 
-RAM_Data_Register:component RAMDataReg port map(	                   
+
+RAM_Data_Register:component RAMDataReg port map(
                ireset      => core_ireset,
                cp2	       => clk16M, -- clk,
                cpuwait     => core_cpuwait,
@@ -388,19 +389,19 @@ RAM_Data_Register:component RAMDataReg port map(
 
 EXT_MUX:component external_mux port map(
 		  ramre              => mem_ramre,		   -- ramre output of the arbiter and multiplexor
-		  dbus_out           => core_dbusin,       -- Data input of the core 
+		  dbus_out           => core_dbusin,       -- Data input of the core
 		  ram_data_out       => mem_mux_out,       -- Data output of the RAM mux(RAM or memory located I/O)
 		  io_port_bus        => io_port_out,       -- Data outputs of the I/O
 		  io_port_en_bus     => io_port_out_en,    -- Out enable outputs of I/O
-		  irqack             => core_irqack,		  
+		  irqack             => core_irqack,
 		  irqackad			 => core_irqackad,
 		  ind_irq_ack		 =>	ind_irq_ack		  -- Individual interrupt acknolege for the peripheral
                                             );
 
 
--- ******************  PORTA **************************				
+-- ******************  PORTA **************************
 PORTA_Impl:if CImplPORTA generate
-PORTA_COMP:component pport  
+PORTA_COMP:component pport
 	generic map(PPortNum => 0)
 	port map(
 	                   -- AVR Control
@@ -424,30 +425,30 @@ io_port_out_en(0) <= porta_out_en;
 
 ---- Tri-state control for PORTA
 --PortAZCtrl:for i in porta'range generate
---porta(i) <= PortAReg(i) when DDRAReg(i)='1' else 'Z'; 	
+--porta(i) <= PortAReg(i) when DDRAReg(i)='1' else 'Z';
 --end generate;
 
 -- Tri-state control for PORTA
 PortAZCtrl:for i in portaout'range generate
-portaout(i) <= PortAReg(i) when DDRAReg(i)='1' else '0'; 
-								
+portaout(i) <= PortAReg(i) when DDRAReg(i)='1' else '0';
+
 end generate;
 
 
 end generate;
 
 PORTA_Not_Impl:if not CImplPORTA generate
- portaout <= (others => '0');	
-end generate; 
+ portaout <= (others => '0');
+end generate;
 
--- ******************  PORTB **************************		
+-- ******************  PORTB **************************
 PORTB_Impl:if CImplPORTB generate
-PORTB_COMP:component pport 
+PORTB_COMP:component pport
 	generic map (PPortNum => 1)
 	port map(
 	                   -- AVR Control
                ireset     => core_ireset,
-               cp2	      => clk16M, -- clk, 
+               cp2	      => clk16M, -- clk,
                adr        => core_adr,
                dbus_in    => core_dbusout,
                dbus_out   => portb_dbusout,
@@ -466,28 +467,28 @@ io_port_out_en(1) <= portb_out_en;
 
 ---- Tri-state control for PORTB
 --PortBZCtrl:for i in portb'range generate
---portb(i) <= PortBReg(i) when DDRBReg(i)='1' else 'Z'; 	
+--portb(i) <= PortBReg(i) when DDRBReg(i)='1' else 'Z';
 --end generate;
 
 -- Tri-state control for PORTB
 PortBZCtrl:for i in portbout'range generate
---portb(i) <= PortBReg(i) when DDRBReg(i)='1' else 'Z'; 
-portbout(i) <= PortBReg(i) when DDRBReg(i)='1' else '0'; 	
-				
+--portb(i) <= PortBReg(i) when DDRBReg(i)='1' else 'Z';
+portbout(i) <= PortBReg(i) when DDRBReg(i)='1' else '0';
+
 end generate;
 
 
 end generate;
 
 PORTB_Not_Impl:if not CImplPORTB generate
- portbout <= (others => '0');	
-end generate; 
-	
+ portbout <= (others => '0');
+end generate;
+
 -- ************************************************
 
--- ******************  PORTC **************************				
+-- ******************  PORTC **************************
 PORTC_Impl:if CImplPORTC generate
-PORTC_COMP:component pport  
+PORTC_COMP:component pport
 	generic map(PPortNum => 2)
 	port map(
 	                   -- AVR Control
@@ -511,29 +512,29 @@ io_port_out_en(5) <= portc_out_en;
 
 ---- Tri-state control for PORTC
 --PortCZCtrl:for i in portc'range generate
---portc(i) <= PortCReg(i) when DDRCReg(i)='1' else 'Z'; 	
+--portc(i) <= PortCReg(i) when DDRCReg(i)='1' else 'Z';
 --end generate;
 -- Tri-state control for PORTC
 PortCZCtrl:for i in portc'range generate
 portc(i) <= PortCReg(i) when DDRCReg(i)='1' else 'Z';
-				
+
 end generate;
 
 
 end generate;
 
 PORTC_Not_Impl:if not CImplPORTC generate
- portc <= (others => 'Z');	
-end generate; 
+ portc <= (others => 'Z');
+end generate;
 
--- ******************  PORTD **************************		
+-- ******************  PORTD **************************
 PORTD_Impl:if CImplPORTD generate
-PORTD_COMP:component pport 
+PORTD_COMP:component pport
 	generic map (PPortNum => 3)
 	port map(
 	                   -- AVR Control
                ireset     => core_ireset,
-               cp2	      => clk16M, -- clk, 
+               cp2	      => clk16M, -- clk,
                adr        => core_adr,
                dbus_in    => core_dbusout,
                dbus_out   => portd_dbusout,
@@ -552,25 +553,25 @@ io_port_out_en(6) <= portd_out_en;
 
 ---- Tri-state control for PORTD
 --PortDZCtrl:for i in portd'range generate
---portd(i) <= PortDReg(i) when DDRDReg(i)='1' else 'Z'; 	
+--portd(i) <= PortDReg(i) when DDRDReg(i)='1' else 'Z';
 --end generate;
 
 -- Tri-state control for PORTD
 PortDZCtrl:for i in portdout'range generate
-portdout(i) <= PortDReg(i) when DDRDReg(i)='1' else '0';				
+portdout(i) <= PortDReg(i) when DDRDReg(i)='1' else '0';
 end generate;
 
 end generate;
 
 PORTD_Not_Impl:if not CImplPORTD generate
- portdout <= (others => '0');	
-end generate; 
-	
+ portdout <= (others => '0');
+end generate;
+
 -- ************************************************
 
--- ******************  PORTE **************************				
+-- ******************  PORTE **************************
 PORTE_Impl:if CImplPORTE generate
-PORTE_COMP:component pport  
+PORTE_COMP:component pport
 	generic map(PPortNum => 4)
 	port map(
 	                   -- AVR Control
@@ -582,7 +583,7 @@ PORTE_COMP:component pport
                iore       => core_iore,
                iowe       => core_iowe,
                out_en     => porte_out_en,
-			            -- External connection					
+			            -- External connection
 			   portx      => PortEReg,
 			   ddrx       => DDREReg,
 			   pinx       => portein,
@@ -594,7 +595,7 @@ io_port_out_en(7) <= porte_out_en;
 
 ---- Tri-state control for PORTE
 --PortEZCtrl:for i in porte'range generate
---porte(i) <= PortEReg(i) when DDREReg(i)='1' else 'Z'; 	
+--porte(i) <= PortEReg(i) when DDREReg(i)='1' else 'Z';
 --end generate;
 
 -- Tri-state control for PORTE
@@ -605,17 +606,17 @@ end generate;
 end generate;
 
 PORTE_Not_Impl:if not CImplPORTE generate
- porteout <= (others => 'Z');	
-end generate; 
+ porteout <= (others => 'Z');
+end generate;
 
--- ******************  PORTF **************************		
+-- ******************  PORTF **************************
 PORTF_Impl:if CImplPORTF generate
-PORTF_COMP:component pport 
+PORTF_COMP:component pport
 	generic map (PPortNum => 5)
 	port map(
 	                   -- AVR Control
                ireset     => core_ireset,
-               cp2	      => clk16M, -- clk, 
+               cp2	      => clk16M, -- clk,
                adr        => core_adr,
                dbus_in    => core_dbusout,
                dbus_out   => portf_dbusout,
@@ -641,9 +642,9 @@ end generate;
 end generate;
 
 PORTF_Not_Impl:if not CImplPORTF generate
- portf <= (others => 'Z');	
-end generate; 
-	
+ portf <= (others => 'Z');
+end generate;
+
 -- ************************************************
 
 
@@ -656,18 +657,18 @@ ExtIRQ_Inst:component ExtIRQ_Controller port map(
                     clken	  => vcc,
                     irq_clken  => vcc,
                     adr        => core_adr,
-                    dbus_in    => core_dbusout, 
-                    dbus_out   => extirq_dbusout, 
+                    dbus_in    => core_dbusout,
+                    dbus_out   => extirq_dbusout,
                     iore       => core_iore,
                     iowe       => core_iowe,
                     out_en     => extirq_out_en,
                     ------------------------------------------------
-                    extpins	  => ext_irqlines,			
-                    INTx      => core_irqlines(7 downto 0));			   
+                    extpins	  => ext_irqlines,
+                    INTx      => core_irqlines(7 downto 0));
 
--- ExtIRQ connection to the external multiplexer							  
+-- ExtIRQ connection to the external multiplexer
 io_port_out(10)    <= extirq_dbusout;
-io_port_out_en(10) <= extirq_out_en; 
+io_port_out_en(10) <= extirq_out_en;
 end generate;
 
 --****************** Timer/Counter **************************
@@ -682,7 +683,7 @@ TmrCnt_Inst:component Timer_Counter port map(
 			   tmr_running    => gnd,
                adr        => core_adr,
                dbus_in    => core_dbusout,
-               dbus_out   => tc_dbusout, 
+               dbus_out   => tc_dbusout,
                iore       => core_iore,
                iowe       => core_iowe,
                out_en     => tc_out_en,
@@ -716,7 +717,7 @@ TmrCnt_Inst:component Timer_Counter port map(
 				PWM2bit		   => open);
 
 
--- Timer/Counter connection to the external multiplexer							  
+-- Timer/Counter connection to the external multiplexer
 io_port_out(4)    <= tc_dbusout;
 io_port_out_en(4) <= tc_out_en;
 end generate;
@@ -725,7 +726,7 @@ end generate;
 wdtmout <= '0';
 
 
--- Reset generator						 
+-- Reset generator
 ResetGenerator_Inst:component ResetGenerator port map(
 	                            -- Clock inputs
 								cp2	       => clk16M, -- clk,
@@ -741,7 +742,7 @@ ResetGenerator_Inst:component ResetGenerator port map(
 								nrst_clksw => nrst_clksw
 								);
 
-						   
+
 ClockGatingDis:if not CImplClockSw generate
  core_cp2 <=  clk16M;
 end generate;
@@ -750,7 +751,7 @@ end generate;
 
 ram_cp2_n <= not clk16M;
 
----- Data memory(8-bit)					   
+---- Data memory(8-bit)
 DM_Inst : entity work.XDM
 generic map (
     WIDTH => 8,
@@ -759,17 +760,18 @@ generic map (
 port map(
     cp2     => ram_cp2_n,
 	ce      => vcc,
-	address => mem_ramadr(f_log2(CDATAMEMSIZE) - 1 downto 0), 
-	din     => mem_ram_dbus_in, 
-	dout    => mem_ram_dbus_out, 
+	address => mem_ramadr(f_log2(CDATAMEMSIZE) - 1 downto 0),
+	din     => mem_ram_dbus_in,
+	dout    => mem_ram_dbus_out,
 	we      => ram_ramwe
 );
 
--- Program memory					   
+-- Program memory
 PM_Inst : entity work.XPM
 generic map (
-    WIDTH => 16,
-    SIZE  => CPROGMEMSIZE
+    WIDTH    => 16,
+    SIZE     => CPROGMEMSIZE,
+    FILENAME => FILENAME
 )
 port map(
     cp2     => ram_cp2_n,
@@ -778,8 +780,8 @@ port map(
     din     => pm_din,
     dout    => pm_dout,
     we      => pm_l_we
-);  
-					   					   
+);
+
 -- **********************  JTAG and memory **********************************************
 
 -- Sleep mode is not implemented
@@ -805,7 +807,7 @@ JTAGOCDPrgTop_Inst:component JTAGOCDPrgTop port map(
 						  pm_l_we      => pm_l_we,
 						  pm_dout      => pm_dout,
 						  pm_din       => pm_din,
-						  -- To the "EEPROM" 
+						  -- To the "EEPROM"
 						  EEPrgSel     => EEPrgSel,
 						  EEAdr        => EEAdr,
 						  EEWrData     => EEWrData,
@@ -817,67 +819,67 @@ JTAGOCDPrgTop_Inst:component JTAGOCDPrgTop port map(
 
 -- JTAG OCD module connection to the external multiplexer
 io_port_out(3) <= (others => '0');
-io_port_out_en(3) <= gnd;						  
-						  
-TDO <= TDO_Out when TDO_OE='1' else 'Z'; 						  
+io_port_out_en(3) <= gnd;
 
--- *******************************************************************************************************	
+TDO <= TDO_Out when TDO_OE='1' else 'Z';
+
+-- *******************************************************************************************************
 -- DMA, Memory decoder, ...
--- *******************************************************************************************************	
+-- *******************************************************************************************************
 
--- ******************  SPI **************************		
-spi_is_used:if CImplSPI generate	
+-- ******************  SPI **************************
+spi_is_used:if CImplSPI generate
 spi_mod_inst:component spi_mod port map(
 	                -- AVR Control
                     ireset     => core_ireset,
                     cp2	       => clk16M,
-                    adr        => core_adr,    
+                    adr        => core_adr,
                     dbus_in    => core_dbusout,
-                    dbus_out   => spi_dbusout, 
-                    iore       => core_iore,   
-                    iowe       => core_iowe,   
-                    out_en     => spi_out_en,        
+                    dbus_out   => spi_dbusout,
+                    iore       => core_iore,
+                    iowe       => core_iowe,
+                    out_en     => spi_out_en,
                     -- SPI i/f
-					misoi	   => spi_misoi, 
-					mosii	   => spi_mosii, 
-					scki       => spi_scki, 
-					ss_b       => spi_ss_b, 
-					misoo	   => spi_misoo, 
-					mosio	   => spi_mosio, 
-					scko	   => spi_scko, 
-					spe        => spi_spe, 
-					spimaster  => spi_spimaster, 
+					misoi	   => spi_misoi,
+					mosii	   => spi_mosii,
+					scki       => spi_scki,
+					ss_b       => spi_ss_b,
+					misoo	   => spi_misoo,
+					mosio	   => spi_mosio,
+					scko	   => spi_scko,
+					spe        => spi_spe,
+					spimaster  => spi_spimaster,
 					-- IRQ
 					spiirq     => core_irqlines(16),
-					spiack     => ind_irq_ack(16),  
+					spiack     => ind_irq_ack(16),
 					-- Slave Programming Mode
 					por		   => gnd,
 					spiextload => gnd,
 					spidwrite  => open,
 					spiload    => open
-                    );		
+                    );
 
--- SPI connection to the external multiplexer							  
+-- SPI connection to the external multiplexer
 io_port_out(9)    <= spi_dbusout;
-io_port_out_en(9) <= spi_out_en;						  
+io_port_out_en(9) <= spi_out_en;
 
 -- Pads
 --mosi_SIG <= spi_mosio when (spi_spimaster='1') else 'Z';
 --miso_SIG <= spi_misoo when (spi_spimaster='0') else 'Z';
---sck_SIG	 <= spi_scko  when (spi_spimaster='1') else 'Z'; 
---	
---spi_misoi <= miso_SIG; 	
---spi_mosii <= mosi_SIG;	
---spi_scki  <= sck_SIG; 	
-spi_ss_b  <= vcc; 	
+--sck_SIG	 <= spi_scko  when (spi_spimaster='1') else 'Z';
+--
+--spi_misoi <= miso_SIG;
+--spi_mosii <= mosi_SIG;
+--spi_scki  <= sck_SIG;
+spi_ss_b  <= vcc;
 -- Pads
 
 spi_slv_sel_inst:component spi_slv_sel generic map(num_of_slvs => c_spi_slvs_num)
 	              port map(
 	                -- AVR Control
-                    ireset     => core_ireset,      
-                    cp2	       => core_cp2,         
-                    adr        => core_adr,    
+                    ireset     => core_ireset,
+                    cp2	       => core_cp2,
+                    adr        => core_adr,
                     dbus_in    => core_dbusout,
                     dbus_out   => open,
                     iore       => core_iore,
@@ -885,7 +887,7 @@ spi_slv_sel_inst:component spi_slv_sel generic map(num_of_slvs => c_spi_slvs_num
                     out_en     => open,
 					-- Output
                     slv_sel_n  => spi_slv_sel_n
-                    );			
+                    );
 
 end generate;
 
@@ -893,7 +895,7 @@ spi_cs_n <= spi_slv_sel_n(0);
 
 no_spi:if not CImplSPI generate
 --mosi_SIG <= 'Z';
---miso_SIG <=	'Z'; 
+--miso_SIG <=	'Z';
 --sck_SIG	 <=	'Z';
 
 --io_slv_out(1).dbusout <= (others => '0');
@@ -926,7 +928,7 @@ uart_Inst:component uart port map(
 		            );
 
 
--- UART connection to the external multiplexer							  
+-- UART connection to the external multiplexer
 io_port_out(2)    <= uart_dbusout;
 io_port_out_en(2) <= uart_out_en;
 
@@ -947,25 +949,25 @@ ArbiterAndMux_Inst:component ArbiterAndMux port map(
 						cpuwait    => slv_cpuwait
 						);
 
--- cpuwait 
+-- cpuwait
 slv_cpuwait <= '0';
-						
--- Core connection						
-busmin(0).ramadr <= core_ramadr; 						
+
+-- Core connection
+busmin(0).ramadr <= core_ramadr;
 busmin(0).dout   <=	ram_din; -- !!!
 busmin(0).ramre  <=	core_ramre;
-busmin(0).ramwe  <=	core_ramwe;				
+busmin(0).ramwe  <=	core_ramwe;
 core_cpuwait     <=	busmwait(0);
 
--- UART DMA connection						
-busmin(1).ramadr <= (others => '0'); 						
+-- UART DMA connection
+busmin(1).ramadr <= (others => '0');
 busmin(1).dout   <=	(others => '0'); -- !!!
 busmin(1).ramre  <=	gnd;
-busmin(1).ramwe  <=	gnd;				
+busmin(1).ramwe  <=	gnd;
 udma_mack        <=  not busmwait(1);
 
 -- AES DMA connection
-busmin(2).ramadr <= (others => '0');		
+busmin(2).ramadr <= (others => '0');
 busmin(2).dout   <=	(others => '0');
 busmin(2).ramre  <=	gnd;
 busmin(2).ramwe  <=	gnd;
@@ -973,11 +975,11 @@ aes_mack         <=  not busmwait(2);
 
 -- UART DMA slave part
 slv_outs(0).dout    <= (others => '0');
-slv_outs(0).out_en 	<= gnd;	
+slv_outs(0).out_en 	<= gnd;
 
 -- AES DMA slave part
 slv_outs(1).dout    <= (others => '0');
-slv_outs(1).out_en 	<= gnd;	
+slv_outs(1).out_en 	<= gnd;
 
 
 -- Memory read mux
@@ -992,7 +994,7 @@ MemRdMux_inst:component MemRdMux port map(
 
 -- Address decoder
 RAMAdrDcd_Inst:component RAMAdrDcd port map(
-                         ramadr    => mem_ramadr, 
+                         ramadr    => mem_ramadr,
 		                 ramre     => mem_ramre,
 		                 ramwe     => mem_ramwe,
 		                 -- Memory mapped I/O i/f

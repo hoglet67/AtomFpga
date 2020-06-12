@@ -150,6 +150,8 @@ entity T65 is
     A       : out std_logic_vector(23 downto 0);
     DI      : in  std_logic_vector(7 downto 0);
     DO      : out std_logic_vector(7 downto 0);
+    -- 6502 registers (MSB) PC, SP, P, Y, X, A (LSB)
+    Regs    : out std_logic_vector(63 downto 0);
     DEBUG   : out T_t65_dbg
   );
 end T65;
@@ -253,6 +255,8 @@ begin
   DEBUG.Y <= Y(7 downto 0);
   DEBUG.S <= std_logic_vector(S(7 downto 0));
   DEBUG.P <= P;
+
+  Regs <= std_logic_vector(PC) & std_logic_vector(S)& P & Y(7 downto 0) & X(7 downto 0) & ABC(7 downto 0);
 
   mcode : entity work.T65_MCode
     port map(

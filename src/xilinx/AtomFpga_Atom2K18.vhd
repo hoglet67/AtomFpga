@@ -26,6 +26,15 @@ use unisim.vcomponents.all;
 
 entity AtomFpga_Atom2K18 is
     generic (
+        -- Set CImplCpu65c02 to true use a 65C02 core rather than a 6502
+        CImplCpu65c02  : boolean := false;
+
+        -- Set CImplDebugger to true to enables the ICE-6502 Debugger, but
+        -- also disables AtoMMC and SID as there is nor space for both. An
+        -- external AtoMMC can be used with Roland's FPGAtom Extender board.
+        CImplDebugger  : boolean := false;
+
+        -- These are obsolete and should be removed
         CImplTestRom   : boolean := false;
         CImplTestRam   : boolean := false
         );
@@ -116,12 +125,14 @@ architecture behavioral of AtomFpga_Atom2K18 is
     -- Clock generation
     signal clk0            : std_logic;
     signal clk1            : std_logic;
+    signal clk2            : std_logic;
     signal clkfb           : std_logic;
     signal clkfb_buf       : std_logic;
     signal clkin_buf       : std_logic;
     signal clock_16        : std_logic;
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
+    signal clock_avr       : std_logic;
 
     -- Reset generation
     signal reset_n         : std_logic;
@@ -302,7 +313,7 @@ begin
             CLKOUT1_DIVIDE       => 25,      -- 800 / 25 = 32MHz
             CLKOUT1_PHASE        => 0.000,
             CLKOUT1_DUTY_CYCLE   => 0.500,
-            CLKOUT2_DIVIDE       => 100,     -- 800 / 100 = 8MHz
+            CLKOUT2_DIVIDE       => 31,      -- 800 / 31 = 25.0864MHz
             CLKOUT2_PHASE        => 0.000,
             CLKOUT2_DUTY_CYCLE   => 0.500,
             CLKIN_PERIOD         => 20.000,
@@ -313,6 +324,7 @@ begin
             CLKFBOUT            => clkfb,
             CLKOUT0             => clk0,
             CLKOUT1             => clk1,
+            CLKOUT2             => clk2,
             RST                 => '0',
             -- Input clock control
             CLKFBIN             => clkfb_buf,
@@ -336,6 +348,18 @@ begin
             I => clk1,
             O => clock_32
             );
+
+    avr_gen_0: if CImplDebugger generate
+        inst_clk2_buf : BUFG
+            port map (
+                I => clk2,
+                O => clock_avr
+            );
+    end generate;
+
+    avr_gen_1: if not CImplDebugger generate
+        clock_avr <= clock_32;
+    end generate;
 
     inst_DCM : DCM
         generic map (
@@ -390,11 +414,13 @@ begin
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
+        CImplCpu65c02           => CImplCpu65c02,
+        CImplDebugger           => CImplDebugger,
         CImplSDDOS              => false,
-        CImplAtoMMC2            => true,   -- disable so building is faster
+        CImplAtoMMC2            => not CImplDebugger,
         CImplGraphicsExt        => true,
         CImplSoftChar           => true,
-        CImplSID                => true,
+        CImplSID                => not CImplDebugger,
         CImplVGA80x40           => true,
         CImplHWScrolling        => true,
         CImplMouse              => true,
@@ -412,7 +438,7 @@ begin
      port map(
         clk_vga             => clock_25,
         clk_main            => clock_32,
-        clk_avr             => clock_32,
+        clk_avr             => clock_avr,
         clk_dac             => clock_32,
         clk_32M00           => clock_32,
 

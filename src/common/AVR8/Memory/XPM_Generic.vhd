@@ -5,10 +5,15 @@ use IEEE.std_logic_unsigned.all;
 -- For f_log2 definition
 use WORK.SynthCtrlPack.all;
 
+-- For loadin
+use std.textio.all;
+use IEEE.std_logic_textio.all;
+
 entity XPM is
     generic (
-        WIDTH : integer;
-        SIZE  : integer
+        WIDTH    : integer;
+        SIZE     : integer;
+        FILENAME : string
     );
     port(
         cp2     : in  std_logic;
@@ -21,14 +26,22 @@ entity XPM is
 end;
 
 architecture RTL of XPM is
-    
-    -- Stop Xilinx Tools optimizing the memories because the contents are identical
-    attribute equivalent_register_removal: string;
-    attribute equivalent_register_removal of address : signal is "no";
 
-    type ram_type is array (SIZE - 1 downto 0) of std_logic_vector (WIDTH - 1 downto 0);
+    type ram_type is array (0 to SIZE - 1) of std_logic_vector (WIDTH - 1 downto 0);
 
-    signal RAM : ram_type;
+    impure function InitRamFromFile (RamFileName : in string) return ram_type is
+        FILE ramfile : text is in RamFileName;
+        variable RamFileLine : line;
+        variable ram : ram_type;
+    begin
+        for i in ram_type'range loop
+            readline(ramfile, RamFileLine);
+            hread(RamFileLine, ram(i));
+        end loop;
+        return ram;
+    end function;
+
+    signal RAM : ram_type := InitRamFromFile(FILENAME);
 
 begin
 

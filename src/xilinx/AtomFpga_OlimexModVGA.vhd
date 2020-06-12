@@ -106,7 +106,7 @@ begin
         CImplAtoMMC2            => false,
         CImplGraphicsExt        => false,
         CImplSoftChar           => false,
-        CImplSID                => true,
+        CImplSID                => false,
         CImplVGA80x40           => false,
         CImplHWScrolling        => false,
         CImplMouse              => false,

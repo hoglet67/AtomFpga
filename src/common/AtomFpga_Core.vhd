@@ -21,6 +21,8 @@ use ieee.numeric_std.all;
 
 entity AtomFpga_Core is
     generic (
+       CImplCpu65c02           : boolean := false;
+       CImplDebugger           : boolean := false;
        CImplSDDOS              : boolean;
        CImplAtoMMC2            : boolean;
        CImplGraphicsExt        : boolean;
@@ -44,7 +46,7 @@ entity AtomFpga_Core is
         -- Clocking
         clk_vga          : in    std_logic; -- nominally 25.175MHz VGA clock
         clk_main         : in    std_logic; -- clock for the main system
-        clk_avr          : in    std_logic; -- clock for the AtoMMC2 AVR
+        clk_avr          : in    std_logic; -- clock for the AVR (AtoMMC or Debugger)
         clk_dac          : in    std_logic; -- fast clock for the 1-bit DAC
         clk_32M00        : in    std_logic; -- fixed clock, used for SID and casette
         -- Keyboard/mouse
@@ -132,6 +134,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal cpu_din           : std_logic_vector (7 downto 0);
     signal cpu_dout          : std_logic_vector (7 downto 0);
     signal cpu_IRQ_n         : std_logic;
+    signal cpu_NMI_n         : std_logic;
     signal ExternDin1        : std_logic_vector (7 downto 0);
     signal ExternDout1       : std_logic_vector (7 downto 0);
 
@@ -229,6 +232,8 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal ioport            : std_logic_vector (7 downto 0);
     signal LED1n             : std_logic;
     signal LED2n             : std_logic;
+    signal avr_TxD_debugger  : std_logic;
+    signal avr_TxD_atommc    : std_logic;
 
 ----------------------------------------------------
 -- Profiling Counter Signals
@@ -250,28 +255,42 @@ architecture BEHAVIORAL of AtomFpga_Core is
 begin
 
 ---------------------------------------------------------------------
--- 6502 CPU (using T65 core)
+-- 6502 CPU (using a wrapper module
 ---------------------------------------------------------------------
-    cpu : entity work.T65 port map (
-        Mode           => "00",
-        Abort_n        => '1',
-        SO_n           => so,
-        Res_n          => RSTn,
-        Enable         => cpu_clken,
-        Clk            => clk_main,
-        Rdy            => rdy,
-        IRQ_n          => cpu_IRQ_n,
-        NMI_n          => nmi_n,
-        R_W_n          => cpu_R_W_n,
-        Sync           => sync,
-        A(23 downto 16) => open,
-        A(15 downto 0) => cpu_addr(15 downto 0),
-        DI(7 downto 0) => cpu_din(7 downto 0),
-        DO(7 downto 0) => cpu_dout(7 downto 0));
+
+    cpu : entity work.CpuWrapper
+        generic map (
+            CImplDebugger => CImplDebugger,
+            CImplCpu65c02 => CImplCpu65c02
+            )
+        port map (
+            clk_main  => clk_main,
+            clk_avr   => clk_avr,
+            cpu_clken => cpu_clken,
+            IRQ_n     => cpu_IRQ_n,
+            NMI_n     => nmi_n,
+            RST_n     => RSTn,
+            PRST_n    => powerup_reset_n,
+            SO        => So,
+            RDY       => Rdy,
+            Din       => cpu_din,
+            Dout      => cpu_dout,
+            R_W_n     => cpu_R_W_n,
+            Sync      => Sync,
+            Addr      => cpu_addr,
+            avr_RxD   => avr_RxD,
+            avr_TxD   => avr_TxD_debugger
+        );
 
     not_cpu_R_W_n <= not cpu_R_W_n;
+
     cpu_IRQ_n     <= irq_n and mc6522_irq when CImplVIA else
                      irq_n;
+
+    cpu_NMI_n     <= nmi_n;
+
+    avr_TxD       <= avr_TxD_debugger and avr_TxD_atommc;
+
     -- reset logic
     process(clk_main)
     begin
@@ -510,8 +529,9 @@ begin
 
         Inst_AVR8: entity work.AVR8
         generic map(
-            CDATAMEMSIZE         => 4096,
-            CPROGMEMSIZE         => 10240
+            CDATAMEMSIZE      => 4096,
+            CPROGMEMSIZE      => 10240,
+            FILENAME          => "avr_progmem_atommc2.data"
         )
         port map(
             clk16M            => clk_avr,
@@ -556,7 +576,7 @@ begin
             spi_misoi         => SDMISO,
 
             rxd               => avr_RxD,
-            txd               => avr_TxD
+            txd               => avr_TxD_atommc
             );
 
         ioport <= "111" & Joystick1(5) & Joystick1(0) & Joystick1(1) & Joystick1(2) & Joystick1(3);
@@ -581,6 +601,12 @@ begin
 
         LED1       <= not LED1n;
         LED2       <= not LED2n;
+
+    end generate;
+
+    Inst_not_atommc2: if not CImplAtoMMC2 generate
+
+        avr_TxD_atommc <= '1';
 
     end generate;
 
@@ -786,7 +812,11 @@ begin
                 if cpu_addr(11 downto 4)          = x"00" then -- 0xB00x 8255 PIA
                     i8255_enable <= '1';
                 elsif cpu_addr(11 downto 4)       = x"40" then -- 0xB40x AtoMMC/SPI
-                    pl8_enable <= '1';
+                    if CImplSDDOS or CImplAtoMMC2 then
+                        pl8_enable <= '1';
+                    else
+                        ext_bus_enable <= '1';
+                    end if;
                 elsif cpu_addr(11 downto 4)       = x"80" then -- 0xB80x 6522 VIA
                     if CImplVIA then
                         mc6522_enable <= '1';

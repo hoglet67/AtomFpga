@@ -10,8 +10,9 @@ use unisim.vcomponents.all;
 
 entity XPM is
     generic (
-        WIDTH : integer;
-        SIZE  : integer
+        WIDTH    : integer;
+        SIZE     : integer;
+        FILENAME : string -- ignored
     );
     port(
         cp2     : in  std_logic;
@@ -40,7 +41,7 @@ signal RAMBlDOut : RAMBlDOut_Type;
 begin
 
 RAM_Inst:for i in 0 to num_blocks - 1 generate
-    Ram : RAMB16_S18 
+    Ram : RAMB16_S18
     generic map (
         INIT => X"00000", -- Value of output RAM registers at startup
         SRVAL => X"00000", -- Ouput value upon SSR assertion
@@ -55,7 +56,7 @@ RAM_Inst:for i in 0 to num_blocks - 1 generate
         SSR  => '0',
         CLK  => cp2,
         WE   => '0'
-    );									  
+    );
 end generate;
 
 dout <= RAMBlDOut(CONV_INTEGER(address(address'high downto block_bits)));
