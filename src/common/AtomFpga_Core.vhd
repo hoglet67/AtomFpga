@@ -46,7 +46,8 @@ entity AtomFpga_Core is
         -- Clocking
         clk_vga          : in    std_logic; -- nominally 25.175MHz VGA clock
         clk_main         : in    std_logic; -- clock for the main system
-        clk_avr          : in    std_logic; -- clock for the AVR (AtoMMC or Debugger)
+        clk_avr          : in    std_logic; -- clock for the AtoMMC AVR
+        clk_avr_debug    : in    std_logic; -- clock for the Debugger AVR
         clk_dac          : in    std_logic; -- fast clock for the 1-bit DAC
         clk_32M00        : in    std_logic; -- fixed clock, used for SID and casette
         -- Keyboard/mouse
@@ -274,7 +275,7 @@ begin
             )
         port map (
             clk_main  => clk_main,
-            clk_avr   => clk_avr,
+            clk_avr   => clk_avr_debug,
             cpu_clken => cpu_clken,
             IRQ_n     => cpu_IRQ_n,
             NMI_n     => nmi_n,

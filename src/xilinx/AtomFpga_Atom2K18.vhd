@@ -132,7 +132,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal clock_16        : std_logic;
     signal clock_25        : std_logic;
     signal clock_32        : std_logic;
-    signal clock_avr       : std_logic;
+    signal clock_debugger  : std_logic;
 
     -- Reset generation
     signal reset_n         : std_logic;
@@ -349,17 +349,11 @@ begin
             O => clock_32
             );
 
-    avr_gen_0: if CImplDebugger generate
-        inst_clk2_buf : BUFG
-            port map (
-                I => clk2,
-                O => clock_avr
+    inst_clk2_buf : BUFG
+        port map (
+            I => clk2,
+            O => clock_debugger
             );
-    end generate;
-
-    avr_gen_1: if not CImplDebugger generate
-        clock_avr <= clock_32;
-    end generate;
 
     inst_DCM : DCM
         generic map (
@@ -438,7 +432,8 @@ begin
      port map(
         clk_vga             => clock_25,
         clk_main            => clock_32,
-        clk_avr             => clock_avr,
+        clk_avr             => clock_32,        -- this is the AtoMMC AVR clock
+        clk_avr_debug       => clock_debugger,  -- this is the ICE6502 AVR clock
         clk_dac             => clock_32,
         clk_32M00           => clock_32,
 
