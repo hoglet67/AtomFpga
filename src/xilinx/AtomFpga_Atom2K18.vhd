@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- Copyright (c) 2019 David Banks and Roland Leurs
+-- Copyright (c) 2020 David Banks and Roland Leurs
 --
 -- based on work by Alan Daly. Copyright(c) 2009. All rights reserved.
 --------------------------------------------------------------------------------
@@ -9,7 +9,7 @@
 -- \   \   \/
 --  \   \
 --  /   /         Filename  : AtomFpga_Atom2K18.vhd
--- /___/   /\     Timestamp : 21/04/2019
+-- /___/   /\     Timestamp : 13/06/2020
 -- \   \  /  \
 --  \___\/\___\
 --
@@ -26,13 +26,22 @@ use unisim.vcomponents.all;
 
 entity AtomFpga_Atom2K18 is
     generic (
-        -- Set CImplCpu65c02 to true use a 65C02 core rather than a 6502
+        -- Set CImplCpu65c02 to true to use a 65C02 core rather than a 6502
         CImplCpu65c02  : boolean := false;
 
-        -- Set CImplDebugger to true to enables the ICE-6502 Debugger, but
-        -- also disables AtoMMC and SID as there is nor space for both. An
-        -- external AtoMMC can be used with Roland's FPGAtom Extender board.
+        -- Set CImplAtoMMC to true to use an internal AtoMMC
+        CImplAtoMMC2   : boolean := true;
+
+        -- Set CImplDebugger to true to enable the ICE-6502 Debugger
         CImplDebugger  : boolean := false
+
+        -- NOTE: If CImplAtoMMC2 and CImplDebugger are both true, several
+        -- smaller features are disabled to make space in the FPGA:
+        --    Atom2K18: ProfilingCounters, RTC, SAM, PAM, Palette
+        --    GODIL:    SID, HWScrolling, Mouse, Uart, DoubleVideo
+        --
+        -- If you are not happy with this, then you can experiment with
+        -- enabling individual features in the constants section below.
         );
     port (
         -- Clock
@@ -117,6 +126,43 @@ entity AtomFpga_Atom2K18 is
 end AtomFpga_Atom2K18;
 
 architecture behavioral of AtomFpga_Atom2K18 is
+
+    ------------------------------------------------------
+    -- Constants controlling groups of features
+    ------------------------------------------------------
+
+    -- When both AtoMMC2 and Debugger are included, we need to disable other
+    -- features to make space
+
+    constant CImplGodilExtras       : boolean := not (CImplAtoMMC2 and CImplDebugger);
+    constant CImplAtom2K18Extras    : boolean := not (CImplAtoMMC2 and CImplDebugger);
+
+    ------------------------------------------------------
+    -- Constants controlling single features
+    ------------------------------------------------------
+
+    -- GODIL features
+    constant CImplGraphicsExt       : boolean := true;
+    constant CImplSoftChar          : boolean := true;
+    constant CImplVGA80x40          : boolean := true;
+    constant CImplSID               : boolean := CImplGodilExtras;
+    constant CImplHWScrolling       : boolean := CImplGodilExtras;
+    constant CImplMouse             : boolean := CImplGodilExtras;
+    constant CImplUart              : boolean := CImplGodilExtras;
+    constant CImplDoubleVideo       : boolean := CImplGodilExtras;
+
+    -- Atom2K18 features
+    constant CImplVIA               : boolean := true;
+    constant CImplLEDs              : boolean := true;
+    constant CImplProfilingCounters : boolean := CImplAtom2K18Extras;
+    constant CImplRTC               : boolean := CImplAtom2K18Extras;
+    constant CImplSAM               : boolean := CImplAtom2K18Extras;
+    constant CImplPAM               : boolean := CImplAtom2K18Extras;
+    constant CImplPalette           : boolean := CImplAtom2K18Extras;
+
+    ------------------------------------------------
+    -- Signals
+    ------------------------------------------------
 
     -- Clock generation
     signal clk0            : std_logic;
@@ -396,21 +442,21 @@ begin
         CImplCpu65c02           => CImplCpu65c02,
         CImplDebugger           => CImplDebugger,
         CImplSDDOS              => false,
-        CImplAtoMMC2            => not CImplDebugger,
-        CImplGraphicsExt        => true,
-        CImplSoftChar           => true,
-        CImplSID                => not CImplDebugger,
-        CImplVGA80x40           => true,
-        CImplHWScrolling        => true,
-        CImplMouse              => true,
-        CImplUart               => true,
-        CImplDoubleVideo        => true,
+        CImplAtoMMC2            => CImplAtoMMC2,
+        CImplGraphicsExt        => CImplGraphicsExt,
+        CImplSoftChar           => CImplSoftChar,
+        CImplSID                => CImplSID,
+        CImplVGA80x40           => CImplVGA80x40,
+        CImplHWScrolling        => CImplHWScrolling,
+        CImplMouse              => CImplMouse,
+        CImplUart               => CImplUart,
+        CImplDoubleVideo        => CImplDoubleVideo,
         CImplRamRomNone         => false,
         CImplRamRomPhill        => false,
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
-        CImplVIA                => true,  -- use internal VIA so 8MHz operation is stable
-        CImplProfilingCounters  => true,  -- 32-bit profiling counters at #BDAx
+        CImplVIA                => CImplVIA,
+        CImplProfilingCounters  => CImplProfilingCounters,
         MainClockSpeed          => 32000000,
         DefaultBaud             => 115200
      )
@@ -435,15 +481,6 @@ begin
         ext_reset_n         => ext_reset_n,
         int_reset_n         => int_reset_n,
 
-        -- red(2)              => vga_red1,
-        -- red(1)              => vga_red2,
-        -- red(0)              => open,
-        -- green(2)            => vga_green1,
-        -- green(1)            => vga_green2,
-        -- green(0)            => open,
-        -- blue(2)             => vga_blue1,
-        -- blue(1)             => vga_blue2,
-        -- blue(0)             => open,
         red                 => red_vga,
         green               => green_vga,
         blue                => blue_vga,
@@ -459,6 +496,7 @@ begin
         so                  => bus_so,
         irq_n               => irq_n,
         nmi_n               => bus_nmi_n,
+        addr                => cpu_a,
 
         ExternBus           => extern_bus,      -- active high external bus select
         ExternCE            => extern_ce,       -- active high Ram/Rom chip select
@@ -553,9 +591,9 @@ begin
     bus_rnw     <= rnw;
     bus_sync    <= sync;
 
-    bus_a       <= "1" & sam_rd_addr                      when extern_sam_rd = '1' and rnw = '1' else
-                   "1" & sam_wr_addr                      when extern_sam_wr = '1' and rnw = '0' else
-                   "00" & pam_page & extern_a(7 downto 0) when extern_pam = '1'                  else
+    bus_a       <= "1" & sam_rd_addr                      when extern_sam_rd = '1' and rnw = '1' and CImplSAM else
+                   "1" & sam_wr_addr                      when extern_sam_wr = '1' and rnw = '0' and CImplSAM else
+                   "00" & pam_page & extern_a(7 downto 0) when extern_pam = '1'                  and CImplPAM else
                    extern_a;
 
     -- Enable data out of the FPGA onto the 3.3V databus in the following cases:
@@ -563,14 +601,14 @@ begin
     -- case 2. reads that are internal to the "core", when debug mode enables
     -- case 3. reads of the led registers, when debug mode enabled
     -- case 4. reads of the rtc registers, when debug mode enabled
-    bus_d       <= extern_din               when phi2 = '1' and rnw = '0'                                                 else
-                   extern_din               when phi2 = '1' and extern_ce = '0' and extern_bus = '0' and debug_mode = '1' else
-                   led_data                 when phi2 = '1' and intern_led = '1'                     and debug_mode = '1' else
-                   rtc_data                 when phi2 = '1' and intern_rtc = '1'                     and debug_mode = '1' else
-                   palette_data             when phi2 = '1' and intern_palette = '1'                 and debug_mode = '1' else
-                   sam_status               when phi2 = '1' and intern_sam_reg = '1'                 and debug_mode = '1' else
-                   pam_page(7 downto 0)     when phi2 = '1' and intern_pam_reg0 = '1'                and debug_mode = '1' else
-                   "0000000" & pam_page(8)  when phi2 = '1' and intern_pam_reg1 = '1'                and debug_mode = '1' else
+    bus_d       <= extern_din               when phi2 = '1' and rnw = '0'                                                                  else
+                   extern_din               when phi2 = '1' and extern_ce = '0' and extern_bus = '0' and debug_mode = '1'                  else
+                   led_data                 when phi2 = '1' and intern_led = '1'                     and debug_mode = '1' and CImplLEDs    else
+                   rtc_data                 when phi2 = '1' and intern_rtc = '1'                     and debug_mode = '1' and CImplRTC     else
+                   palette_data             when phi2 = '1' and intern_palette = '1'                 and debug_mode = '1' and CImplPalette else
+                   sam_status               when phi2 = '1' and intern_sam_reg = '1'                 and debug_mode = '1' and CImplSAM     else
+                   pam_page(7 downto 0)     when phi2 = '1' and intern_pam_reg0 = '1'                and debug_mode = '1' and CImplPAM     else
+                   "0000000" & pam_page(8)  when phi2 = '1' and intern_pam_reg1 = '1'                and debug_mode = '1' and CImplPAM     else
                    "ZZZZZZZZ";
 
     bus_nrds    <= '0' when extern_ce  = '1' and extern_we = '0' and phi2 = '1' else -- RamRom
@@ -582,12 +620,12 @@ begin
                    '1';
 
     -- data back into the Atom Core
-    extern_dout <= led_data                when                       intern_led = '1' else
-                   rtc_data                when                       intern_rtc = '1' else
-                   palette_data            when                   intern_palette = '1' else
-                   sam_status              when                   intern_sam_reg = '1' else
-                   pam_page(7 downto 0)    when                  intern_pam_reg0 = '1' else
-                   "0000000" & pam_page(8) when                  intern_pam_reg1 = '1' else
+    extern_dout <= led_data                when                       intern_led = '1' and CImplLEDs    else
+                   rtc_data                when                       intern_rtc = '1' and CImplRTC     else
+                   palette_data            when                   intern_palette = '1' and CImplPalette else
+                   sam_status              when                   intern_sam_reg = '1' and CImplSAM     else
+                   pam_page(7 downto 0)    when                  intern_pam_reg0 = '1' and CImplPAM     else
+                   "0000000" & pam_page(8) when                  intern_pam_reg1 = '1' and CImplPAM     else
                    bus_d;
 
     ------------------------------------------------
@@ -600,126 +638,132 @@ begin
     -- Sequential Access Memory (SAM)
     ------------------------------------------------
 
-    -- Status byte
-    sam_status <= sam_empty & sam_full & "0000" & sam_underflow & sam_overflow;
+    sam_block: if CImplSAM generate
 
-    process(clock_32)
-    begin
-        if rising_edge(clock_32) then
-            if intern_sam_reg = '1' and rnw = '0' and phi2 = '1' then
-                -- a write of '1' to SAM control register bit 0 clears the overflow error
-                if extern_din(0) = '1' then
-                    sam_overflow <= '0';
+        process(clock_32)
+        begin
+            if rising_edge(clock_32) then
+                if intern_sam_reg = '1' and rnw = '0' and phi2 = '1' then
+                    -- a write of '1' to SAM control register bit 0 clears the overflow error
+                    if extern_din(0) = '1' then
+                        sam_overflow <= '0';
+                    end if;
+                    -- a write of '1' to SAM control register bit 1 clears the underflow error
+                    if extern_din(1) = '1' then
+                        sam_underflow <= '0';
+                    end if;
+                    -- a write of '1' to SAM control register bit 2 resets everything
+                    if extern_din(2) = '1' then
+                        sam_rd_inc    <= '0';
+                        sam_wr_inc    <= '0';
+                        sam_rd_addr   <= (others => '0');
+                        sam_wr_addr   <= (others => '0');
+                        sam_underflow <= '0';
+                        sam_overflow  <= '0';
+                    end if;
+                elsif extern_sam_rd = '1' and rnw = '1' and phi2 = '1' then
+                    -- a read from the SAM data register
+                    if sam_empty = '0' then
+                        sam_rd_inc <= '1';
+                    else
+                        sam_underflow <= '1';
+                    end if;
+                elsif extern_sam_wr = '1' and rnw = '0' and phi2 = '1' then
+                    -- a write to the SAM data register
+                    if sam_full = '0' then
+                        sam_wr_inc <= '1';
+                    else
+                        sam_overflow <= '1';
+                    end if;
+                elsif phi2 = '0' then
+                    -- Handle the update of the SAM addresses as soon as Phi2 goes
+                    -- low at the start of the next bus cycle
+                    if sam_rd_inc = '1' then
+                        sam_rd_addr <= sam_rd_next;
+                    end if;
+                    if sam_wr_inc = '1' then
+                        sam_wr_addr <= sam_wr_next;
+                    end if;
+                    -- clear the inc flags, so we only increment by one
+                    sam_rd_inc <= '0';
+                    sam_wr_inc <= '0';
                 end if;
-                -- a write of '1' to SAM control register bit 1 clears the underflow error
-                if extern_din(1) = '1' then
-                    sam_underflow <= '0';
-                end if;
-                -- a write of '1' to SAM control register bit 2 resets everything
-                if extern_din(2) = '1' then
-                    sam_rd_inc    <= '0';
-                    sam_wr_inc    <= '0';
-                    sam_rd_addr   <= (others => '0');
-                    sam_wr_addr   <= (others => '0');
-                    sam_underflow <= '0';
-                    sam_overflow  <= '0';
-                end if;
-            elsif extern_sam_rd = '1' and rnw = '1' and phi2 = '1' then
-                -- a read from the SAM data register
-                if sam_empty = '0' then
-                    sam_rd_inc <= '1';
-                else
-                    sam_underflow <= '1';
-                end if;
-            elsif extern_sam_wr = '1' and rnw = '0' and phi2 = '1' then
-                -- a write to the SAM data register
-                if sam_full = '0' then
-                    sam_wr_inc <= '1';
-                else
-                    sam_overflow <= '1';
-                end if;
-            elsif phi2 = '0' then
-                -- Handle the update of the SAM addresses as soon as Phi2 goes
-                -- low at the start of the next bus cycle
-                if sam_rd_inc = '1' then
-                    sam_rd_addr <= sam_rd_next;
-                end if;
-                if sam_wr_inc = '1' then
-                    sam_wr_addr <= sam_wr_next;
-                end if;
-                -- clear the inc flags, so we only increment by one
-                sam_rd_inc <= '0';
-                sam_wr_inc <= '0';
             end if;
-        end if;
-    end process;
+        end process;
 
-    -- combinatorial logic for full,empty flags
-    process(sam_rd_addr, sam_wr_addr)
-    begin
-        if sam_rd_addr = sam_wr_addr then
-            sam_empty <= '1';
-        else
-            sam_empty <= '0';
-        end if;
-        if sam_wr_next = sam_rd_addr then
-            sam_full <= '1';
-        else
-            sam_full <= '0';
-        end if;
-    end process;
+        -- combinatorial logic for full,empty flags
+        process(sam_rd_addr, sam_wr_addr)
+        begin
+            if sam_rd_addr = sam_wr_addr then
+                sam_empty <= '1';
+            else
+                sam_empty <= '0';
+            end if;
+            if sam_wr_next = sam_rd_addr then
+                sam_full <= '1';
+            else
+                sam_full <= '0';
+            end if;
+        end process;
 
-    -- combinatorial logic for next rd address
-    process(sam_rd_addr)
-    begin
-        sam_rd_next <= sam_rd_addr + 1;
-    end process;
+        -- combinatorial logic for next rd address
+        process(sam_rd_addr)
+        begin
+            sam_rd_next <= sam_rd_addr + 1;
+        end process;
 
-    -- combinatorial logic for next write address
-    process(sam_wr_addr)
-    begin
-        sam_wr_next <= sam_wr_addr + 1;
-    end process;
+        -- combinatorial logic for next write address
+        process(sam_wr_addr)
+        begin
+            sam_wr_next <= sam_wr_addr + 1;
+        end process;
+
+        -- Status byte
+        sam_status <= sam_empty & sam_full & "0000" & sam_underflow & sam_overflow;
+
+    end generate;
 
     ------------------------------------------------
     -- Page Access Memory (PAM)
     ------------------------------------------------
 
-    process(clock_32)
-    begin
-        if rising_edge(clock_32) then
-            if rnw = '0' and phi2 = '1' then
-                if intern_pam_reg0 = '1' then
-                    pam_page(7 downto 0) <= extern_din;
-                end if;
-                if intern_pam_reg1 = '1' then
-                    pam_page(8) <= extern_din(0);
+    pam_block: if CImplPAM generate
+        process(clock_32)
+        begin
+            if rising_edge(clock_32) then
+                if rnw = '0' and phi2 = '1' then
+                    if intern_pam_reg0 = '1' then
+                        pam_page(7 downto 0) <= extern_din;
+                    end if;
+                    if intern_pam_reg1 = '1' then
+                        pam_page(8) <= extern_din(0);
+                    end if;
                 end if;
             end if;
-        end if;
-    end process;
+        end process;
+    end generate;
 
     ------------------------------------------------
     -- Internal device chip selects
     ------------------------------------------------
 
-    intern_led      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE"  else '0';
-    intern_rtc      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD"  else '0';
-    intern_sam_reg  <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF2" else '0';
-    intern_pam_reg0 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF8" else '0';
-    intern_pam_reg1 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF9" else '0';
-    intern_palette  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BD0"  else '0';
+    intern_led      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE"  and CImplLEDs    else '0';
+    intern_rtc      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD"  and CImplRTC     else '0';
+    intern_sam_reg  <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF2" and CImplSAM     else '0';
+    intern_pam_reg0 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF8" and CImplPAM     else '0';
+    intern_pam_reg1 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF9" and CImplPAM     else '0';
+    intern_palette  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BD0"  and CImplPalette else '0';
 
     ------------------------------------------------
     -- External device chip selects
     ------------------------------------------------
 
-    extern_rom    <= '1' when extern_ce  = '1' and extern_a(17) = '0'             else
+    extern_rom    <= '1' when extern_ce  = '1' and extern_a(17) = '0' else
                      '0';
 
-    extern_ram    <= '1' when extern_ce  = '1' and extern_a(17) = '1'             else
-                     '1' when extern_sam_rd = '1' or extern_sam_wr = '1'          else
-                     '1' when extern_pam = '1'                                    else
+    extern_ram    <= '1' when extern_ce  = '1' and extern_a(17) = '1'                   else
+                     '1' when (extern_sam_rd = '1' or extern_sam_wr = '1') and CImplSAM else
+                     '1' when extern_pam = '1'                             and CImplPAM else
                      '0';
 
     extern_via    <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"B81" else
@@ -728,13 +772,13 @@ begin
     extern_tube   <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BEE" else
                      '0';
 
-    extern_sam_rd <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF0" else
+    extern_sam_rd <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF0" and CImplSAM else
                      '0';
 
-    extern_sam_wr <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF1" else
+    extern_sam_wr <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF1" and CImplSAM else
                      '0';
 
-    extern_pam    <= '1' when extern_bus = '1' and extern_a(15 downto 8) = x"B1" else
+    extern_pam    <= '1' when extern_bus = '1' and extern_a(15 downto 8) = x"B1" and CImplPAM else
                      '0';
 
     cs_rom_n    <= not(extern_rom);
@@ -862,268 +906,299 @@ begin
     -- LED control / speedometer
     --------------------------------------------------------
 
-    inst_debounce1 : entity work.debounce
-        generic map (
-            counter_size => 20 -- 32ms @ 32MHz
-            )
-        port map (
-            clock   => clock_32,
-            button  => sw(1),
-            pressed => sw_pressed(1)
-            );
+    leds_block: if CImplLEDs generate
 
-    inst_debounce2 : entity work.debounce
-        generic map (
-            counter_size => 20 -- 32ms @ 32MHz
-            )
-        port map (
-            clock   => clock_32,
-            button  => sw(2),
-            pressed => sw_pressed(2)
-            );
+        inst_debounce1 : entity work.debounce
+            generic map (
+                counter_size => 20 -- 32ms @ 32MHz
+                )
+            port map (
+                clock   => clock_32,
+                button  => sw(1),
+                pressed => sw_pressed(1)
+                );
 
-    process(clock_32)
-    begin
-        if rising_edge(clock_32) then
-            -- SW1/2 manually increment/decrement bits 0/1 of the LED control register
-            if sw_pressed(1) = '1' then
-                led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) - 1;
-            elsif sw_pressed(2) = '1' then
-                led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) + 1;
-            end if;
-            -- LED control/data registers
-            if intern_led = '1' and rnw = '0' and phi2 = '1' then
-                if extern_a(0) = '1' then
-                    led_data_reg <= extern_din;
-                else
-                    led_ctrl_reg <= extern_din;
+        inst_debounce2 : entity work.debounce
+            generic map (
+                counter_size => 20 -- 32ms @ 32MHz
+                )
+            port map (
+                clock   => clock_32,
+                button  => sw(2),
+                pressed => sw_pressed(2)
+                );
+
+        process(clock_32)
+        begin
+            if rising_edge(clock_32) then
+                -- SW1/2 manually increment/decrement bits 0/1 of the LED control register
+                if sw_pressed(1) = '1' then
+                    led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) - 1;
+                elsif sw_pressed(2) = '1' then
+                    led_ctrl_reg(1 downto 0) <= led_ctrl_reg(1 downto 0) + 1;
                 end if;
-            end if;
-            -- LED Speedometer
-            last_sync <= sync;
-            if last_sync = '0' and sync = '1' then
-                instr_count <= instr_count + 1;
-                if instr_count = 0 then
-                    if led_state = x"D" then
-                        led_state <= (others => '0');
+                -- LED control/data registers
+                if intern_led = '1' and rnw = '0' and phi2 = '1' then
+                    if extern_a(0) = '1' then
+                        led_data_reg <= extern_din;
                     else
-                        led_state <= led_state + 1;
+                        led_ctrl_reg <= extern_din;
                     end if;
                 end if;
+                -- LED Speedometer
+                last_sync <= sync;
+                if last_sync = '0' and sync = '1' then
+                    instr_count <= instr_count + 1;
+                    if instr_count = 0 then
+                        if led_state = x"D" then
+                            led_state <= (others => '0');
+                        else
+                            led_state <= led_state + 1;
+                        end if;
+                    end if;
+                end if;
+                -- LED driver logic
+                case led_ctrl_reg(1 downto 0) is
+                    when "01" =>
+                        case led_state is
+                            when x"0"   => led <= "01000000";
+                            when x"1"   => led <= "10000000";
+                            when x"2"   => led <= "01000000";
+                            when x"3"   => led <= "00100000";
+                            when x"4"   => led <= "00010000";
+                            when x"5"   => led <= "00001000";
+                            when x"6"   => led <= "00000100";
+                            when x"7"   => led <= "00000010";
+                            when x"8"   => led <= "00000001";
+                            when x"9"   => led <= "00000010";
+                            when x"A"   => led <= "00000100";
+                            when x"B"   => led <= "00001000";
+                            when x"C"   => led <= "00010000";
+                            when x"D"   => led <= "00100000";
+                            when others => led <= "00000000";
+                        end case;
+                    when "10" =>
+                        led <= cpu_a(15 downto 8);
+                    when "11" =>
+                        led <= cpu_a(7 downto 0);
+                    when others =>
+                        led <= led_data_reg;
+                end case;
             end if;
-            -- LED driver logic
-            case led_ctrl_reg(1 downto 0) is
-                when "01" =>
-                    case led_state is
-                        when x"0"   => led <= "01000000";
-                        when x"1"   => led <= "10000000";
-                        when x"2"   => led <= "01000000";
-                        when x"3"   => led <= "00100000";
-                        when x"4"   => led <= "00010000";
-                        when x"5"   => led <= "00001000";
-                        when x"6"   => led <= "00000100";
-                        when x"7"   => led <= "00000010";
-                        when x"8"   => led <= "00000001";
-                        when x"9"   => led <= "00000010";
-                        when x"A"   => led <= "00000100";
-                        when x"B"   => led <= "00001000";
-                        when x"C"   => led <= "00010000";
-                        when x"D"   => led <= "00100000";
-                        when others => led <= "00000000";
-                    end case;
-                when "10" =>
-                    led <= cpu_a(15 downto 8);
-                when "11" =>
-                    led <= cpu_a(7 downto 0);
-                when others =>
-                    led <= led_data_reg;
-            end case;
-        end if;
-    end process;
+        end process;
 
-    led_data <= led_ctrl_reg when extern_a(0) = '0' else
-                led_data_reg when extern_a(1) = '1' else
-                x"00";
+        led_data <= led_ctrl_reg when extern_a(0) = '0' else
+                    led_data_reg when extern_a(1) = '1' else
+                    x"00";
 
-    -- Enable debug mode (logic analyzer output to data bus)in address mode
-    -- (when the LEDs are showing the low or high address bus)
-    debug_mode <= led_ctrl_reg(1);
+        -- Enable debug mode (logic analyzer output to data bus)in address mode
+        -- (when the LEDs are showing the low or high address bus)
+        debug_mode <= led_ctrl_reg(1);
+    end generate;
+
+    not_leds_block: if not CImplLEDs generate
+        led        <= x"00";
+        debug_mode <= '0';
+    end generate;
 
     --------------------------------------------------------
     -- RTC Real Time Clock
     --------------------------------------------------------
 
-    process (clock_32)
-    begin
-        if rising_edge(clock_32) then
+    rtc_block: if CImplRTC generate
+        process (clock_32)
+        begin
+            if rising_edge(clock_32) then
 
-            if rtc_control(7) = '0' then
-                if rtc_cnt = 3199999 then
-                    rtc_cnt <= (others => '0');
-                    rtc_10hz <= rtc_10hz + 1;
-                    if  rtc_control(0) = '1' then
-                        rtc_irq_flags(0) <= '1';
-                        rtc_irq_flags(7) <= '1';
+                if rtc_control(7) = '0' then
+                    if rtc_cnt = 3199999 then
+                        rtc_cnt <= (others => '0');
+                        rtc_10hz <= rtc_10hz + 1;
+                        if  rtc_control(0) = '1' then
+                            rtc_irq_flags(0) <= '1';
+                            rtc_irq_flags(7) <= '1';
+                        end if;
+                    else
+                        rtc_cnt <= rtc_cnt + 1;
                     end if;
+                    if rtc_10hz = 10 then
+                        rtc_seconds <= rtc_seconds + 1;
+                        rtc_10hz <= x"0";
+                        if rtc_control(1) = '1' then
+                            rtc_irq_flags(1) <= '1';
+                            rtc_irq_flags(7) <= '1';
+                        end if;
+                    end if;
+                    if rtc_seconds = 60 then
+                        rtc_minutes <= rtc_minutes + 1;
+                        rtc_seconds <= x"00";
+                        if rtc_control(2) = '1' then
+                            rtc_irq_flags(2) <= '1';
+                            rtc_irq_flags(7) <= '1';
+                        end if;
+                    end if;
+                    if rtc_minutes = 60 then
+                        rtc_hours <= rtc_hours + 1;
+                        rtc_minutes <= x"00";
+                        if rtc_control(3) = '1' then
+                            rtc_irq_flags(3) <= '1';
+                            rtc_irq_flags(7) <= '1';
+                        end if;
+                    end if;
+                    if rtc_hours = 24 then
+                        rtc_day <= rtc_day + 1;
+                        rtc_hours <= x"00";
+                        if rtc_control(4) = '1' then
+                            rtc_irq_flags(4) <= '1';
+                            rtc_irq_flags(7) <= '1';
+                        end if;
+                    end if;
+                    if (rtc_day = 31 and (rtc_month = 4 or rtc_month = 6 or rtc_month = 9 or rtc_month = 11))
+                        or (rtc_day = 30 and rtc_month = 2 and rtc_year(1 downto 0) = "00")
+                        or (rtc_day = 29 and rtc_month = 2 and (rtc_year(1) = '1' or rtc_year(0) = '1'))          or (rtc_day = 32) then
+                        rtc_month <= rtc_month + 1;
+                        rtc_day <= x"01";
+                        if rtc_control(5) = '1' then
+                            rtc_irq_flags(5) <= '1';
+                            rtc_irq_flags(7) <= '1';
+                        end if;
+                    end if;
+                    if rtc_month = 13 then
+                        rtc_year <= rtc_year + 1;
+                        rtc_month <= x"01";
+                        if rtc_control(6) = '1' then
+                            rtc_irq_flags(6) <= '1';
+                            rtc_irq_flags(7) <= '1';
+                        end if;
+                    end if;
+                end if;
+
+                -- write RTC control/data registers
+                if intern_rtc = '1' and rnw = '0' and phi2 = '1' then
+                    case extern_a(2 downto 0) is
+                        when "000" =>
+                            rtc_year <= extern_din;
+                        when "001" =>
+                            rtc_month <= extern_din;
+                        when "010" =>
+                            rtc_day <= extern_din;
+                        when "011" =>
+                            rtc_hours <= extern_din;
+                        when "100" =>
+                            rtc_minutes <= extern_din;
+                        when "101" =>
+                            rtc_seconds <= extern_din;
+                        when "110" =>
+                            rtc_control <= extern_din;
+                        when others =>
+                            rtc_irq_flags <= x"00";
+                    end case;
+                end if;
+
+                if reset_n = '0' then
+                    rtc_control <= x"00";
+                    rtc_irq_flags <= x"00";
+                end if;
+
+            end if;
+
+        end process;
+
+        rtc_data <= rtc_year      when extern_a(2 downto 0) = "000" else
+                    rtc_month     when extern_a(2 downto 0) = "001" else
+                    rtc_day       when extern_a(2 downto 0) = "010" else
+                    rtc_hours     when extern_a(2 downto 0) = "011" else
+                    rtc_minutes   when extern_a(2 downto 0) = "100" else
+                    rtc_seconds   when extern_a(2 downto 0) = "101" else
+                    rtc_control   when extern_a(2 downto 0) = "110" else
+                    rtc_irq_flags when extern_a(2 downto 0) = "111" else
+                    x"00";
+
+        rtc_irq_n <= not(rtc_irq_flags(7));
+    end generate;
+
+    not_rtc_block: if not CImplRTC generate
+        rtc_data  <= x"00";
+        rtc_irq_n <= '1';
+    end generate;
+
+    --------------------------------------------------------
+    -- Colour palette control
+    --------------------------------------------------------
+
+    palette_block: if CImplPalette generate
+        process (clock_32)
+        begin
+            if rising_edge(clock_32) then
+                if reset_n = '0' then
+                    -- initializing like this mean the palette will be
+                    -- implemented with LUTs rather than as a block RAM
+                    palette(0)  <= "000000";
+                    palette(1)  <= "000011";
+                    palette(2)  <= "000100";
+                    palette(3)  <= "000111";
+                    palette(4)  <= "001000";
+                    palette(5)  <= "001011";
+                    palette(6)  <= "001100";
+                    palette(7)  <= "001111";
+                    palette(8)  <= "110000";
+                    palette(9)  <= "110011";
+                    palette(10) <= "110100";
+                    palette(11) <= "110111";
+                    palette(12) <= "111000";
+                    palette(13) <= "111011";
+                    palette(14) <= "111100";
+                    palette(15) <= "111111";
                 else
-                    rtc_cnt <= rtc_cnt + 1;
-                end if;
-                if rtc_10hz = 10 then
-                    rtc_seconds <= rtc_seconds + 1;
-                    rtc_10hz <= x"0";
-                    if rtc_control(1) = '1' then
-                        rtc_irq_flags(1) <= '1';
-                        rtc_irq_flags(7) <= '1';
-                    end if;
-                end if;
-                if rtc_seconds = 60 then
-                    rtc_minutes <= rtc_minutes + 1;
-                    rtc_seconds <= x"00";
-                    if rtc_control(2) = '1' then
-                        rtc_irq_flags(2) <= '1';
-                        rtc_irq_flags(7) <= '1';
-                    end if;
-                end if;
-                if rtc_minutes = 60 then
-                    rtc_hours <= rtc_hours + 1;
-                    rtc_minutes <= x"00";
-                    if rtc_control(3) = '1' then
-                        rtc_irq_flags(3) <= '1';
-                        rtc_irq_flags(7) <= '1';
-                    end if;
-                end if;
-                if rtc_hours = 24 then
-                    rtc_day <= rtc_day + 1;
-                    rtc_hours <= x"00";
-                    if rtc_control(4) = '1' then
-                        rtc_irq_flags(4) <= '1';
-                        rtc_irq_flags(7) <= '1';
-                    end if;
-                end if;
-                if (rtc_day = 31 and (rtc_month = 4 or rtc_month = 6 or rtc_month = 9 or rtc_month = 11))
-                    or (rtc_day = 30 and rtc_month = 2 and rtc_year(1 downto 0) = "00")
-                    or (rtc_day = 29 and rtc_month = 2 and (rtc_year(1) = '1' or rtc_year(0) = '1'))          or (rtc_day = 32) then
-                    rtc_month <= rtc_month + 1;
-                    rtc_day <= x"01";
-                    if rtc_control(5) = '1' then
-                        rtc_irq_flags(5) <= '1';
-                        rtc_irq_flags(7) <= '1';
-                    end if;
-                end if;
-                if rtc_month = 13 then
-                    rtc_year <= rtc_year + 1;
-                    rtc_month <= x"01";
-                    if rtc_control(6) = '1' then
-                        rtc_irq_flags(6) <= '1';
-                        rtc_irq_flags(7) <= '1';
+                    -- write colour palette registers
+                    if intern_palette = '1' and rnw = '0' and phi2 = '1' then
+                        palette(conv_integer(extern_a(3 downto 0))) <= extern_din(7 downto 2);
                     end if;
                 end if;
             end if;
+        end process;
 
-            -- write RTC control/data registers
-            if intern_rtc = '1' and rnw = '0' and phi2 = '1' then
-                case extern_a(2 downto 0) is
-                    when "000" =>
-                        rtc_year <= extern_din;
-                    when "001" =>
-                        rtc_month <= extern_din;
-                    when "010" =>
-                        rtc_day <= extern_din;
-                    when "011" =>
-                        rtc_hours <= extern_din;
-                    when "100" =>
-                        rtc_minutes <= extern_din;
-                    when "101" =>
-                        rtc_seconds <= extern_din;
-                    when "110" =>
-                        rtc_control <= extern_din;
-                    when others =>
-                        rtc_irq_flags <= x"00";
-                end case;
-            end if;
+        logical_colour <= red_vga(2) & green_vga(2) & green_vga(1) & blue_vga(2);
 
-            if reset_n = '0' then
-                rtc_control <= x"00";
-                rtc_irq_flags <= x"00";
-            end if;
-
-        end if;
-
-    end process;
-
-    rtc_data <= rtc_year      when extern_a(2 downto 0) = "000" else
-                rtc_month     when extern_a(2 downto 0) = "001" else
-                rtc_day       when extern_a(2 downto 0) = "010" else
-                rtc_hours     when extern_a(2 downto 0) = "011" else
-                rtc_minutes   when extern_a(2 downto 0) = "100" else
-                rtc_seconds   when extern_a(2 downto 0) = "101" else
-                rtc_control   when extern_a(2 downto 0) = "110" else
-                rtc_irq_flags when extern_a(2 downto 0) = "111" else
-                x"00";
-
-    rtc_irq_n <= not(rtc_irq_flags(7));
-
-    --------------------------------------------------------
-   -- Colour palette control
-    --------------------------------------------------------
-
-    process (clock_32)
-    begin
-        if rising_edge(clock_32) then
-            if reset_n = '0' then
-                -- initializing like this mean the palette will be
-                -- implemented with LUTs rather than as a block RAM
-                palette(0)  <= "000000";
-                palette(1)  <= "000011";
-                palette(2)  <= "000100";
-                palette(3)  <= "000111";
-                palette(4)  <= "001000";
-                palette(5)  <= "001011";
-                palette(6)  <= "001100";
-                palette(7)  <= "001111";
-                palette(8)  <= "110000";
-                palette(9)  <= "110011";
-                palette(10) <= "110100";
-                palette(11) <= "110111";
-                palette(12) <= "111000";
-                palette(13) <= "111011";
-                palette(14) <= "111100";
-                palette(15) <= "111111";
-            else
-                -- write colour palette registers
-                if intern_palette = '1' and rnw = '0' and phi2 = '1' then
-                    palette(conv_integer(extern_a(3 downto 0))) <= extern_din(7 downto 2);
+        -- Making this a synchronous process should improve the timing
+        -- and potentially make the pixels more defined
+        process (clock_25)
+        begin
+            if rising_edge(clock_25) then
+                if vga_blank = '1' then
+                    physical_colour <= (others => '0');
+                else
+                    physical_colour <= palette(conv_integer(logical_colour));
                 end if;
+                -- Also register hsync/vsync so they are correctly
+                -- aligned with the colour changes
+                vga_hsync <= hsync_vga;
+                vga_vsync <= vsync_vga;
             end if;
-        end if;
-    end process;
+        end process;
 
-    logical_colour <= red_vga(2) & green_vga(2) & green_vga(1) & blue_vga(2);
+        vga_red2   <= physical_colour(5);
+        vga_red1   <= physical_colour(4);
+        vga_green2 <= physical_colour(3);
+        vga_green1 <= physical_colour(2);
+        vga_blue2  <= physical_colour(1);
+        vga_blue1  <= physical_colour(0);
 
-    -- Making this a synchronous process should improve the timing
-    -- and potentially make the pixels more defined
-    process (clock_25)
-    begin
-        if rising_edge(clock_25) then
-            if vga_blank = '1' then
-                physical_colour <= (others => '0');
-            else
-                physical_colour <= palette(conv_integer(logical_colour));
-            end if;
-            -- Also register hsync/vsync so they are correctly
-            -- aligned with the colour changes
-            vga_hsync <= hsync_vga;
-            vga_vsync <= vsync_vga;
-        end if;
-    end process;
+        palette_data  <= palette(conv_integer(extern_a(3 downto 0))) & "00";
 
-    vga_red2   <= physical_colour(5);
-    vga_red1   <= physical_colour(4);
-    vga_green2 <= physical_colour(3);
-    vga_green1 <= physical_colour(2);
-    vga_blue2  <= physical_colour(1);
-    vga_blue1  <= physical_colour(0);
+    end generate;
 
-    palette_data  <= palette(conv_integer(extern_a(3 downto 0))) & "00";
+    not_palette_block: if not CImplPalette generate
+
+        vga_hsync  <= hsync_vga;
+        vga_vsync  <= vsync_vga;
+        vga_red2   <= red_vga(2);
+        vga_red1   <= red_vga(1);
+        vga_green2 <= green_vga(2);
+        vga_green1 <= green_vga(1);
+        vga_blue2  <= blue_vga(2);
+        vga_blue1  <= blue_vga(1);
+
+    end generate;
 
 end behavioral;
