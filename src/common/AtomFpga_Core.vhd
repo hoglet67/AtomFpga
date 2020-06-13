@@ -540,7 +540,14 @@ begin
         generic map(
             CDATAMEMSIZE      => 4096,
             CPROGMEMSIZE      => 10240,
-            FILENAME          => "avr_progmem_atommc2.data"
+            FILENAME          => "avr_progmem_atommc2.data",
+            CImplPORTA        => TRUE,
+            CImplPORTB        => TRUE,
+            CImplPORTD        => TRUE,
+            CImplPORTE        => TRUE,
+            CImplUART         => TRUE,
+            CImplSPI          => TRUE,
+            CImplExtIRQ       => TRUE
         )
         port map(
             clk16M            => clk_avr,

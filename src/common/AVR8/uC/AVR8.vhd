@@ -39,7 +39,18 @@ entity AVR8 is
 generic (
      CDATAMEMSIZE : integer;
      CPROGMEMSIZE : integer;
-     FILENAME     : string
+     FILENAME     : string;
+-- Use these setting to control which peripherals you want to include with your custom AVR8 implementation.
+     CImplPORTA   : boolean := FALSE;
+     CImplPORTB   : boolean := FALSE;
+     CImplPORTC   : boolean := FALSE;
+     CImplPORTD   : boolean := FALSE;
+     CImplPORTE   : boolean := FALSE;
+     CImplPORTF   : boolean := FALSE;
+     CImplUART    : boolean := FALSE;
+     CImplSPI     : boolean := FALSE;
+     CImplTmrCnt  : boolean := FALSE;
+     CImplExtIRQ  : boolean := FALSE
 );
 port (
 	 nrst   : in    std_logic;						--Uncomment this to connect reset to an external pushbutton. Must be defined in ucf.
@@ -69,19 +80,6 @@ port (
 end AVR8;
 
 architecture Struct of AVR8 is
-
--- Use these setting to control which peripherals you want to include with your custom AVR8 implementation.
-constant CImplPORTA			            : boolean := TRUE; -- set to false here for portA and portB, or DDRAreg and DDRBreg
-constant CImplPORTB			            : boolean := TRUE;
-constant CImplPORTC							: boolean := FALSE;
-constant CImplPORTD    			         : boolean := TRUE;
-constant CImplPORTE      			      : boolean := TRUE;
-constant CImplPORTF           			: boolean := FALSE;
-constant CImplUART      			      : boolean := TRUE;	--AVR8 UART peripheral
-constant CImplSPI            				: boolean := TRUE;   -- adding SPI master
-constant CImplTmrCnt     					: boolean := FALSE;	--AVR8 Timer
-constant CImplExtIRQ				: boolean := TRUE;	--AVR8 Interrupt Unit
-
 
 -- ############################## Signals connected directly to the core ##########################################
 

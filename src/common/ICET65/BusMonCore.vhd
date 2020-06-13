@@ -178,8 +178,13 @@ begin
     generic map(
         CDATAMEMSIZE         => avr_data_mem_size,
         CPROGMEMSIZE         => avr_prog_mem_size,
-        FILENAME             => filename
-    )
+        FILENAME             => filename,
+        CImplPORTA           => TRUE,
+        CImplPORTB           => TRUE,
+        CImplPORTD           => TRUE,
+        CImplPORTE           => TRUE,
+        CImplUART            => TRUE
+        )
     port map(
         clk16M               => clock_avr,
         nrst                 => nrst_avr,
