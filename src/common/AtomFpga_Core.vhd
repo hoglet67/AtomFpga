@@ -113,6 +113,15 @@ end AtomFpga_Core;
 
 architecture BEHAVIORAL of AtomFpga_Core is
 
+    function InitBFFE_Atom2015 return std_logic_vector is
+    begin
+        if CImplDebugger then
+            return x"08";
+        else
+            return x"00";
+        end if;
+    end function;
+
 -------------------------------------------------
 -- Clocks and enables
 -------------------------------------------------
@@ -677,8 +686,13 @@ begin
         turbo <= key_turbo;
     end generate;
 
+
     Inst_RamRomAtom2015: if (CImplRamRomAtom2015) generate
         Inst_RamRomAtom2015_comp: entity work.RamRom_Atom2015
+            generic map(
+                InitBFFE     => InitBFFE_Atom2015,
+                InitBFFF     => x"00"
+            )
             port map(
                 clock        => clk_main,
                 reset_n      => RSTn,

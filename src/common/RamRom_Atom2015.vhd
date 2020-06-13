@@ -19,6 +19,10 @@ use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 entity RamRom_Atom2015 is
+    generic (
+        InitBFFE   : std_logic_vector(7 downto 0) := x"00";
+        InitBFFF   : std_logic_vector(7 downto 0) := x"00"
+    );
     port (clock        : in  std_logic;
           reset_n      : in  std_logic;
           -- signals from/to 6502
@@ -42,8 +46,8 @@ architecture behavioral of RamRom_Atom2015 is
 
     signal BFFE_Enable : std_logic;
     signal BFFF_Enable : std_logic;
-    signal RegBFFE  : std_logic_vector (7 downto 0);
-    signal RegBFFF  : std_logic_vector (7 downto 0);
+    signal RegBFFE  : std_logic_vector (7 downto 0) := InitBFFE;
+    signal RegBFFF  : std_logic_vector (7 downto 0) := InitBFFF;
 
     signal WriteProt       : std_logic;                     -- Write protects #A000, #C000-#FFFF
     signal OSInRam         : std_logic;                     -- #C000-#FFFF in RAM
@@ -135,8 +139,8 @@ begin
     RomLatchProcess : process (reset_n, clock)
     begin
         if reset_n = '0' then
-            RegBFFE(3 downto 0) <= (others => '0');
-            RegBFFF <= (others => '0');
+            RegBFFE(3 downto 0) <= InitBFFE(3 downto 0);
+            RegBFFF <= InitBFFF;
         elsif rising_edge(clock) then
             if BFFE_Enable = '1' and cpu_we = '1' then
                 RegBFFE <= cpu_dout;
