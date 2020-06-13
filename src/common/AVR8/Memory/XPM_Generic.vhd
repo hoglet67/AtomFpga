@@ -27,21 +27,66 @@ end;
 
 architecture RTL of XPM is
 
-    type ram_type is array (0 to SIZE - 1) of std_logic_vector (WIDTH - 1 downto 0);
+    -- If the ROM is not a power of 2, the ISE does a poor job of optimization
+    -- e.g. a 10Kx16 rom takes up the space of a 16Kx16
+    --
+    -- To avoid this, we break the RAM into two parts
 
-    impure function InitRamFromFile (RamFileName : in string) return ram_type is
+    function is_power_of_2 return boolean is
+    begin
+        return 2**f_log2(SIZE) = SIZE;
+    end function;
+
+    function ram1_size return integer is
+    begin
+        if is_power_of_2 then
+            return SIZE;
+        else
+            return 2**(f_log2(SIZE) - 1);
+        end if;
+    end function;
+
+    function ram2_size return integer is
+    begin
+        return SIZE - ram1_size;
+    end function;
+
+    type ram1_type is array (0 to ram1_size - 1) of std_logic_vector (WIDTH - 1 downto 0);
+
+    type ram2_type is array (0 to ram2_size - 1) of std_logic_vector (WIDTH - 1 downto 0);
+
+    impure function InitRam1FromFile (RamFileName : in string) return ram1_type is
         FILE ramfile : text is in RamFileName;
         variable RamFileLine : line;
-        variable ram : ram_type;
+        variable ram : ram1_type;
     begin
-        for i in ram_type'range loop
+        for i in ram1_type'range loop
             readline(ramfile, RamFileLine);
             hread(RamFileLine, ram(i));
         end loop;
         return ram;
     end function;
 
-    signal RAM : ram_type := InitRamFromFile(FILENAME);
+    impure function InitRam2FromFile (RamFileName : in string) return ram2_type is
+        FILE ramfile : text is in RamFileName;
+        variable RamFileLine : line;
+        variable ram : ram2_type;
+    begin
+        for i in ram1_type'range loop
+            readline(ramfile, RamFileLine);
+        end loop;
+        for i in ram2_type'range loop
+            readline(ramfile, RamFileLine);
+            hread(RamFileLine, ram(i));
+        end loop;
+        return ram;
+    end function;
+
+    signal RAM1 : ram1_type := InitRam1FromFile(FILENAME);
+    signal RAM2 : ram2_type := InitRam2FromFile(FILENAME);
+
+    signal dout1 : std_logic_vector(WIDTH - 1 downto 0);
+    signal dout2 : std_logic_vector(WIDTH - 1 downto 0);
 
 begin
 
@@ -49,12 +94,18 @@ begin
     begin
         if rising_edge(cp2) then
             if ce = '1' then
-                if (we = '1') then
-                    RAM(conv_integer(address)) <= din;
+                if is_power_of_2 then
+                    dout1 <= RAM1(conv_integer(address));
+                    dout2 <= (others => '0');
+                else
+                    dout1 <= RAM1(conv_integer(address(f_log2(ram1_size) - 1 downto 0)));
+                    dout2 <= RAM2(conv_integer(address(f_log2(ram2_size) - 1 downto 0)));
                 end if;
-                dout <= RAM(conv_integer(address));
+
             end if;
         end if;
     end process;
+
+    dout <= dout1 when is_power_of_2 or address(f_log2(SIZE) - 1) = '0' else dout2;
 
 end RTL;
