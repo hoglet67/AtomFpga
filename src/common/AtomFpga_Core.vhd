@@ -116,10 +116,12 @@ architecture BEHAVIORAL of AtomFpga_Core is
 
     function InitBFFE_Atom2015 return std_logic_vector is
     begin
-        if CImplDebugger then
-            return x"08";
-        else
+        if CImplAtoMMC2 then
+            -- Use OS ROM Bank 0 (contains AVR AtoMMC)
             return x"00";
+        else
+            -- Use OS ROM Bank 1 (contains PIC AtoMMC)
+            return x"08";
         end if;
     end function;
 
