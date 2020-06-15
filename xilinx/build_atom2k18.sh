@@ -92,6 +92,10 @@ rm -f ${DESIGN}_tmp.xise
 cp working/$i/${DESIGN}.bit ${DIR}/${DESIGN}_${i}.bit
 cp working/$i/${DESIGN}.mcs ${DIR}/${DESIGN}_${i}.mcs
 
+# Report usage
+
+egrep "LUTs:|Registers:|WERs:"  working/$i/AtomFpga_Atom2K18_map.mrp
+
 done
 
 # -u 2A0000 working/spare/${DESIGN}.bit          \
