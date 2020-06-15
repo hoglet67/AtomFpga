@@ -40,7 +40,6 @@ entity AtomFpga_Atom2K18 is
 
         -- NOTE: If CImplAtoMMC2 and CImplDebugger are both true, several
         -- smaller features are disabled to make space in the FPGA:
-        --    Atom2K18: ProfilingCounters
         --       GODIL: SID and Mouse
         --
         -- If you are not happy with this, then you can experiment with
@@ -174,7 +173,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     -- Atom2K18 features
     constant CImplVIA               : boolean := true;
     constant CImplLEDs              : boolean := true;
-    constant CImplProfilingCounters : boolean := not CImplMakeSpace;
+    constant CImplProfilingCounters : boolean := true;
     constant CImplRTC               : boolean := true;
     constant CImplSAM               : boolean := true;
     constant CImplPAM               : boolean := true;
