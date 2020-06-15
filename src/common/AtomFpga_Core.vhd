@@ -542,7 +542,7 @@ begin
         Inst_AVR8: entity work.AVR8
         generic map(
             CDATAMEMSIZE      => 4096,
-            CPROGMEMSIZE      => 10240,
+            CPROGMEMSIZE      => 9216,
             FILENAME          => "avr_progmem_atommc2.data",
             CImplPORTA        => TRUE,
             CImplPORTB        => TRUE,
