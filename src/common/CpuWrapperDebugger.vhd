@@ -54,6 +54,7 @@ begin
             generic map (
                 UseT65Core   => true,
                 UseAlanDCore => false,
+                num_comparators => 8,
                 filename     => "avr_progmem_ice6502.data"
                 )
             port map (
@@ -85,6 +86,7 @@ begin
             generic map (
                 UseT65Core   => false,
                 UseAlanDCore => true,
+                num_comparators => 8,
                 filename     => "avr_progmem_ice65c02.data"
                 )
             port map (
