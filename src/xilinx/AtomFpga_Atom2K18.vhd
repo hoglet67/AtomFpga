@@ -26,6 +26,9 @@ use unisim.vcomponents.all;
 
 entity AtomFpga_Atom2K18 is
     generic (
+        -- Design identifier, readable after configuration from #BFFB
+        DESIGN_NUM     : integer := 0;
+
         -- Set CImplCpu65c02 to true to use a 65C02 core rather than a 6502
         CImplCpu65c02  : boolean := false;
 
@@ -37,8 +40,8 @@ entity AtomFpga_Atom2K18 is
 
         -- NOTE: If CImplAtoMMC2 and CImplDebugger are both true, several
         -- smaller features are disabled to make space in the FPGA:
-        --    Atom2K18: ProfilingCounters, RTC, SAM, PAM, Palette
-        --    GODIL:    SID, HWScrolling, Mouse, Uart, DoubleVideo
+        --    Atom2K18: ProfilingCounters
+        --       GODIL: SID and Mouse
         --
         -- If you are not happy with this, then you can experiment with
         -- enabling individual features in the constants section below.
@@ -128,37 +131,55 @@ end AtomFpga_Atom2K18;
 architecture behavioral of AtomFpga_Atom2K18 is
 
     ------------------------------------------------------
-    -- Constants controlling groups of features
+    -- Constants controlling single features
     ------------------------------------------------------
+
+    -- Approx resource usage
+    --
+    --                         (5,720)   (32)
+    --                           LUTs  RamB16
+    -- Baseline                  1197       5.5
+    -- CImplCpu65C02              -47       1.5
+    -- CImplAtoMMC2              1325      11
+    -- CImplDebugger             2342      11
+    -- CImplVGA80x40              116
+    -- CImplSID                   826       2
+    -- CImplHWScrolling            90
+    -- CImplMouse                 250       1
+    -- CImplUart                  167
+    -- CImplDoubleVideo           -35       4
+    -- CImplVIA                   254
+    -- CImplLEDs                  131
+    -- CImplProfilingCounters     174
+    -- CImplRTC                   173
+    -- CImplSAM                   136
+    -- CImplPAM                    28
+    -- CImplPalette               100
+    -- CImplConfig                104
 
     -- When both AtoMMC2 and Debugger are included, we need to disable other
     -- features to make space
-
-    constant CImplGodilExtras       : boolean := not (CImplAtoMMC2 and CImplDebugger);
-    constant CImplAtom2K18Extras    : boolean := not (CImplAtoMMC2 and CImplDebugger);
-
-    ------------------------------------------------------
-    -- Constants controlling single features
-    ------------------------------------------------------
+    constant CImplMakeSpace         : boolean := CImplAtoMMC2 and CImplDebugger;
 
     -- GODIL features
     constant CImplGraphicsExt       : boolean := true;
     constant CImplSoftChar          : boolean := true;
     constant CImplVGA80x40          : boolean := true;
-    constant CImplSID               : boolean := CImplGodilExtras;
-    constant CImplHWScrolling       : boolean := CImplGodilExtras;
-    constant CImplMouse             : boolean := CImplGodilExtras;
-    constant CImplUart              : boolean := CImplGodilExtras;
-    constant CImplDoubleVideo       : boolean := CImplGodilExtras;
+    constant CImplSID               : boolean := not CImplMakeSpace;
+    constant CImplHWScrolling       : boolean := true;
+    constant CImplMouse             : boolean := not CImplMakeSpace;
+    constant CImplUart              : boolean := true;
+    constant CImplDoubleVideo       : boolean := true;
 
     -- Atom2K18 features
     constant CImplVIA               : boolean := true;
     constant CImplLEDs              : boolean := true;
-    constant CImplProfilingCounters : boolean := CImplAtom2K18Extras;
-    constant CImplRTC               : boolean := CImplAtom2K18Extras;
-    constant CImplSAM               : boolean := CImplAtom2K18Extras;
-    constant CImplPAM               : boolean := CImplAtom2K18Extras;
-    constant CImplPalette           : boolean := CImplAtom2K18Extras;
+    constant CImplProfilingCounters : boolean := not CImplMakeSpace;
+    constant CImplRTC               : boolean := true;
+    constant CImplSAM               : boolean := true;
+    constant CImplPAM               : boolean := true;
+    constant CImplPalette           : boolean := true;
+    constant CImplConfig            : boolean := true;
 
     ------------------------------------------------
     -- Signals
@@ -231,6 +252,10 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal intern_pam_reg1 : std_logic; -- enable for #BFF9
     signal intern_sam_reg  : std_logic; -- enable for #BFF2
     signal intern_palette  : std_logic; -- enable for #BD0x
+    signal intern_config   : std_logic; -- enable for #BFFB
+
+    -- Reconfiguration
+    signal config_data     : std_logic_vector(7 downto 0) := std_logic_vector(to_unsigned(DESIGN_NUM, 8));
 
     -- Colour palette registers
     signal palette_data    : std_logic_vector(7 downto 0);
@@ -606,6 +631,7 @@ begin
                    led_data                 when phi2 = '1' and intern_led = '1'                     and debug_mode = '1' and CImplLEDs    else
                    rtc_data                 when phi2 = '1' and intern_rtc = '1'                     and debug_mode = '1' and CImplRTC     else
                    palette_data             when phi2 = '1' and intern_palette = '1'                 and debug_mode = '1' and CImplPalette else
+                   config_data              when phi2 = '1' and intern_config = '1'                  and debug_mode = '1' and CImplConfig  else
                    sam_status               when phi2 = '1' and intern_sam_reg = '1'                 and debug_mode = '1' and CImplSAM     else
                    pam_page(7 downto 0)     when phi2 = '1' and intern_pam_reg0 = '1'                and debug_mode = '1' and CImplPAM     else
                    "0000000" & pam_page(8)  when phi2 = '1' and intern_pam_reg1 = '1'                and debug_mode = '1' and CImplPAM     else
@@ -623,6 +649,7 @@ begin
     extern_dout <= led_data                when                       intern_led = '1' and CImplLEDs    else
                    rtc_data                when                       intern_rtc = '1' and CImplRTC     else
                    palette_data            when                   intern_palette = '1' and CImplPalette else
+                   config_data             when                    intern_config = '1' and CImplConfig  else
                    sam_status              when                   intern_sam_reg = '1' and CImplSAM     else
                    pam_page(7 downto 0)    when                  intern_pam_reg0 = '1' and CImplPAM     else
                    "0000000" & pam_page(8) when                  intern_pam_reg1 = '1' and CImplPAM     else
@@ -753,6 +780,7 @@ begin
     intern_pam_reg0 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF8" and CImplPAM     else '0';
     intern_pam_reg1 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF9" and CImplPAM     else '0';
     intern_palette  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BD0"  and CImplPalette else '0';
+    intern_config   <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFFB" and CImplConfig  else '0';
 
     ------------------------------------------------
     -- External device chip selects
@@ -790,7 +818,8 @@ begin
     -- The tube is on the near side of the data buffers, so exclude
     -- The LED and RTC registers are internal to this module, so exclude
     remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and extern_sam_rd = '0' and extern_sam_wr = '0' and extern_pam = '0' and
-                              intern_led = '0' and intern_rtc = '0' and intern_palette = '0' and intern_sam_reg = '0' and intern_pam_reg0 = '0' and intern_pam_reg1 = '0' else '0';
+                              intern_led = '0' and intern_rtc = '0' and intern_palette = '0' and intern_config = '0' and intern_sam_reg = '0' and
+                              intern_pam_reg0 = '0' and intern_pam_reg1 = '0' else '0';
 
     -- In normal mode, enable the data buffers only for remote accesses.
     -- In debug mode, enable the data buffers all the time.
@@ -820,8 +849,13 @@ begin
             r := x"EFFF";
         end if;
         -- SID output is 18-bit unsigned
-        l := l + sid_audio(17 downto 2);
-        r := r + sid_audio(17 downto 2);
+        if CImplSID then
+            l := l + sid_audio(17 downto 2);
+            r := r + sid_audio(17 downto 2);
+        else
+            l := l + x"8000";
+            r := r + x"8000";
+        end if;
         -- Currently the left and right channels are identical
         audio_l <= l;
         audio_r <= r;
@@ -1198,6 +1232,34 @@ begin
         vga_green1 <= green_vga(1);
         vga_blue2  <= blue_vga(2);
         vga_blue1  <= blue_vga(1);
+
+    end generate;
+
+    --------------------------------------------------------
+    -- Colour palette control
+    --------------------------------------------------------
+
+    config_block: if CImplConfig generate
+
+        process (clock_32)
+        begin
+            if rising_edge(clock_32) then
+                -- write RTC control/data registers
+                if intern_config = '1' and rnw = '0' and phi2 = '1' then
+                    -- Bit 7 triggers the reconfiguration
+                    -- Bits 2..0 specify the design (0..7)
+                    config_data <= extern_din;
+                end if;
+            end if;
+        end process;
+
+        Inst_ICAP_core: entity work.ICAP_core port map (
+            fastclk     => clock_32,
+            design_num  => '0' & config_data(2 downto 0),
+            reconfigure => config_data(7),
+            powerup     => '0',
+            sw_in       => x"0"
+            );
 
     end generate;
 
