@@ -36,7 +36,10 @@ entity AtomFpga_Atom2K18 is
         CImplAtoMMC2   : boolean := true;
 
         -- Set CImplDebugger to true to enable the ICE-6502 Debugger
-        CImplDebugger  : boolean := false
+        CImplDebugger  : boolean := false;
+
+        -- Set CImplDebugger to true to enable the ICE-6502 Debugger
+        CImplSID       : boolean := true
 
         -- NOTE: If CImplAtoMMC2 and CImplDebugger are both true, several
         -- smaller features are disabled to make space in the FPGA:
@@ -158,23 +161,23 @@ architecture behavioral of AtomFpga_Atom2K18 is
 
     -- When both AtoMMC2 and Debugger are included, we need to disable other
     -- features to make space
-    constant CImplMakeSpace         : boolean := CImplAtoMMC2 and CImplDebugger;
+    constant CImplMakeSpace1        : boolean := CImplAtoMMC2 and CImplDebugger and     CImplSID;
+    constant CImplMakeSpace2        : boolean := CImplAtoMMC2 and CImplDebugger and not CImplSID;
 
     -- GODIL features
     constant CImplGraphicsExt       : boolean := true;
     constant CImplSoftChar          : boolean := true;
     constant CImplVGA80x40          : boolean := true;
-    constant CImplSID               : boolean := not CImplMakeSpace;
-    constant CImplHWScrolling       : boolean := true;
-    constant CImplMouse             : boolean := not CImplMakeSpace;
-    constant CImplUart              : boolean := true;
-    constant CImplDoubleVideo       : boolean := true;
+    constant CImplHWScrolling       : boolean := not CImplMakeSpace1;
+    constant CImplMouse             : boolean := not CImplMakeSpace1 and not CImplMakeSpace2;
+    constant CImplUart              : boolean := not CImplMakeSpace1;
+    constant CImplDoubleVideo       : boolean := not CImplMakeSpace1;
 
     -- Atom2K18 features
     constant CImplVIA               : boolean := true;
     constant CImplLEDs              : boolean := true;
-    constant CImplProfilingCounters : boolean := true;
-    constant CImplRTC               : boolean := true;
+    constant CImplProfilingCounters : boolean := not CImplMakeSpace1;
+    constant CImplRTC               : boolean := not CImplMakeSpace1;
     constant CImplSAM               : boolean := true;
     constant CImplPAM               : boolean := true;
     constant CImplPalette           : boolean := true;

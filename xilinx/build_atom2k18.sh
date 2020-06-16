@@ -21,12 +21,12 @@ mkdir -p $DIR
 
 source /opt/Xilinx/14.7/ISE_DS/settings64.sh
 
-#       Design    0  1  2  3  4  5
-# CImplCpu65c02   0  1  0  1  0  1
-# CImplAtoMMC2    1  1  1  1  0  0
-# CImplDebugger   0  0  1  1  1  1
-
-for i in 0 1 2 3 4 5
+#       Design    0  1  2  3  4  5  6  7
+# CImplCpu65c02   0  1  0  1  0  1  0  1
+# CImplAtoMMC2    1  1  1  1  0  0  1  1
+# CImplDebugger   0  0  1  1  1  1  1  1
+# CImplSID        1  1  0  0  1  1  1  1
+for i in 0 1 2 3 4 5 6 7
 do
 
 case $i in
@@ -34,31 +34,49 @@ case $i in
         CImplCpu65c02="false"
          CImplAtoMMC2="true"
         CImplDebugger="false"
+             CImplSID="true"
         ;;
     1)
         CImplCpu65c02="true"
          CImplAtoMMC2="true"
         CImplDebugger="false"
+             CImplSID="true"
         ;;
     2)
         CImplCpu65c02="false"
          CImplAtoMMC2="true"
         CImplDebugger="true"
+             CImplSID="false"
         ;;
     3)
         CImplCpu65c02="true"
          CImplAtoMMC2="true"
         CImplDebugger="true"
+             CImplSID="false"
         ;;
     4)
         CImplCpu65c02="false"
          CImplAtoMMC2="false"
         CImplDebugger="true"
+             CImplSID="true"
         ;;
     5)
         CImplCpu65c02="true"
          CImplAtoMMC2="false"
         CImplDebugger="true"
+             CImplSID="true"
+        ;;
+    6)
+        CImplCpu65c02="false"
+         CImplAtoMMC2="true"
+        CImplDebugger="true"
+             CImplSID="true"
+        ;;
+    7)
+        CImplCpu65c02="true"
+         CImplAtoMMC2="true"
+        CImplDebugger="true"
+             CImplSID="true"
         ;;
 esac
 
@@ -66,11 +84,12 @@ echo "   DESIGN_NUM = $i"
 echo "CImplCpu65c02 = $CImplCpu65c02"
 echo " CImplAtoMMC2 = $CImplAtoMMC2"
 echo "CImplDebugger = $CImplDebugger"
+echo "     CImplSID = $CImplSID"
 
 mkdir -p working/$i
 
 cat ${DESIGN}.xise | sed "s#working#working/$i#" |
-    sed "s#DESIGN_NUM=0#DESIGN_NUM=$i CImplCpu65c02=$CImplCpu65c02 CImplAtoMMC2=$CImplAtoMMC2 CImplDebugger=$CImplDebugger#" > ${DESIGN}_tmp.xise
+    sed "s#DESIGN_NUM=0#DESIGN_NUM=$i CImplCpu65c02=$CImplCpu65c02 CImplAtoMMC2=$CImplAtoMMC2 CImplDebugger=$CImplDebugger CImplSID=$CImplSID#" > ${DESIGN}_tmp.xise
 
 grep Generics ${DESIGN}_tmp.xise
 
@@ -110,8 +129,8 @@ promgen                                          \
  -u  FC000 working/3/${DESIGN}.bit               \
  -u 150000 working/4/${DESIGN}.bit               \
  -u 1A4000 working/5/${DESIGN}.bit               \
- -u 1F8000 working/0/${DESIGN}.bit               \
- -u 24C000 working/1/${DESIGN}.bit               \
+ -u 1F8000 working/6/${DESIGN}.bit               \
+ -u 24C000 working/7/${DESIGN}.bit               \
  -o ${DIR}/${DESIGN}.mcs  -p mcs -w -spi -s 4096
 
 
