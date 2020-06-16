@@ -73,7 +73,6 @@ entity AtomFpga_Core is
         phi2             : out   std_logic;
         sync             : out   std_logic;
         rnw              : out   std_logic;
-        blk_b            : out   std_logic;
         addr             : out   std_logic_vector(15 downto 0);
         rdy              : in    std_logic := '1';
         so               : in    std_logic := '1';
@@ -323,7 +322,6 @@ begin
 
     -- external bus
     rnw           <= cpu_R_W_n;
-    blk_b         <= '0' when cpu_addr(15 downto 12) = x"0" else '1';
     addr          <= cpu_addr;
 
 ---------------------------------------------------------------------
@@ -854,9 +852,17 @@ begin
                         ext_bus_enable <= '1';
                     end if;
                 elsif cpu_addr(11 downto 4)       = x"DB" then -- 0xBDBx UART
-                    uart_enable <= '1';
+                    if CImplUart then
+                        uart_enable <= '1';
+                    else
+                        ext_bus_enable <= '1';
+                    end if;
                 elsif cpu_addr(11 downto 5) & '0' = x"DC" then -- 0xBDCx, 0xBDDx SID
-                    sid_enable <= '1';
+                    if CImplSID then
+                        sid_enable <= '1';
+                    else
+                        ext_bus_enable <= '1';
+                    end if;
                 elsif cpu_addr(11 downto 5) & '0' = x"DE" then -- 0xBDEx, 0xBDFx GODIL Registers
                     reg_enable <= '1';
                 elsif cpu_addr(11 downto 2) & "00"= x"FFC" then -- 0xBFFC-BFFF RomLatch

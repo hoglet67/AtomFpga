@@ -515,7 +515,6 @@ begin
         phi2                => phi2,
         sync                => sync,
         rnw                 => rnw,
-        blk_b               => bus_blk_b,
         rdy                 => bus_rdy,
         so                  => bus_so,
         irq_n               => irq_n,
@@ -614,6 +613,9 @@ begin
     bus_phi2    <= phi2;
     bus_rnw     <= rnw;
     bus_sync    <= sync;
+
+    -- Used on the bus to enable I/O devices in a safe manner
+    bus_blk_b   <= not extern_bus;
 
     bus_a       <= "1" & sam_rd_addr                      when extern_sam_rd = '1' and rnw = '1' and CImplSAM else
                    "1" & sam_wr_addr                      when extern_sam_wr = '1' and rnw = '0' and CImplSAM else
