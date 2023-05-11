@@ -833,7 +833,7 @@ begin
             when x"B" =>
                 if cpu_addr(11 downto 4)          = x"00" then -- 0xB00x 8255 PIA
                     i8255_enable <= '1';
-                elsif cpu_addr(11 downto 4)       = x"40" then -- 0xB40x AtoMMC/SPI
+                elsif cpu_addr(11 downto 3) & "000" = x"400" then -- 0xB400-0xB407 AtoMMC/SPI
                     if CImplSDDOS or CImplAtoMMC2 then
                         pl8_enable <= '1';
                     else

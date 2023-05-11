@@ -618,7 +618,10 @@ begin
     bus_sync    <= sync;
 
     -- Used on the bus to enable I/O devices in a safe manner
-    bus_blk_b   <= not extern_bus;
+    -- bus_blk_b <= not extern_bus;
+
+    -- Used to enable an external Econet card at B408-B40F
+    bus_blk_b   <= '0' when extern_bus = '1' and (extern_a(15 downto 3) & "000") = x"B408" else '1';
 
     bus_a       <= "1" & sam_rd_addr                      when extern_sam_rd = '1' and rnw = '1' and CImplSAM else
                    "1" & sam_wr_addr                      when extern_sam_wr = '1' and rnw = '0' and CImplSAM else
