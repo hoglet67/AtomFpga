@@ -1,19 +1,3 @@
---------------------------------------------------------------------------------
--- Copyright (c) 2009 Alan Daly.  All rights reserved.
---------------------------------------------------------------------------------
---   ____  ____
---  /   /\/   /
--- /___/  \  /
--- \   \   \/
---  \   \
---  /   /         Filename  : AtomFpga_PapilioOne.vhd
--- /___/   /\     Timestamp : 02/03/2013 06:17:50
--- \   \  /  \
---  \___\/\___\
---
---Design Name: AtomFpga_PapilioOne
---Device: spartan3E
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
@@ -41,7 +25,11 @@ entity AtomFpga_TangNano9K is
         tf_mosi        : out   std_logic;
         uart_rx        : in    std_logic;
         uart_tx        : out   std_logic;
-        led            : out   std_logic_vector (5 downto 0)
+        led            : out   std_logic_vector (5 downto 0);
+        tmds_clk_p     : out   std_logic;
+        tmds_clk_n     : out   std_logic;
+        tmds_d_p       : out   std_logic_vector(2 downto 0);
+        tmds_d_n       : out   std_logic_vector(2 downto 0)
     );
 end AtomFpga_TangNano9K;
 
@@ -49,7 +37,22 @@ architecture behavioral of AtomFpga_TangNano9K is
 
     signal clock_16   : std_logic;
     signal clock_25   : std_logic;
+    signal clock_125  : std_logic;
     signal clock_32   : std_logic;
+
+    signal red_int    : std_logic_vector(2 downto 0);
+    signal green_int  : std_logic_vector(2 downto 0);
+    signal blue_int   : std_logic_vector(2 downto 0);
+    signal vsync_int  : std_logic;
+    signal hsync_int  : std_logic;
+    signal blank_int  : std_logic;
+
+    signal rgb_r      : std_logic_vector(7 downto 0);
+    signal rgb_g      : std_logic_vector(7 downto 0);
+    signal rgb_b      : std_logic_vector(7 downto 0);
+    signal rgb_hs     : std_logic;
+    signal rgb_vs     : std_logic;
+    signal rgb_de     : std_logic;
 
     signal led1       : std_logic;
     signal led2       : std_logic;
@@ -65,6 +68,24 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal RamDout1   : std_logic_vector (7 downto 0);
     signal RamDout2   : std_logic_vector (7 downto 0);
     signal RomDout    : std_logic_vector (7 downto 0);
+
+    component DVI_TX_Top
+        port (
+            I_rst_n: in std_logic;
+            I_serial_clk: in std_logic;
+            I_rgb_clk: in std_logic;
+            I_rgb_vs: in std_logic;
+            I_rgb_hs: in std_logic;
+            I_rgb_de: in std_logic;
+            I_rgb_r: in std_logic_vector(7 downto 0);
+            I_rgb_g: in std_logic_vector(7 downto 0);
+            I_rgb_b: in std_logic_vector(7 downto 0);
+            O_tmds_clk_p: out std_logic;
+            O_tmds_clk_n: out std_logic;
+            O_tmds_data_p: out std_logic_vector(2 downto 0);
+            O_tmds_data_n: out std_logic_vector(2 downto 0)
+        );
+    end component;
 
     component rPLL
         generic (
@@ -110,6 +131,19 @@ architecture behavioral of AtomFpga_TangNano9K is
         );
     end component;
 
+    component CLKDIV
+        generic (
+            DIV_MODE : STRING := "2";
+            GSREN: in string := "false"
+        );
+        port (
+            CLKOUT: out std_logic;
+            HCLKIN: in std_logic;
+            RESETN: in std_logic;
+            CALIB: in std_logic
+        );
+    end component;
+
 begin
 
     pll1 : rPLL
@@ -143,17 +177,16 @@ begin
         generic map (
             FCLKIN => "27",
             DEVICE => "GW1NR-9C",
-            IDIV_SEL => 8,
-            FBDIV_SEL => 24,
-            ODIV_SEL => 8,
-            DYN_SDIV_SEL => 6
+            IDIV_SEL => 2,
+            FBDIV_SEL => 13,
+            ODIV_SEL => 4
         )
         port map (
             CLKIN    => clock_27,
-            CLKOUT   => open,
+            CLKOUT   => clock_125,
             CLKOUTP  => open,
             CLKOUTD  => open,
-            CLKOUTD3 => clock_25,
+            CLKOUTD3 => open,
             LOCK     => open,
             RESET    => '0',
             RESET_P  => '0',
@@ -165,6 +198,18 @@ begin
             DUTYDA   => (others => '0'),
             FDLY     => (others => '0')
             );
+
+    clkdiv5 : CLKDIV
+        generic map (
+            DIV_MODE => "5",
+            GSREN => "false"
+        )
+        port map (
+            RESETN => '1', -- TODO, reset when previous PLL locked
+            HCLKIN => clock_125,
+            CLKOUT => clock_25,
+            CALIB  => '1'
+        );
 
     ram_0000_07ff : entity work.RAM_2K port map(
         clk     => clock_16,
@@ -234,11 +279,12 @@ begin
         powerup_reset_n     => btn1_n,
         ext_reset_n         => btn2_n,
         int_reset_n         => open,
-        red                 => red,
-        green               => green,
-        blue                => blue,
-        vsync               => vsync,
-        hsync               => hsync,
+        red                 => red_int,
+        green               => green_int,
+        blue                => blue_int,
+        vsync               => vsync_int,
+        hsync               => hsync_int,
+        blank               => blank_int,
         phi2                => open,
         ExternCE            => ExternCE,
         ExternWE            => ExternWE,
@@ -262,5 +308,39 @@ begin
     );
 
     led <= btn2_n & btn2_n & btn2_n & led2 & led2 & btn1_n;
+
+    -- DVI / HDMI output
+
+    rgb_r <= red_int & "00000";
+    rgb_g <= green_int & "00000";
+    rgb_b <= blue_int & "00000";
+    rgb_vs <= not vsync_int;
+    rgb_hs <= not hsync_int;
+    rgb_de <= not blank_int;
+
+    dvi_tx : DVI_TX_Top
+        port map (
+            I_rst_n => btn1_n,
+            I_serial_clk => clock_125,
+            I_rgb_clk => clock_25,
+            I_rgb_vs => rgb_vs,
+            I_rgb_hs => rgb_hs,
+            I_rgb_de => rgb_de,
+            I_rgb_r => rgb_r,
+            I_rgb_g => rgb_g,
+            I_rgb_b => rgb_b,
+            O_tmds_clk_p => tmds_clk_p,
+            O_tmds_clk_n => tmds_clk_n,
+            O_tmds_data_p => tmds_d_p,
+            O_tmds_data_n => tmds_d_n
+            );
+
+    -- VGA output
+
+    red <= red_int;
+    green <= green_int;
+    blue <= blue_int;
+    vsync <= vsync_int;
+    hsync <= hsync_int;
 
 end behavioral;
