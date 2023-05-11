@@ -141,16 +141,20 @@ begin
     begin
         if nRST = '0' then
             AddrLatch <= "000";
-        elsif rising_edge(clk) and (AtomIOWR = '1' and AtomIOWR1 = '0') then
-            AddrLatch <= Addr;
+        elsif rising_edge(clk) then
+            if (AtomIOWR = '1' and AtomIOWR1 = '0') then
+                AddrLatch <= Addr;
+            end if;
         end if;
     end process;
 
     -- Latch read or write
     AtomRWProcess : process (clk)
     begin
-        if rising_edge(clk) and ((AtomIOWR = '1' and AtomIOWR1 = '0') or (AtomIORD = '1' and AtomIORD1 = '0')) then
-           AtomRW <= RW;
+        if rising_edge(clk) then
+            if ((AtomIOWR = '1' and AtomIOWR1 = '0') or (AtomIORD = '1' and AtomIORD1 = '0')) then
+                AtomRW <= RW;
+            end if;
         end if;
     end process;
 
@@ -158,16 +162,20 @@ begin
     -- This may be dodgy on this edge!!
     AtomToAVRProcess : process (clk)
     begin
-        if rising_edge(clk) and (AtomIOWR = '1' and AtomIOWR1 = '0') then
-            AtomToAVR <= DataIn;
+        if rising_edge(clk) then
+            if (AtomIOWR = '1' and AtomIOWR1 = '0') then
+                AtomToAVR <= DataIn;
+            end if;
         end if;
     end process;
 
     -- Latch AVR to Atom on AVR write
     AVRToAtomProcess : process (clk)
     begin
-        if rising_edge(clk) and nAWR = '0' and nAWR1 = '1' then
-            AVRToAtom <= AVRDataIn;
+        if rising_edge(clk) then 
+            if nAWR = '0' and nAWR1 = '1' then
+                AVRToAtom <= AVRDataIn;
+            end if;
         end if;
     end process;
 

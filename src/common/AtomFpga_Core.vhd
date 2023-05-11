@@ -44,12 +44,12 @@ entity AtomFpga_Core is
     );
     port (
         -- Clocking
-        clk_vga          : in    std_logic; -- nominally 25.175MHz VGA clock
-        clk_main         : in    std_logic; -- clock for the main system
-        clk_avr          : in    std_logic; -- clock for the AtoMMC AVR
-        clk_avr_debug    : in    std_logic; -- clock for the Debugger AVR
-        clk_dac          : in    std_logic; -- fast clock for the 1-bit DAC
-        clk_32M00        : in    std_logic; -- fixed clock, used for SID and casette
+        clk_vga          : in    std_logic;        -- nominally 25.175MHz VGA clock
+        clk_main         : in    std_logic;        -- clock for the main system
+        clk_avr          : in    std_logic;        -- clock for the AtoMMC AVR
+        clk_avr_debug    : in    std_logic := '0'; -- clock for the Debugger AVR (only needed if CImplDebugger true)
+        clk_dac          : in    std_logic;        -- fast clock for the 1-bit DAC
+        clk_32M00        : in    std_logic;        -- fixed clock, used for SID and casette
         -- Keyboard/mouse
         kbd_pa           : out   std_logic_vector(3 downto 0);
         kbd_pb           : in    std_logic_vector(7 downto 0) := (others => '1');
@@ -138,6 +138,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
 -------------------------------------------------
     signal powerup_reset_n_sync : std_logic;
     signal ext_reset_n_sync     : std_logic;
+    signal RST               : std_logic;
     signal RSTn              : std_logic;
     signal cpu_R_W_n         : std_logic;
     signal not_cpu_R_W_n     : std_logic;
@@ -313,6 +314,8 @@ begin
         end if;
     end process;
 
+    RST <= not RSTn;
+
     -- write enables
     gated_we      <= not_cpu_R_W_n;
     uart_we       <= gated_we;
@@ -345,7 +348,7 @@ begin
             clock_main => clk_main,
             clock_sid_32Mhz => clk_32M00,
             clock_sid_dac => clk_dac,
-            reset => not RSTn,
+            reset => RST,
             reset_vid => '0',
             din => cpu_dout,
             dout => godil_data,

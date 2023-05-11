@@ -42,12 +42,11 @@ architecture rtl of keyboard is
     signal keyb_data  : std_logic_vector(7 downto 0);
     signal keyb_valid : std_logic;
     signal keyb_error : std_logic;
-    type   key_matrix is array(0 to 15) of std_logic_vector(7 downto 0);
+    type   key_matrix is array(0 to 9) of std_logic_vector(5 downto 0);
     signal keys       : key_matrix;
     signal col        : unsigned(3 downto 0);
     signal release    : std_logic;
     signal extended   : std_logic;
-    signal key_data   : std_logic_vector(7 downto 0);
     signal ESC_IN1    : std_logic;
     signal BREAK_IN1  : std_logic;
 
@@ -61,22 +60,25 @@ begin
         keyb_valid,
         keyb_error);
 
-    process(keys, ROW)
+    process(keys, ROW, Joystick1, Joystick2)
+    variable key_data : std_logic_vector(5 downto 0);
     begin
-        key_data <= keys(conv_integer(ROW(3 downto 0)));
+        if (ROW > "1001") then
+            key_data := (others => '1');
+        else
+            key_data := keys(conv_integer(ROW(3 downto 0)));
+        end if;
         -- 0 U R D L F
         if (ROW = "0000") then
-            KEYOUT <= key_data(5 downto 0) and
-                ('1' & Joystick1(0) & Joystick1(3) & Joystick1(1) & Joystick1(2) & Joystick1(5));
+            KEYOUT <= key_data and ('1' & Joystick1(0) & Joystick1(3) & Joystick1(1) & Joystick1(2) & Joystick1(5));
         elsif (ROW = "0001") then
-            KEYOUT <= key_data(5 downto 0) and
-                ('1' & Joystick2(0) & Joystick2(3) & Joystick2(1) & Joystick2(2) & Joystick2(5));
+            KEYOUT <= key_data and ('1' & Joystick2(0) & Joystick2(3) & Joystick2(1) & Joystick2(2) & Joystick2(5));
         else
-            KEYOUT <= key_data(5 downto 0);
+            KEYOUT <= key_data;
         end if;
     end process;
 
-    process(CLOCK, nRESET)
+    process(CLOCK, nRESET, ESC_IN, BREAK_IN)
     begin
         if nRESET = '0' then
             release  <= '0';
@@ -102,12 +104,6 @@ begin
             keys(8) <= (others => '1');
             keys(9) <= (others => '1');
 
-            keys(10) <= (others => '1');
-            keys(11) <= (others => '1');
-            keys(12) <= (others => '1');
-            keys(13) <= (others => '1');
-            keys(14) <= (others => '1');
-            keys(15) <= (others => '1');
         elsif rising_edge(CLOCK) then
         
             -- handle the escape key seperately, as it's value also depends on ESC_IN
@@ -213,6 +209,13 @@ begin
 
                         when others => null;
                     end case;
+
+                    -- Keys that are missing from the matrix (to avoid latch inferrence)
+                    keys(0)(0) <= '1';
+                    keys(1)(0) <= '1';
+                    keys(7)(1) <= '1';
+                    keys(8)(1) <= '1';
+                    keys(9)(1) <= '1';
                     
                 end if;
             end if;

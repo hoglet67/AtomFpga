@@ -34,9 +34,9 @@ architecture BEHAVIORAL of CpuWrapper is
     signal Addr_us    : unsigned(15 downto 0);
     signal Dout_us    : unsigned(7 downto 0);
     signal Din_us     : unsigned(7 downto 0);
+    signal Unused     : std_logic_vector(7 downto 0);
 
 begin
-
 
 ---------------------------------------------------------------------
 -- 6502 CPU (using T65 core)
@@ -55,7 +55,7 @@ begin
             NMI_n          => NMI_n,
             R_W_n          => R_W_n,
             Sync           => Sync,
-            A(23 downto 16) => open,
+            A(23 downto 16) => Unused,
             A(15 downto 0) => Addr(15 downto 0),
             DI(7 downto 0) => Din(7 downto 0),
             DO(7 downto 0) => Dout(7 downto 0)

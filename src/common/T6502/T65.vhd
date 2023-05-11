@@ -306,7 +306,7 @@ begin
 
   -- the 65xx design requires at least two clock cycles before
   -- starting its reset sequence (according to datasheet)
-  process (Res_n_i, Clk)
+  process (Res_n, Clk)
   begin
     if Res_n = '0' then
       Res_n_i <= '0';
