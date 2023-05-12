@@ -248,6 +248,7 @@ begin
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
+        CImplCpu65c02           => false,
         CImplSDDOS              => true,
         CImplAtoMMC2            => false,
         CImplGraphicsExt        => true,
@@ -269,7 +270,6 @@ begin
         clk_vga             => clock_25,
         clk_main            => clock_16,
         clk_avr             => clock_16,
-        clk_avr_debug       => '0',
         clk_dac             => clock_32,
         clk_32M00           => clock_32,
         ps2_clk             => ps2_clk,
