@@ -4,6 +4,9 @@ use ieee.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 entity AtomFpga_TangNano9K is
+    generic (
+        UseGowinDVIIP  : boolean := false
+    );
     port (
         clock_27       : in    std_logic;
         btn1_n         : in    std_logic;
@@ -53,6 +56,16 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal rgb_hs     : std_logic;
     signal rgb_vs     : std_logic;
     signal rgb_de     : std_logic;
+
+    signal reset        : std_logic;
+    signal ctrl         : std_logic_vector(1 downto 0);
+    signal encoded_r    : std_logic_vector(9 downto 0);
+    signal encoded_g    : std_logic_vector(9 downto 0);
+    signal encoded_b    : std_logic_vector(9 downto 0);
+    signal serialized_c : std_logic;
+    signal serialized_r : std_logic;
+    signal serialized_g : std_logic;
+    signal serialized_b : std_logic;
 
     signal led1       : std_logic;
     signal led2       : std_logic;
@@ -133,7 +146,7 @@ architecture behavioral of AtomFpga_TangNano9K is
 
     component CLKDIV
         generic (
-            DIV_MODE : STRING := "2";
+            DIV_MODE : string := "2";
             GSREN: in string := "false"
         );
         port (
@@ -141,6 +154,37 @@ architecture behavioral of AtomFpga_TangNano9K is
             HCLKIN: in std_logic;
             RESETN: in std_logic;
             CALIB: in std_logic
+        );
+    end component;
+
+    component OSER10
+        generic (
+            GSREN : string := "false";
+            LSREN : string := "true"
+            );
+        port (
+            Q : out std_logic;
+            D0 : in std_logic;
+            D1 : in std_logic;
+            D2 : in std_logic;
+            D3 : in std_logic;
+            D4 : in std_logic;
+            D5 : in std_logic;
+            D6 : in std_logic;
+            D7 : in std_logic;
+            D8 : in std_logic;
+            D9 : in std_logic;
+            FCLK : in std_logic;
+            PCLK : in std_logic;
+            RESET : in std_logic
+            );
+    end component;
+
+    component ELVDS_OBUF
+        port (
+            I : in std_logic;
+            O : out std_logic;
+            OB : out std_logic
         );
     end component;
 
@@ -311,29 +355,195 @@ begin
 
     -- DVI / HDMI output
 
-    rgb_r <= red_int & "00000";
+    rgb_r <= red_int   & "00000";
     rgb_g <= green_int & "00000";
-    rgb_b <= blue_int & "00000";
+    rgb_b <= blue_int  & "00000";
     rgb_vs <= not vsync_int;
     rgb_hs <= not hsync_int;
     rgb_de <= not blank_int;
 
-    dvi_tx : DVI_TX_Top
-        port map (
-            I_rst_n => btn1_n,
-            I_serial_clk => clock_125,
-            I_rgb_clk => clock_25,
-            I_rgb_vs => rgb_vs,
-            I_rgb_hs => rgb_hs,
-            I_rgb_de => rgb_de,
-            I_rgb_r => rgb_r,
-            I_rgb_g => rgb_g,
-            I_rgb_b => rgb_b,
-            O_tmds_clk_p => tmds_clk_p,
-            O_tmds_clk_n => tmds_clk_n,
-            O_tmds_data_p => tmds_d_p,
-            O_tmds_data_n => tmds_d_n
-            );
+
+    -- This is Gowin's proprietaty (and encrypted) DVI encoder
+
+    dvi_gowin : if (UseGowinDVIIP) generate
+        dvi_tx1 : DVI_TX_Top
+            port map (
+                I_rst_n => btn1_n,
+                I_serial_clk => clock_125,
+                I_rgb_clk => clock_25,
+                I_rgb_vs => rgb_vs,
+                I_rgb_hs => rgb_hs,
+                I_rgb_de => rgb_de,
+                I_rgb_r => rgb_r,
+                I_rgb_g => rgb_g,
+                I_rgb_b => rgb_b,
+                O_tmds_clk_p => tmds_clk_p,
+                O_tmds_clk_n => tmds_clk_n,
+                O_tmds_data_p => tmds_d_p,
+                O_tmds_data_n => tmds_d_n
+                );
+    end generate;
+
+    -- This is an opensource version from here:
+    --     https://github.com/fcayci/vhdl-hdmi-out/tree/master
+
+    dvi_open_source : if (not UseGowinDVIIP) generate
+
+        -- TODO: The source for this could be made much smaller with some for/generate loops!
+
+        reset <= not btn1_n;
+        ctrl  <= rgb_vs & rgb_hs;
+
+        -- Encode vsync, hsync, blanking and rgb data to Transition-minimized differential signaling (TMDS) format.
+
+        tr : entity work.tmds_encoder(rtl)
+            port map (
+                clk  => clock_25,
+                en   => rgb_de,
+                ctrl => "00",
+                din  => rgb_r,
+                dout => encoded_r
+                );
+
+        tg : entity work.tmds_encoder(rtl)
+            port map (
+                clk  => clock_25,
+                en   => rgb_de,
+                ctrl => "00",
+                din  => rgb_g,
+                dout => encoded_g
+                );
+
+        tb : entity work.tmds_encoder(rtl)
+            port map (
+                clk  => clock_25,
+                en   => rgb_de,
+                ctrl => ctrl,
+                din  => rgb_b,
+                dout => encoded_b
+                );
+
+        --  Serialize the three 10-bit TMDS channels to three serialized 1-bit TMDS streams
+
+        ser_b : OSER10
+            generic map (
+                GSREN => "false",
+                LSREN => "true"
+                )
+            port map(
+                PCLK  => clock_25,
+                FCLK  => clock_125,
+                RESET => reset,
+                Q     => serialized_b,
+                D0    => encoded_b(0),
+                D1    => encoded_b(1),
+                D2    => encoded_b(2),
+                D3    => encoded_b(3),
+                D4    => encoded_b(4),
+                D5    => encoded_b(5),
+                D6    => encoded_b(6),
+                D7    => encoded_b(7),
+                D8    => encoded_b(8),
+                D9    => encoded_b(9)
+                );
+
+        ser_g : OSER10
+            generic map (
+                GSREN => "false",
+                LSREN => "true"
+                )
+            port map (
+                PCLK  => clock_25,
+                FCLK  => clock_125,
+                RESET => reset,
+                Q     => serialized_g,
+                D0    => encoded_g(0),
+                D1    => encoded_g(1),
+                D2    => encoded_g(2),
+                D3    => encoded_g(3),
+                D4    => encoded_g(4),
+                D5    => encoded_g(5),
+                D6    => encoded_g(6),
+                D7    => encoded_g(7),
+                D8    => encoded_g(8),
+                D9    => encoded_g(9)
+                );
+
+        ser_r : OSER10
+            generic map (
+                GSREN => "false",
+                LSREN => "true"
+                )
+            port map (
+                PCLK  => clock_25,
+                FCLK  => clock_125,
+                RESET => reset,
+                Q     => serialized_r,
+                D0    => encoded_r(0),
+                D1    => encoded_r(1),
+                D2    => encoded_r(2),
+                D3    => encoded_r(3),
+                D4    => encoded_r(4),
+                D5    => encoded_r(5),
+                D6    => encoded_r(6),
+                D7    => encoded_r(7),
+                D8    => encoded_r(8),
+                D9    => encoded_r(9)
+                );
+
+        ser_c : OSER10
+            generic map (
+                GSREN => "false",
+                LSREN => "true"
+                )
+            port map (
+                PCLK  => clock_25,
+                FCLK  => clock_125,
+                RESET => reset,
+                Q     => serialized_c,
+                D0    => '1',
+                D1    => '1',
+                D2    => '1',
+                D3    => '1',
+                D4    => '1',
+                D5    => '0',
+                D6    => '0',
+                D7    => '0',
+                D8    => '0',
+                D9    => '0'
+                );
+
+        -- Encode the 1-bit serialized TMDS streams to Low-voltage differential signaling (LVDS) HDMI output pins
+
+        OBUFDS_c : ELVDS_OBUF
+            port map (
+                I  => serialized_c,
+                O  => tmds_clk_p,
+                OB => tmds_clk_n
+                );
+
+        OBUFDS_b : ELVDS_OBUF
+            port map (
+                I  => serialized_b,
+                O  => tmds_d_p(0),
+                OB => tmds_d_n(0)
+                );
+
+        OBUFDS_g : ELVDS_OBUF
+            port map (
+                I  => serialized_g,
+                O  => tmds_d_p(1),
+                OB => tmds_d_n(1)
+                );
+
+        OBUFDS_r : ELVDS_OBUF
+            port map (
+                I  => serialized_r,
+                O  => tmds_d_p(2),
+                OB => tmds_d_n(2)
+                );
+
+    end generate;
 
     -- VGA output
 
