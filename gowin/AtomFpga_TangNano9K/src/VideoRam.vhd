@@ -24,21 +24,21 @@ begin
 
  ram: entity work.dpram_8k
     port map (
-        douta => douta,
-        doutb => doutb,
         clka => clka,
-        ocea => '0',
-        cea => '0',
+        cea => '1',
+        ocea => '1',
         reseta => '0',
         wrea => wea,
-        clkb => clkb,
-        oceb => '0',
-        ceb => '0',
-        resetb => '0',
-        wreb => web,
         ada => addra,
         dina => dina,
+        douta => douta,
+        clkb => clkb,
+        ceb => '1',
+        oceb => '1',
+        resetb => '0',
+        wreb => web,
         adb => addrb,
-        dinb => dinb
+        dinb => dinb,
+        doutb => doutb
         );
  end BEHAVIORAL;
