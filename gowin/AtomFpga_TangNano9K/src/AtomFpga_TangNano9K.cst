@@ -39,28 +39,28 @@ IO_LOC "tmds_clk_p" 69,68;
 IO_PORT "tmds_clk_p" PULL_MODE=NONE; // DRIVE=8;
 
 // Video
-IO_LOC  "red[2]" 35;                 // Non Standard so HDMI can be used
-IO_PORT "red[2]" IO_TYPE=LVCMOS33;
-IO_LOC  "red[1]" 53;                 // Non Standard so HDMI can be used
-IO_PORT "red[1]" IO_TYPE=LVCMOS33;
-IO_LOC  "red[0]" 54;                 // Non Standard so HDMI can be used
-IO_PORT "red[0]" IO_TYPE=LVCMOS33;
-IO_LOC  "green[2]" 55;
-IO_PORT "green[2]" IO_TYPE=LVCMOS33;
-IO_LOC  "green[1]" 56;
-IO_PORT "green[1]" IO_TYPE=LVCMOS33;
-IO_LOC  "green[0]" 57;
-IO_PORT "green[0]" IO_TYPE=LVCMOS33;
-IO_LOC  "blue[2]" 41;
-IO_PORT "blue[2]" IO_TYPE=LVCMOS33;
-IO_LOC  "blue[1]" 42;
-IO_PORT "blue[1]" IO_TYPE=LVCMOS33;
-IO_LOC  "blue[0]" 51;
-IO_PORT "blue[0]" IO_TYPE=LVCMOS33;
-IO_LOC  "vsync" 34;
-IO_PORT "vsync" IO_TYPE=LVCMOS33;
-IO_LOC  "hsync" 40;
-IO_PORT "hsync" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[10]" 35;                // Non Standard so HDMI can be used
+IO_PORT "gpio[10]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[9]" 53;                 // Non Standard so HDMI can be used
+IO_PORT "gpio[9]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[8]" 54;                 // Non Standard so HDMI can be used
+IO_PORT "gpio[8]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[7]" 55;
+IO_PORT "gpio[7]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[6]" 56;
+IO_PORT "gpio[6]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[5]" 57;
+IO_PORT "gpio[5]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[4]" 41;
+IO_PORT "gpio[4]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[3]" 42;
+IO_PORT "gpio[3]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[2]" 51;
+IO_PORT "gpio[2]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[1]" 34;
+IO_PORT "gpio[1]" IO_TYPE=LVCMOS33;
+IO_LOC  "gpio[0]" 40;
+IO_PORT "gpio[0]" IO_TYPE=LVCMOS33;
 
 // SD Card
 IO_LOC  "tf_cs" 38;

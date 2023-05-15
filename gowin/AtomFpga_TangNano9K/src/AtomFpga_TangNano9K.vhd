@@ -5,59 +5,64 @@ use ieee.numeric_std.all;
 
 entity AtomFpga_TangNano9K is
     generic (
-        UseGowinDVIIP  : boolean := false
+        CImplCpu65c02      : boolean := false;
+        CImplDVIGowin      : boolean := false;
+        CImplDVIOpenSource : boolean := true;
+        CImplVGA           : boolean := true;
+        CImplTrace         : boolean := false
     );
     port (
-        clock_27       : in    std_logic;
-        btn1_n         : in    std_logic;
-        btn2_n         : in    std_logic;
-        ps2_clk        : in    std_logic;
-        ps2_data       : in    std_logic;
-        ps2_mouse_clk  : inout std_logic;
-        ps2_mouse_data : inout std_logic;
-        red            : out   std_logic_vector (2 downto 0);
-        green          : out   std_logic_vector (2 downto 0);
-        blue           : out   std_logic_vector (2 downto 0);
-        vsync          : out   std_logic;
-        hsync          : out   std_logic;
-        audiol         : out   std_logic;
-        audior         : out   std_logic;
-        tf_miso        : in    std_logic;
-        tf_cs          : out   std_logic;
-        tf_sclk        : out   std_logic;
-        tf_mosi        : out   std_logic;
-        uart_rx        : in    std_logic;
-        uart_tx        : out   std_logic;
-        led            : out   std_logic_vector (5 downto 0);
-        tmds_clk_p     : out   std_logic;
-        tmds_clk_n     : out   std_logic;
-        tmds_d_p       : out   std_logic_vector(2 downto 0);
-        tmds_d_n       : out   std_logic_vector(2 downto 0)
+        clock_27        : in    std_logic;
+        btn1_n          : in    std_logic;
+        btn2_n          : in    std_logic;
+        ps2_clk         : in    std_logic;
+        ps2_data        : in    std_logic;
+        ps2_mouse_clk   : inout std_logic;
+        ps2_mouse_data  : inout std_logic;
+        audiol          : out   std_logic;
+        audior          : out   std_logic;
+        tf_miso         : in    std_logic;
+        tf_cs           : out   std_logic;
+        tf_sclk         : out   std_logic;
+        tf_mosi         : out   std_logic;
+        uart_rx         : in    std_logic;
+        uart_tx         : out   std_logic;
+        led             : out   std_logic_vector (5 downto 0);
+        tmds_clk_p      : out   std_logic;
+        tmds_clk_n      : out   std_logic;
+        tmds_d_p        : out   std_logic_vector(2 downto 0);
+        tmds_d_n        : out   std_logic_vector(2 downto 0);
+        gpio            : out   std_logic_vector(10 downto 0)
     );
 end AtomFpga_TangNano9K;
 
 architecture behavioral of AtomFpga_TangNano9K is
 
-    signal clock_16   : std_logic;
-    signal clock_25   : std_logic;
-    signal clock_125  : std_logic;
-    signal clock_32   : std_logic;
-
-    signal red_int    : std_logic_vector(2 downto 0);
-    signal green_int  : std_logic_vector(2 downto 0);
-    signal blue_int   : std_logic_vector(2 downto 0);
-    signal vsync_int  : std_logic;
-    signal hsync_int  : std_logic;
-    signal blank_int  : std_logic;
-
-    signal rgb_r      : std_logic_vector(7 downto 0);
-    signal rgb_g      : std_logic_vector(7 downto 0);
-    signal rgb_b      : std_logic_vector(7 downto 0);
-    signal rgb_hs     : std_logic;
-    signal rgb_vs     : std_logic;
-    signal rgb_de     : std_logic;
+    signal clock_16     : std_logic;
+    signal clock_25     : std_logic;
+    signal clock_125    : std_logic;
+    signal clock_32     : std_logic;
 
     signal reset        : std_logic;
+
+    signal led1         : std_logic;
+    signal led2         : std_logic;
+
+    -- Signals used for VGA video from the core
+    signal red          : std_logic_vector(2 downto 0);
+    signal green        : std_logic_vector(2 downto 0);
+    signal blue         : std_logic_vector(2 downto 0);
+    signal vsync        : std_logic;
+    signal hsync        : std_logic;
+    signal blank        : std_logic;
+
+    -- Signals used for DVI/HDMI
+    signal rgb_r        : std_logic_vector(7 downto 0);
+    signal rgb_g        : std_logic_vector(7 downto 0);
+    signal rgb_b        : std_logic_vector(7 downto 0);
+    signal rgb_hs       : std_logic;
+    signal rgb_vs       : std_logic;
+    signal rgb_de       : std_logic;
     signal ctrl         : std_logic_vector(1 downto 0);
     signal encoded_r    : std_logic_vector(9 downto 0);
     signal encoded_g    : std_logic_vector(9 downto 0);
@@ -67,20 +72,24 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal serialized_g : std_logic;
     signal serialized_b : std_logic;
 
-    signal led1       : std_logic;
-    signal led2       : std_logic;
+    -- Signals used by the external bus interface (i.e. RAM and ROM)
+    signal RomCE        : std_logic;
+    signal RamCE1       : std_logic;
+    signal RamCE2       : std_logic;
+    signal ExternCE     : std_logic;
+    signal ExternWE     : std_logic;
+    signal ExternA      : std_logic_vector (18 downto 0);
+    signal ExternDin    : std_logic_vector (7 downto 0);
+    signal ExternDout   : std_logic_vector (7 downto 0);
+    signal RamDout1     : std_logic_vector (7 downto 0);
+    signal RamDout2     : std_logic_vector (7 downto 0);
+    signal RomDout      : std_logic_vector (7 downto 0);
 
-    signal RomCE      : std_logic;
-    signal RamCE1     : std_logic;
-    signal RamCE2     : std_logic;
-    signal ExternCE   : std_logic;
-    signal ExternWE   : std_logic;
-    signal ExternA    : std_logic_vector (18 downto 0);
-    signal ExternDin  : std_logic_vector (7 downto 0);
-    signal ExternDout : std_logic_vector (7 downto 0);
-    signal RamDout1   : std_logic_vector (7 downto 0);
-    signal RamDout2   : std_logic_vector (7 downto 0);
-    signal RomDout    : std_logic_vector (7 downto 0);
+    -- Signals used for tracing 6502 activity (CImplDebug)
+    signal phi2         : std_logic;
+    signal sync         : std_logic;
+    signal rnw          : std_logic;
+    signal data         : std_logic_vector (7 downto 0);
 
     component DVI_TX_Top
         port (
@@ -279,8 +288,6 @@ begin
         DATA    => RomDout
     );
 
---    );
-
     RamCE1 <= '1' when ExternCE = '1' and ExternA(15 downto 11) = "00000" else '0';
     RamCE2 <= '1' when ExternCE = '1' and ExternA(15 downto 13) = "001"   else '0';
     RomCE  <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "11"    else '0';
@@ -292,7 +299,7 @@ begin
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
-        CImplCpu65c02           => false,
+        CImplCpu65c02           => CImplCpu65c02,
         CImplSDDOS              => true,
         CImplAtoMMC2            => false,
         CImplGraphicsExt        => true,
@@ -311,61 +318,81 @@ begin
         DefaultBaud             => 115200
     )
     port map(
+        -- Clocking
         clk_vga             => clock_25,
         clk_main            => clock_16,
         clk_avr             => clock_16,
+        clk_avr_debug       => '0',
         clk_dac             => clock_32,
         clk_32M00           => clock_32,
+        -- Keyboard/mouse
+        kbd_pa              => open,
+        kbd_pb              => (others => '1'),
+        kbd_pc              => (others => '1'),
         ps2_clk             => ps2_clk,
         ps2_data            => ps2_data,
         ps2_mouse_clk       => ps2_mouse_clk,
         ps2_mouse_data      => ps2_mouse_data,
+        -- Resets
         powerup_reset_n     => btn1_n,
         ext_reset_n         => btn2_n,
         int_reset_n         => open,
-        red                 => red_int,
-        green               => green_int,
-        blue                => blue_int,
-        vsync               => vsync_int,
-        hsync               => hsync_int,
-        blank               => blank_int,
-        phi2                => open,
+        -- Video
+        red                 => red,
+        green               => green,
+        blue                => blue,
+        vsync               => vsync,
+        hsync               => hsync,
+        blank               => blank,
+        -- External 6502 bus interface
+        phi2                => phi2,
+        sync                => sync,
+        rnw                 => rnw,
+        -- External Bus/Ram/Rom interface
         ExternCE            => ExternCE,
         ExternWE            => ExternWE,
         ExternA             => ExternA,
         ExternDin           => ExternDin,
         ExternDout          => ExternDout,
+        -- Audio
         sid_audio           => audiol,
         sid_audio_d         => open,
         atom_audio          => audior,
+        -- SD Card
         SDMISO              => tf_miso,
         SDSS                => tf_cs,
         SDCLK               => tf_sclk,
         SDMOSI              => tf_mosi,
+        -- Serial
         uart_RxD            => uart_rx,
         uart_TxD            => uart_tx,
         avr_RxD             => '1',
         avr_TxD             => open,
+        -- Cassette
+        cas_in              => '0',
+        cas_out             => open,
+        -- Misc
         LED1                => led1,
         LED2                => led2,
-        charSet             => '0'
+        charSet             => '0',
+        Joystick1           => (others => '1'),
+        Joystick2           => (others => '1')
     );
 
     led <= btn2_n & btn2_n & btn2_n & led2 & led2 & btn1_n;
 
     -- DVI / HDMI output
 
-    rgb_r <= red_int   & "00000";
-    rgb_g <= green_int & "00000";
-    rgb_b <= blue_int  & "00000";
-    rgb_vs <= not vsync_int;
-    rgb_hs <= not hsync_int;
-    rgb_de <= not blank_int;
-
+    rgb_r <= red   & "00000";
+    rgb_g <= green & "00000";
+    rgb_b <= blue  & "00000";
+    rgb_vs <= not vsync;
+    rgb_hs <= not hsync;
+    rgb_de <= not blank;
 
     -- This is Gowin's proprietaty (and encrypted) DVI encoder
 
-    dvi_gowin : if (UseGowinDVIIP) generate
+    dvi_gowin : if (CImplDVIGowin) generate
         dvi_tx1 : DVI_TX_Top
             port map (
                 I_rst_n => btn1_n,
@@ -387,7 +414,7 @@ begin
     -- This is an opensource version from here:
     --     https://github.com/fcayci/vhdl-hdmi-out/tree/master
 
-    dvi_open_source : if (not UseGowinDVIIP) generate
+    dvi_open_source : if (CImplDVIOpenSOurce) generate
 
         -- TODO: The source for this could be made much smaller with some for/generate loops!
 
@@ -545,12 +572,15 @@ begin
 
     end generate;
 
-    -- VGA output
+    trace: if (CImplTrace) generate
+        -- 6502 Decoder tracing to the GPIO bus
+        data <= ExternDout when ExternCE = '1' and rnw = '1' else ExternDin;
+        gpio <= phi2 & sync & rnw & data;
+    end generate;
 
-    red <= red_int;
-    green <= green_int;
-    blue <= blue_int;
-    vsync <= vsync_int;
-    hsync <= hsync_int;
+    vga: if (CImplVGA) generate
+        -- VGA output to the GPIO bus
+        gpio <= red & green & blue & vsync & hsync;
+    end generate;
 
 end behavioral;
