@@ -127,7 +127,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
 -------------------------------------------------
 -- Clocks and enables
 -------------------------------------------------
-    signal clk_counter       : std_logic_vector(4 downto 0);
+    signal clk_counter       : std_logic_vector(4 downto 0) := (others => '0');
     signal cpu_cycle         : std_logic;
     signal cpu_clken         : std_logic;
     signal pia_clken         : std_logic;
@@ -136,6 +136,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
 -------------------------------------------------
 -- CPU signals
 -------------------------------------------------
+    signal powerup_reset_sync   : std_logic;
     signal powerup_reset_n_sync : std_logic;
     signal ext_reset_n_sync     : std_logic;
     signal RST               : std_logic;
@@ -222,7 +223,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal key_turbo         : std_logic_vector(1 downto 0);
 
     signal cas_divider       : std_logic_vector(15 downto 0);
-    signal cas_tone          : std_logic;
+    signal cas_tone          : std_logic := '0';
 
     signal turbo             : std_logic_vector(1 downto 0);
     signal turbo_synced      : std_logic_vector(1 downto 0);
@@ -260,6 +261,21 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal p_pause           : std_logic;
     signal p_reset_last      : std_logic;
 
+----------------------------------------------------
+-- Unused port bits
+----------------------------------------------------
+
+    signal portbout_2_unused : std_logic;
+    signal portbout_4_unused : std_logic;
+    signal portbout_5_unused : std_logic;
+    signal portdout_0_unused : std_logic;
+    signal portdout_1_unused : std_logic;
+    signal portdout_2_unused : std_logic;
+    signal portdout_3_unused : std_logic;
+    signal portdout_5_unused : std_logic;
+    signal portdout_6_unused : std_logic;
+    signal portdout_7_unused : std_logic;
+
 --------------------------------------------------------------------
 --                   here it begin :)
 --------------------------------------------------------------------
@@ -282,7 +298,7 @@ begin
             IRQ_n     => cpu_IRQ_n,
             NMI_n     => nmi_n,
             RST_n     => RSTn,
-            PRST_n    => powerup_reset_n,
+            PRST_n    => powerup_reset_n_sync,
             SO        => So,
             RDY       => Rdy,
             Din       => cpu_din,
@@ -314,6 +330,7 @@ begin
         end if;
     end process;
 
+    powerup_reset_sync <= not powerup_reset_n_sync;
     RST <= not RSTn;
 
     -- write enables
@@ -349,7 +366,7 @@ begin
             clock_sid_32Mhz => clk_32M00,
             clock_sid_dac => clk_dac,
             reset => RST,
-            reset_vid => '0',
+            reset_vid => powerup_reset_sync,
             din => cpu_dout,
             dout => godil_data,
             addr => cpu_addr(12 downto 0),
@@ -570,22 +587,22 @@ begin
 
             portbout(0)       => nARD,
             portbout(1)       => nAWR,
-            portbout(2)       => open,
+            portbout(2)       => portbout_2_unused,
             portbout(3)       => AVRA0,
-            portbout(4)       => open,
-            portbout(5)       => open,
+            portbout(4)       => portbout_4_unused,
+            portbout(5)       => portbout_5_unused,
             portbout(6)       => LED1n,
             portbout(7)       => LED2n,
 
             portdin           => (others => '0'),
-            portdout(0)       => open,
-            portdout(1)       => open,
-            portdout(2)       => open,
-            portdout(3)       => open,
+            portdout(0)       => portdout_0_unused,
+            portdout(1)       => portdout_1_unused,
+            portdout(2)       => portdout_2_unused,
+            portdout(3)       => portdout_3_unused,
             portdout(4)       => SDSS,
-            portdout(5)       => open,
-            portdout(6)       => open,
-            portdout(7)       => open,
+            portdout(5)       => portdout_5_unused,
+            portdout(6)       => portdout_6_unused,
+            portdout(7)       => portdout_7_unused,
 
             -- FUDLR
             portein           => ioport,
