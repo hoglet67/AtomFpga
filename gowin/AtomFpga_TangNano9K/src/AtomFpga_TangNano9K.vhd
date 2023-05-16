@@ -580,7 +580,7 @@ begin
 
     vga: if (CImplVGA) generate
         -- VGA output to the GPIO bus
-        gpio <= red & green & blue & vsync & hsync;
+        gpio <= vsync & hsync & red(2) & blue & red(1 downto 0) & green;
     end generate;
 
 end behavioral;
