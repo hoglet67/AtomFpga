@@ -83,7 +83,9 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal ExternDout   : std_logic_vector (7 downto 0);
     signal RamDout1     : std_logic_vector (7 downto 0);
     signal RamDout2     : std_logic_vector (7 downto 0);
-    signal RomDout      : std_logic_vector (7 downto 0);
+    signal RomDout      : std_logic_vector (31 downto 0);
+    signal xadr         : std_logic_vector (8 downto 0);
+    signal yadr         : std_logic_vector (5 downto 0);
 
     -- Signals used for tracing 6502 activity (CImplDebug)
     signal phi2         : std_logic;
@@ -197,6 +199,22 @@ architecture behavioral of AtomFpga_TangNano9K is
         );
     end component;
 
+    --component declaration
+    component FLASH608K
+        port (
+            DOUT: out std_logic_vector(31 downto 0);
+            XE: in std_logic;
+            YE: in std_logic;
+            SE: in std_logic;
+            PROG: in std_logic;
+            ERASE: in std_logic;
+            NVSTR: in std_logic;
+            XADR: in std_logic_vector(8 downto 0);
+            YADR: in std_logic_vector(5 downto 0);
+            DIN: in std_logic_vector(31 downto 0)
+        );
+    end component;
+
 begin
 
     pll1 : rPLL
@@ -264,37 +282,51 @@ begin
             CALIB  => '1'
         );
 
-    ram_0000_07ff : entity work.RAM_2K port map(
+    ram_0000_3fff : entity work.RAM_16K port map(
         clk     => clock_16,
         we_uP   => ExternWE,
         ce      => RamCE1,
-        addr_uP => ExternA(10 downto 0),
+        addr_uP => ExternA(13 downto 0),
         D_uP    => ExternDin,
         Q_uP    => RamDout1
     );
 
-    ram_2000_3fff : entity work.RAM_8K port map(
+    ram_4000_7fff : entity work.RAM_16K port map(
         clk     => clock_16,
         we_uP   => ExternWE,
         ce      => RamCE2,
-        addr_uP => ExternA(12 downto 0),
+        addr_uP => ExternA(13 downto 0),
         D_uP    => ExternDin,
         Q_uP    => RamDout2
     );
 
-    rom_c000_ffff : entity work.InternalROM port map(
-        CLK     => clock_16,
-        ADDR    => ExternA(13 downto 0),
-        DATA    => RomDout
-    );
+    flash_inst: FLASH608K
+        port map (
+            DOUT  => RomDout,
+            XE    => '1',
+            YE    => '1',
+            SE    => phi2,
+            PROG  => '0',
+            ERASE => '0',
+            NVSTR => '0',
+            XADR  => xadr,
+            YADR  => yadr,
+            DIN   => (others => '0')
+        );
+    xadr <= "000" & ExternA(13 downto 8);
+    yadr <= ExternA(7 downto 2);
 
-    RamCE1 <= '1' when ExternCE = '1' and ExternA(15 downto 11) = "00000" else '0';
-    RamCE2 <= '1' when ExternCE = '1' and ExternA(15 downto 13) = "001"   else '0';
-    RomCE  <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "11"    else '0';
+
+    RamCE1 <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "00" else '0';
+    RamCE2 <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "01" else '0';
+    RomCE  <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "11" else '0';
 
     ExternDout(7 downto 0) <= RamDout1 when RamCE1 = '1' else
                               RamDout2 when RamCE2 = '1' else
-                              RomDout  when RomCE  = '1' else
+                              RomDout( 7 downto  0)  when RomCE  = '1' and ExternA(1 downto 0) = "00" else
+                              RomDout(15 downto  8)  when RomCE  = '1' and ExternA(1 downto 0) = "01" else
+                              RomDout(23 downto 16)  when RomCE  = '1' and ExternA(1 downto 0) = "10" else
+                              RomDout(31 downto 24)  when RomCE  = '1' and ExternA(1 downto 0) = "11" else
                               "11110001";
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core

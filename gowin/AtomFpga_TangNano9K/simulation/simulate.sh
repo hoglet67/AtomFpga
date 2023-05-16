@@ -58,8 +58,9 @@ ghdl -a $OPTIONS ../../../src/common/i82C55/i82c55.vhd
 ghdl -a $OPTIONS ../../../src/common/MC6522/m6522.vhd
 ghdl -a $OPTIONS ../../../src/common/ps2kybrd/ps2_intf.vhd
 ghdl -a $OPTIONS ../../../src/common/ps2kybrd/keyboard.vhd
-ghdl -a $OPTIONS ../../../src/common/RAM/RAM_2K.vhd
-ghdl -a $OPTIONS ../../../src/common/RAM/RAM_8K.vhd
+#ghdl -a $OPTIONS ../../../src/common/RAM/RAM_2K.vhd
+#ghdl -a $OPTIONS ../../../src/common/RAM/RAM_8K.vhd
+ghdl -a $OPTIONS ../../../src/common/RAM/RAM_16K.vhd
 ghdl -a $OPTIONS ../../../src/common/RamRom_Atom2015.vhd
 ghdl -a $OPTIONS ../../../src/common/RamRom_None.vhd
 ghdl -a $OPTIONS ../../../src/common/RamRom_Phill.vhd

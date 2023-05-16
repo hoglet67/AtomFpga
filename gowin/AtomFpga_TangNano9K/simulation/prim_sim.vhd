@@ -16362,6 +16362,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
+use std.textio.all;
 
 entity FLASH608K is
     PORT(
@@ -16378,7 +16379,31 @@ architecture Behavioral of FLASH608K is
 
 type xy_array is array(63 downto 0) of std_logic_vector(31 downto 0);
 type GUFB_type is array (303 downto 0) of xy_array; --304 XADR,64 YADR
-signal GUFB_DATA : GUFB_type;
+
+    -- Size of init file currently hard-coded at 16KB
+    impure function init_flash return GUFB_type is
+        file text_file : text open read_mode is "InternalROM.dat";
+        variable text_line : line;
+        variable value : bit_vector(31 downto 0);
+        variable flash_content : GUFB_type;
+    begin
+        for y in 0 to 63 loop
+            for x in 0 to 63 loop
+                readline(text_file, text_line);
+                read(text_line, value(7 downto 0));
+                readline(text_file, text_line);
+                read(text_line, value(15 downto 8));
+                readline(text_file, text_line);
+                read(text_line, value(23 downto 16));
+                readline(text_file, text_line);
+                read(text_line, value(31 downto 24));
+                flash_content(y)(x) := to_stdlogicvector(value);
+            end loop;
+        end loop;
+        return flash_content;
+    end function;
+
+signal GUFB_DATA : GUFB_type := init_flash;
 
 Constant IDLE   : integer := 0;
 Constant ERA_S1 : integer := 1;
