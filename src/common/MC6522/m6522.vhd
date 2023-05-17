@@ -39,6 +39,10 @@
 --
 -- Revision list
 --
+--        dmb: Fix timing violations (I_P2_H used as a clock)
+--        dmb: Fix T2 interrupt corner case
+--        dmb: ier bit 7 should read back as '1'
+--        dmb: Fixes to sr_do_shift change that broke MMFS on the Beeb (SR mode 0)
 -- version 005 Many fixes to all areas, VIA now passes all VICE tests
 -- version 004 fixes to PB7 T1 control and Mode 0 Shift Register operation
 -- version 003 fix reset of T1/T2 IFR flags if T1/T2 is reload via reg5/reg9 from wolfgang (WoS)
@@ -389,7 +393,8 @@ begin
             when x"B" => O_DATA <= r_acr;
             when x"C" => O_DATA <= r_pcr;
             when x"D" => O_DATA <= r_ifr;
-            when x"E" => O_DATA <= ('0' & r_ier);
+            -- DMB: ier bit 7 should read back as '1'
+            when x"E" => O_DATA <= ('1' & r_ier);
             when x"F" => O_DATA <= r_ira;
             when others => null;
          end case;
@@ -417,10 +422,10 @@ begin
    begin
       if (r_pcr(0) = '0') then -- ca1 control
          -- negative edge
-         ca1_int <= (ca1_ip_reg_d = '1') and (ca1_ip_reg_c = '0');
+         ca1_int <= (ca1_ip_reg_c = '1') and (I_CA1 = '0');
       else
          -- positive edge
-         ca1_int <= (ca1_ip_reg_d = '0') and (ca1_ip_reg_c = '1');
+         ca1_int <= (ca1_ip_reg_c = '0') and (I_CA1 = '1');
       end if;
 
       if (r_pcr(4) = '0') then -- cb1 control
@@ -730,11 +735,15 @@ begin
    -- Ensure we don't start counting until the P2 clock after r_acr is changed
    p_timer2_ena : process
    begin
-      wait until rising_edge(I_P2_H);
-      if r_acr(5) = '0' then
-         t2_cnt_clk <= '1';
-      else
-         t2_cnt_clk <= '0';
+      wait until rising_edge(CLK);
+      if (ENA_4 = '1') then
+         if (p2_h_t1 = '0') and (I_P2_H = '1') then
+             if r_acr(5) = '0' then
+                 t2_cnt_clk <= '1';
+             else
+                 t2_cnt_clk <= '0';
+             end if;
+         end if;
       end if;
    end process;
 
@@ -763,8 +772,11 @@ begin
       if (ENA_4 = '1') then
          if (t2_cnt_clk ='1') then
             ena := true;
-            t2c_active <= true;
-            t2_int_enable <= true;
+            -- DMB: These two lines incorrectly allow interrupts to occur, even
+            -- if the t2 counter was not explicitely loaded. This causes a crash
+            -- at the end of Rocket Raid.
+            --t2c_active <= true;
+            --t2_int_enable <= true;
          else
             ena := (t2_pb6_t1 = '1') and (t2_pb6 = '0'); -- falling edge
          end if;
@@ -882,7 +894,9 @@ begin
                      if sr_strobe_rising then
                         sr_do_shift <= true;
                         r_sr(0) <= I_CB2;
-                     elsif sr_do_shift then
+                     -- DMB: Added sr_stroble_falling to avoid premature shift
+                     -- (fixes issue with MMFS on the Beeb in SR mode 0)
+                     elsif sr_do_shift and sr_strobe_falling then
                         sr_do_shift <= false;
                         r_sr(7 downto 1) <= r_sr(6 downto 0);
                      end if;
@@ -893,7 +907,9 @@ begin
                      if sr_strobe_falling then
                         sr_out <= r_sr(7);
                         sr_do_shift <= true;
-                     elsif sr_do_shift then
+                     -- DMB: Added sr_stroble_falling to avoid premature shift
+                     -- (fixes issue with MMFS on the Beeb in SR mode 0)
+                     elsif sr_do_shift and sr_strobe_rising then
                         sr_do_shift <= false;
                         r_sr <= r_sr(6 downto 0) & r_sr(7);
                      end if;
