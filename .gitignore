@@ -34,3 +34,6 @@ src/xilinx/ipcore_dir/coregen.log
 src/xilinx/ipcore_dir/gen_WatchEvents.tcl
 src/xilinx/ipcore_dir/tmp/
 src/xilinx/ipcore_dir/update_WatchEvents.tcl
+
+src/common/AtomGodilVideo
+src/common/AtomGodilVideo/
