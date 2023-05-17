@@ -1,9 +1,14 @@
+#!/bin/bash
+
+# Allow the script to continue if a ghdl is interrupted
+trap ' ' INT
+
 OPTIONS="--std=93 --ieee=synopsys -fexplicit --syn-binding -Wno-hide"
 
 # 116ms is enough to Boot the OS, start SDDOS, and get the INTERFACE? error
 SIMOPTIONS=" --ieee-asserts=disable --stop-time=116ms"
 
-#SIMOPTIONS="$SIMOPTIONS VCD=dump.vcd"
+#SIMOPTIONS="$SIMOPTIONS --vcd=dump.vcd"
 
 echo "Analyzing VHDL..."
 
