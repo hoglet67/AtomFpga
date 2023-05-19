@@ -86,7 +86,7 @@ architecture behavioral of PsramController is
 
     signal CR_LATENCY : std_logic_vector(3 downto 0);
 
-    type state_type is (INIT_ST, CONFIG_ST, IDLE_ST, READ_ST, WRITE_ST);
+    type state_type is (INIT_ST, CONFIG_ST, IDLE_ST, READ_ST, WRITE_ST, WRITE_STOP_ST);
 
     signal state              : state_type;
 
@@ -204,23 +204,32 @@ begin
                 end if;
             end if;
             if state = WRITE_ST then
+                -- Write timing is trickier - we sample RWDS at cycle 5 to determine whether we need to wait another tACC.
+                -- If it is low, data starts at 2+LATENCY. If high, then data starts at 2+LATENCY*2.
                 if cycles_sr(5) = '1' then
-                    additional_latency <= rwds_in_fal;  -- sample RWDS to see if we need additional latency
-                    -- Write timing is trickier - we sample RWDS at cycle 5 to determine whether we need to wait another tACC.
-                    -- If it is low, data starts at 2+LATENCY. If high, then data starts at 2+LATENCY*2.
-                    if (cycles_sr(2+LATENCY) = '1' and ((LATENCY = 3 and rwds_in_fal = '0') or (LATENCY /= 3 and additional_latency = '0'))) or (cycles_sr(2+LATENCY*2) = '1') then
-                        rwds_oen <= '0';
-                        if byte_write = '1' then       -- RWDS is data mask (1 means not writing)
-                            rwds_out_ris <= not addr(0);
-                            rwds_out_fal <= addr(0);
-                        else
-                            rwds_out_ris <= '0';
-                            rwds_out_fal <= '0';
-                        end if;
-                        dq_sr(63 downto 48) <= w_din;
-                        state <= IDLE_ST;
+                    additional_latency <= IO_psram_rwds(0);  -- sample RWDS to see if we need additional latency
+                elsif cycles_sr(2+LATENCY-1) = '1' then
+                    rwds_oen <= '0';
+                    rwds_out_ris <= '0';      -- RWDS preamble
+                    rwds_out_fal <= '0';
+                elsif (cycles_sr(2+LATENCY) = '1' and additional_latency = '0') or cycles_sr(2+LATENCY*2) = '1' then
+                    rwds_oen <= '0';
+                    if byte_write = '1' then  -- RWDS is data mask (1 means not writing)
+                        rwds_out_ris <= not addr(0);
+                        rwds_out_fal <= addr(0);
+                    else
+                        rwds_out_ris <= '0';
+                        rwds_out_fal <= '0';
                     end if;
+                    dq_sr(63 downto 48) <= w_din;
+                    state <= WRITE_STOP_ST;
                 end if;
+            end if;
+            if state = WRITE_ST then
+                rwds_oen <= '1';
+                ram_cs_n <= '1';
+                ck_e <= '0';
+                state <= IDLE_ST;
             end if;
             if resetn = '0'then
                 state <= INIT_ST;
