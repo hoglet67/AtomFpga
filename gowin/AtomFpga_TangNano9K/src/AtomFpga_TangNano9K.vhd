@@ -9,7 +9,8 @@ entity AtomFpga_TangNano9K is
         CImplDVIGowin      : boolean := false;
         CImplDVIOpenSource : boolean := true;
         CImplVGA           : boolean := true;
-        CImplTrace         : boolean := false
+        CImplTrace         : boolean := false;
+        CImplDbgPsram      : boolean := false
     );
     port (
         clock_27        : in    std_logic;
@@ -32,66 +33,86 @@ entity AtomFpga_TangNano9K is
         tmds_clk_n      : out   std_logic;
         tmds_d_p        : out   std_logic_vector(2 downto 0);
         tmds_d_n        : out   std_logic_vector(2 downto 0);
-        gpio            : out   std_logic_vector(10 downto 0)
+        gpio            : out   std_logic_vector(10 downto 0);
+        -- Magic ports for PSRAM to be inferred
+        O_psram_ck      : out   std_logic_vector(1 downto 0);
+        O_psram_ck_n    : out   std_logic_vector(1 downto 0);
+        IO_psram_rwds   : inout std_logic_vector(1 downto 0);
+        IO_psram_dq     : inout std_logic_vector(15 downto 0);
+        O_psram_reset_n : out   std_logic_vector(1 downto 0);
+        O_psram_cs_n    : out   std_logic_vector(1 downto 0)
     );
 end AtomFpga_TangNano9K;
 
 architecture behavioral of AtomFpga_TangNano9K is
 
-    signal clock_16     : std_logic;
-    signal clock_25     : std_logic;
-    signal clock_125    : std_logic;
-    signal clock_32     : std_logic;
+    signal clock_16        : std_logic;
+    signal clock_25        : std_logic;
+    signal clock_125       : std_logic;
+    signal clock_32        : std_logic;
+    signal clock_96        : std_logic;
+    signal clock_96_p      : std_logic;
 
-    signal reset        : std_logic;
-
-    signal led1         : std_logic;
-    signal led2         : std_logic;
+    signal ext_reset_n     : std_logic;
+    signal powerup_reset_n : std_logic;
+    signal delayed_reset_n : std_logic;
+    signal reset           : std_logic;
+    signal led1            : std_logic;
+    signal led2            : std_logic;
 
     -- Signals used for VGA video from the core
-    signal red          : std_logic_vector(2 downto 0);
-    signal green        : std_logic_vector(2 downto 0);
-    signal blue         : std_logic_vector(2 downto 0);
-    signal vsync        : std_logic;
-    signal hsync        : std_logic;
-    signal blank        : std_logic;
+    signal red             : std_logic_vector(2 downto 0);
+    signal green           : std_logic_vector(2 downto 0);
+    signal blue            : std_logic_vector(2 downto 0);
+    signal vsync           : std_logic;
+    signal hsync           : std_logic;
+    signal blank           : std_logic;
 
     -- Signals used for DVI/HDMI
-    signal rgb_r        : std_logic_vector(7 downto 0);
-    signal rgb_g        : std_logic_vector(7 downto 0);
-    signal rgb_b        : std_logic_vector(7 downto 0);
-    signal rgb_hs       : std_logic;
-    signal rgb_vs       : std_logic;
-    signal rgb_de       : std_logic;
-    signal ctrl         : std_logic_vector(1 downto 0);
-    signal encoded_r    : std_logic_vector(9 downto 0);
-    signal encoded_g    : std_logic_vector(9 downto 0);
-    signal encoded_b    : std_logic_vector(9 downto 0);
-    signal serialized_c : std_logic;
-    signal serialized_r : std_logic;
-    signal serialized_g : std_logic;
-    signal serialized_b : std_logic;
+    signal rgb_r           : std_logic_vector(7 downto 0);
+    signal rgb_g           : std_logic_vector(7 downto 0);
+    signal rgb_b           : std_logic_vector(7 downto 0);
+    signal rgb_hs          : std_logic;
+    signal rgb_vs          : std_logic;
+    signal rgb_de          : std_logic;
+    signal ctrl            : std_logic_vector(1 downto 0);
+    signal encoded_r       : std_logic_vector(9 downto 0);
+    signal encoded_g       : std_logic_vector(9 downto 0);
+    signal encoded_b       : std_logic_vector(9 downto 0);
+    signal serialized_c    : std_logic;
+    signal serialized_r    : std_logic;
+    signal serialized_g    : std_logic;
+    signal serialized_b    : std_logic;
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
-    signal RomCE        : std_logic;
-    signal RamCE1       : std_logic;
-    signal RamCE2       : std_logic;
-    signal ExternCE     : std_logic;
-    signal ExternWE     : std_logic;
-    signal ExternA      : std_logic_vector (18 downto 0);
-    signal ExternDin    : std_logic_vector (7 downto 0);
-    signal ExternDout   : std_logic_vector (7 downto 0);
-    signal RamDout1     : std_logic_vector (7 downto 0);
-    signal RamDout2     : std_logic_vector (7 downto 0);
-    signal RomDout      : std_logic_vector (31 downto 0);
-    signal xadr         : std_logic_vector (8 downto 0);
-    signal yadr         : std_logic_vector (5 downto 0);
+    signal RomCE           : std_logic;
+    signal RamCE1          : std_logic;
+    signal RamCE2          : std_logic;
+    signal ExternCE        : std_logic;
+    signal ExternWE        : std_logic;
+    signal ExternA         : std_logic_vector (18 downto 0);
+    signal ExternDin       : std_logic_vector (7 downto 0);
+    signal ExternDout      : std_logic_vector (7 downto 0);
+    signal RamDout1        : std_logic_vector (7 downto 0);
+    signal RamDout2        : std_logic_vector (7 downto 0);
+    signal RomDout         : std_logic_vector (31 downto 0);
+    signal xadr            : std_logic_vector (8 downto 0);
+    signal yadr            : std_logic_vector (5 downto 0);
 
     -- Signals used for tracing 6502 activity (CImplDebug)
-    signal phi2         : std_logic;
-    signal sync         : std_logic;
-    signal rnw          : std_logic;
-    signal data         : std_logic_vector (7 downto 0);
+    signal phi2            : std_logic;
+    signal phi2d           : std_logic;
+    signal sync            : std_logic;
+    signal rnw             : std_logic;
+    signal data            : std_logic_vector (7 downto 0);
+
+    -- Signals for the internal side of the PS Ram
+    signal psram_read      : std_logic;
+    signal psram_write     : std_logic;
+    signal psram_busy      : std_logic;
+    signal psram_addr      : std_logic_vector(21 downto 0);
+    signal psram_din       : std_logic_vector(15 downto 0);
+    signal psram_dout      : std_logic_vector(15 downto 0);
 
     component DVI_TX_Top
         port (
@@ -199,7 +220,6 @@ architecture behavioral of AtomFpga_TangNano9K is
         );
     end component;
 
-    --component declaration
     component FLASH608K
         port (
             DOUT: out std_logic_vector(31 downto 0);
@@ -215,6 +235,29 @@ architecture behavioral of AtomFpga_TangNano9K is
         );
     end component;
 
+--    component PsramController
+--        generic (
+--            FREQ : in integer;
+--            LATENCY : in integer
+--        );
+--        port (
+--            clk           : in    std_logic;
+--            clk_p         : in    std_logic;
+--            resetn        : in    std_logic;
+--            read          : in    std_logic;
+--            write         : in    std_logic;
+--            addr          : in    std_logic_vector(21 downto 0);
+--            din           : in    std_logic_vector(15 downto 0);
+--            byte_write    : in    std_logic;
+--            dout          : out   std_logic_vector(15 downto 0);
+--            busy          : out   std_logic;
+--            O_psram_ck    : out   std_logic_vector(1 downto 0);
+--            IO_psram_rwds : inout std_logic_vector(1 downto 0);
+--            IO_psram_dq   : inout std_logic_vector(15 downto 0);
+--            O_psram_cs_n  : out   std_logic_vector(1 downto 0)
+--        );
+--    end component;
+
 begin
 
     pll1 : rPLL
@@ -224,13 +267,14 @@ begin
             IDIV_SEL => 8,
             FBDIV_SEL => 31,
             ODIV_SEL => 8,
-            DYN_SDIV_SEL => 6
+            DYN_SDIV_SEL => 6,
+            PSDA_SEL => "0100" -- CLKOUTP 90 degree phase shift
         )
         port map (
             CLKIN    => clock_27,
-            CLKOUT   => open,
+            CLKOUT   => clock_96,
             CLKOUTD  => clock_16,
-            CLKOUTP  => open,
+            CLKOUTP  => clock_96_p,
             CLKOUTD3 => clock_32,
             LOCK     => open,
             RESET    => '0',
@@ -282,23 +326,89 @@ begin
             CALIB  => '1'
         );
 
-    ram_0000_3fff : entity work.RAM_16K port map(
-        clk     => clock_16,
-        we_uP   => ExternWE,
-        ce      => RamCE1,
-        addr_uP => ExternA(13 downto 0),
-        D_uP    => ExternDin,
-        Q_uP    => RamDout1
-    );
+  ram_0000_3fff : entity work.RAM_16K port map(
+      clk     => clock_16,
+      we_uP   => ExternWE,
+      ce      => RamCE1,
+      addr_uP => ExternA(13 downto 0),
+      D_uP    => ExternDin,
+      Q_uP    => RamDout1
+  );
 
-    ram_4000_7fff : entity work.RAM_16K port map(
-        clk     => clock_16,
-        we_uP   => ExternWE,
-        ce      => RamCE2,
-        addr_uP => ExternA(13 downto 0),
-        D_uP    => ExternDin,
-        Q_uP    => RamDout2
-    );
+--  ram_4000_7fff : entity work.RAM_16K port map(
+--      clk     => clock_16,
+--      we_uP   => ExternWE,
+--      ce      => RamCE2,
+--      addr_uP => ExternA(13 downto 0),
+--      D_uP    => ExternDin,
+--      Q_uP    => RamDout2
+--  );
+
+
+    powerup_reset_n <= btn1_n;
+    ext_reset_n     <= btn2_n;
+    O_psram_reset_n <= powerup_reset_n & powerup_reset_n;
+
+    -- On power up, wait for the psram controller to initialize before releasing AtomFpgaCore
+    process(clock_16)
+    begin
+        if rising_edge(clock_16) then
+            if powerup_reset_n = '0' then
+                delayed_reset_n <= '0';
+            elsif psram_busy = '0' then
+                delayed_reset_n <= '1';
+            end if;
+        end if;
+    end process;
+
+    ram : entity work.PsramController
+        generic map (
+            FREQ => 96_000_000,
+            LATENCY => 4
+        )
+        port map (
+            clk           => clock_96,
+            clk_p         => clock_96_p, -- phase-shifted clock for driving O_psram_ck
+            resetn        => powerup_reset_n,
+            read          => psram_read,
+            write         => psram_write,
+            addr          => psram_addr, -- Byte address to read / write
+            din           => psram_din,  -- Data word to write
+            dout          => psram_dout, -- Last read data. Read is always word-based.
+            busy          => psram_busy, -- 1 while an operation is in progress, TODO: IGORNED FOR NOW
+            byte_write    => '1',        -- When writing, only write one byte instead of the whole word.
+                                         -- addr[0]==1 means we write the upper half of din. lower half otherwise.
+
+            -- HyperRAM physical interface. Gowin interface is for 2 dies.
+            -- We currently only use the first die (4MB).
+            O_psram_ck    => O_psram_ck,
+            IO_psram_rwds => IO_psram_rwds,
+            IO_psram_dq   => IO_psram_dq,
+            O_psram_cs_n  => O_psram_cs_n
+            );
+
+    process(clock_96)
+    begin
+        if rising_edge(clock_96) then
+            phi2d <= phi2;
+            if phi2d = '0' and phi2 = '1' and RamCE2 = '1' and ExternWE = '0' then
+                psram_read <= '1';
+            else
+                psram_read <= '0';
+            end if;
+            if phi2d = '0' and phi2 = '1' and RamCE2 = '1' and ExternWE = '1' then
+                psram_write <= '1';
+            else
+                psram_write <= '0';
+            end if;
+        end if;
+    end process;
+
+    psram_addr <= "0000000" & ExternA(14 downto 0);
+
+    psram_din  <= ExternDin & ExternDin;
+
+    RamDout2 <= psram_dout(15 downto 8) when ExternA(0) = '1' else psram_dout(7 downto 0);
 
     flash_inst: FLASH608K
         port map (
@@ -315,7 +425,6 @@ begin
         );
     xadr <= "000" & ExternA(13 downto 8);
     yadr <= ExternA(7 downto 2);
-
 
     RamCE1 <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "00" else '0';
     RamCE2 <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "01" else '0';
@@ -366,8 +475,8 @@ begin
         ps2_mouse_clk       => ps2_mouse_clk,
         ps2_mouse_data      => ps2_mouse_data,
         -- Resets
-        powerup_reset_n     => btn1_n,
-        ext_reset_n         => btn2_n,
+        powerup_reset_n     => delayed_reset_n,
+        ext_reset_n         => ext_reset_n,
         int_reset_n         => open,
         -- Video
         red                 => red,
@@ -450,7 +559,7 @@ begin
 
         -- TODO: The source for this could be made much smaller with some for/generate loops!
 
-        reset <= not btn1_n;
+        reset <= not powerup_reset_n;
         ctrl  <= rgb_vs & rgb_hs;
 
         -- Encode vsync, hsync, blanking and rgb data to Transition-minimized differential signaling (TMDS) format.
@@ -608,6 +717,11 @@ begin
         -- 6502 Decoder tracing to the GPIO bus
         data <= ExternDout when ExternCE = '1' and rnw = '1' else ExternDin;
         gpio <= phi2 & sync & rnw & data;
+    end generate;
+
+    psram: if (CImplDbgPsram) generate
+        -- PSRAM debugging
+        gpio <= phi2 & sync & rnw & powerup_reset_n & delayed_reset_n & RamCE1 & psram_read & psram_write & psram_busy & IO_psram_rwds(0) & IO_psram_dq(0);
     end generate;
 
     vga: if (CImplVGA) generate
