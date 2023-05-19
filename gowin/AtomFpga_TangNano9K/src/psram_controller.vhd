@@ -41,7 +41,6 @@ entity PsramController is
         );
 end PsramController;
 
-
 architecture behavioral of PsramController is
     component IDDR
 --        generic (
@@ -53,7 +52,7 @@ architecture behavioral of PsramController is
             Q1  : out std_logic;
             D   : in  std_logic;
             CLK : in  std_logic
-        );
+            );
     end component;
 
     component ODDR
@@ -68,7 +67,7 @@ architecture behavioral of PsramController is
             D1  : in  std_logic;
             TX  : in  std_logic;
             CLK : in  std_logic
-        );
+            );
     end component;
 
     function f_log2 (x : positive) return natural is
@@ -225,13 +224,13 @@ begin
                     state <= WRITE_STOP_ST;
                 end if;
             end if;
-            if state = WRITE_ST then
+            if state = WRITE_STOP_ST then
                 rwds_oen <= '1';
                 ram_cs_n <= '1';
                 ck_e <= '0';
                 state <= IDLE_ST;
             end if;
-            if resetn = '0'then
+            if resetn = '0' then
                 state <= INIT_ST;
                 ram_cs_n <= '1';
                 ck_e <= '0';
@@ -287,7 +286,6 @@ begin
         );
     IO_psram_rwds(0) <= 'Z' when rwds_oen_tbuf = '1' else rwds_tbuf;
 
-
     gen1: for i1 in 0 to 7 generate
         oddr_dq_i : ODDR port map (
             CLK => clk,
@@ -310,7 +308,6 @@ begin
         );
 
     O_psram_ck(0) <= ck_tbuf;
-
 
     -- Tristate DDR input
     iddr_rwds : IDDR port map (
