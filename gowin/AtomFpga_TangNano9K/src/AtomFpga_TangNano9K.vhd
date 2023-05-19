@@ -8,6 +8,9 @@ entity AtomFpga_TangNano9K is
         CImplCpu65c02      : boolean := false;
         CImplDVIGowin      : boolean := false;
         CImplDVIOpenSource : boolean := true;
+        CImplSDDOS         : boolean := false;
+        CImplAtoMMC2       : boolean := true;
+        -- Options that use the GPIO outputs, select just one
         CImplVGA           : boolean := true;
         CImplTrace         : boolean := false;
         CImplDbgPsram      : boolean := false
@@ -437,8 +440,8 @@ begin
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplCpu65c02           => CImplCpu65c02,
-        CImplSDDOS              => true,
-        CImplAtoMMC2            => false,
+        CImplSDDOS              => CImplSDDOS,
+        CImplAtoMMC2            => CImplAtoMMC2,
         CImplGraphicsExt        => true,
         CImplSoftChar           => false,
         CImplSID                => false,
