@@ -86,15 +86,13 @@ architecture behavioral of AtomFpga_TangNano9K is
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
     signal RomCE           : std_logic;
-    signal RamCE1          : std_logic;
-    signal RamCE2          : std_logic;
+    signal RamCE           : std_logic;
     signal ExternCE        : std_logic;
     signal ExternWE        : std_logic;
     signal ExternA         : std_logic_vector (18 downto 0);
     signal ExternDin       : std_logic_vector (7 downto 0);
     signal ExternDout      : std_logic_vector (7 downto 0);
-    signal RamDout1        : std_logic_vector (7 downto 0);
-    signal RamDout2        : std_logic_vector (7 downto 0);
+    signal RamDout         : std_logic_vector (7 downto 0);
     signal RomDout         : std_logic_vector (31 downto 0);
     signal xadr            : std_logic_vector (8 downto 0);
     signal yadr            : std_logic_vector (5 downto 0);
@@ -326,15 +324,15 @@ begin
             CALIB  => '1'
         );
 
-  ram_0000_3fff : entity work.RAM_16K port map(
-      clk     => clock_16,
-      we_uP   => ExternWE,
-      ce      => RamCE1,
-      addr_uP => ExternA(13 downto 0),
-      D_uP    => ExternDin,
-      Q_uP    => RamDout1
-  );
-
+--  ram_0000_3fff : entity work.RAM_16K port map(
+--      clk     => clock_16,
+--      we_uP   => ExternWE,
+--      ce      => RamCE1,
+--      addr_uP => ExternA(13 downto 0),
+--      D_uP    => ExternDin,
+--      Q_uP    => RamDout1
+--  );
+--
 --  ram_4000_7fff : entity work.RAM_16K port map(
 --      clk     => clock_16,
 --      we_uP   => ExternWE,
@@ -391,12 +389,12 @@ begin
     begin
         if rising_edge(clock_96) then
             phi2d <= phi2;
-            if phi2d = '0' and phi2 = '1' and RamCE2 = '1' and ExternWE = '0' then
+            if phi2d = '0' and phi2 = '1' and RamCE = '1' and ExternWE = '0' then
                 psram_read <= '1';
             else
                 psram_read <= '0';
             end if;
-            if phi2d = '0' and phi2 = '1' and RamCE2 = '1' and ExternWE = '1' then
+            if phi2d = '0' and phi2 = '1' and RamCE = '1' and ExternWE = '1' then
                 psram_write <= '1';
             else
                 psram_write <= '0';
@@ -408,7 +406,7 @@ begin
 
     psram_din  <= ExternDin & ExternDin;
 
-    RamDout2 <= psram_dout(15 downto 8) when ExternA(0) = '1' else psram_dout(7 downto 0);
+    RamDout <= psram_dout(15 downto 8) when ExternA(0) = '1' else psram_dout(7 downto 0);
 
     flash_inst: FLASH608K
         port map (
@@ -426,12 +424,10 @@ begin
     xadr <= "000" & ExternA(13 downto 8);
     yadr <= ExternA(7 downto 2);
 
-    RamCE1 <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "00" else '0';
-    RamCE2 <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "01" else '0';
-    RomCE  <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "11" else '0';
+    RamCE <= '1' when ExternCE = '1' and ExternA(15) = '0' else '0';
+    RomCE <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "11" else '0';
 
-    ExternDout(7 downto 0) <= RamDout1 when RamCE1 = '1' else
-                              RamDout2 when RamCE2 = '1' else
+    ExternDout(7 downto 0) <= RamDout when RamCE = '1' else
                               RomDout( 7 downto  0)  when RomCE  = '1' and ExternA(1 downto 0) = "00" else
                               RomDout(15 downto  8)  when RomCE  = '1' and ExternA(1 downto 0) = "01" else
                               RomDout(23 downto 16)  when RomCE  = '1' and ExternA(1 downto 0) = "10" else
@@ -721,7 +717,7 @@ begin
 
     psram: if (CImplDbgPsram) generate
         -- PSRAM debugging
-        gpio <= phi2 & sync & rnw & powerup_reset_n & delayed_reset_n & RamCE1 & psram_read & psram_write & psram_busy & IO_psram_rwds(0) & IO_psram_dq(0);
+        gpio <= phi2 & sync & rnw & powerup_reset_n & delayed_reset_n & RamCE & psram_read & psram_write & psram_busy & IO_psram_rwds(0) & IO_psram_dq(0);
     end generate;
 
     vga: if (CImplVGA) generate
