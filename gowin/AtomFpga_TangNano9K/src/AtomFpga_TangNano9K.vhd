@@ -405,7 +405,7 @@ begin
         end if;
     end process;
 
-    psram_addr <= "0000000" & ExternA(14 downto 0);
+    psram_addr <= "00000" & ExternA(16 downto 0);
 
     psram_din  <= ExternDin & ExternDin;
 
@@ -423,12 +423,26 @@ begin
             XADR  => xadr,
             YADR  => yadr,
             DIN   => (others => '0')
-        );
-    xadr <= "000" & ExternA(13 downto 8);
+            );
+
+    -------------------------------------------------
+    -- External address decoding
+    --
+    -- external address bus is 18..0 (512KB)
+    -- bit 18 indicates an unmapped access (e.g to I/O space)
+    -- bit 17 selects between ROM (0) and RAM (1)
+    -- bits 16..0 select with 128KB block
+    -------------------------------------------------
+
+    -- Unusual ROM mapping to squeeze ROM from 128KB down to 64KB
+    -- Map 0x00000->0x07FFF to 1st 32KB of RAM (this is the 8x Atom ROMs)
+    -- Map 0x10000->0x17FFF to 2nd 32KB of ROM (this is the 8x Basic/Float/AtomMMC/Kernel ROMs)
+
+    xadr <= '0' & ExternA(16) & ExternA(14 downto 8);
     yadr <= ExternA(7 downto 2);
 
-    RamCE <= '1' when ExternCE = '1' and ExternA(15) = '0' else '0';
-    RomCE <= '1' when ExternCE = '1' and ExternA(15 downto 14) = "11" else '0';
+    RamCE <= '1' when ExternCE = '1' and ExternA(18 downto 17) = "01" else '0';
+    RomCE <= '1' when ExternCE = '1' and ExternA(18 downto 17) = "00" and ExternA(15) = '0' else '0';
 
     ExternDout(7 downto 0) <= RamDout when RamCE = '1' else
                               RomDout( 7 downto  0)  when RomCE  = '1' and ExternA(1 downto 0) = "00" else
@@ -450,9 +464,9 @@ begin
         CImplMouse              => true,
         CImplUart               => false,
         CImplDoubleVideo        => false,
-        CImplRamRomNone         => true,
+        CImplRamRomNone         => false,
         CImplRamRomPhill        => false,
-        CImplRamRomAtom2015     => false,
+        CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
         MainClockSpeed          => 16000000,
         DefaultBaud             => 115200
