@@ -3,15 +3,24 @@
 //File Title: Timing Constraints file
 //GOWIN Version: 1.9.8.11 Education
 //Created Time: 2023-05-17 13:47:28
+
 create_clock -name sys_clk -period 37.037 -waveform {0 18.518} [get_ports {clock_27}] -add
+
+// Create clock definitions for each of the derived clocks
 create_generated_clock -name clock_16 -source [get_ports {clock_27}] -master_clock sys_clk -divide_by 27 -multiply_by 16 [get_nets {clock_16}]
-create_generated_clock -name clock_96 -source [get_ports {clock_27}] -master_clock sys_clk -divide_by 27 -multiply_by 96 [get_nets {clock_96}]
 create_generated_clock -name clock_25 -source [get_ports {clock_27}] -master_clock sys_clk -divide_by 15 -multiply_by 14 [get_nets {clock_25}]
+create_generated_clock -name clock_32 -source [get_ports {clock_27}] -master_clock sys_clk -divide_by 27 -multiply_by 32 [get_nets {clock_32}]
+create_generated_clock -name clock_96 -source [get_ports {clock_27}] -master_clock sys_clk -divide_by 27 -multiply_by 96 [get_nets {clock_96}]
+
+// Ignore any timing paths between the main and video clocks
 set_clock_groups -asynchronous -group [get_clocks {clock_16}] -group [get_clocks {clock_25}]
 set_clock_groups -asynchronous -group [get_clocks {clock_25}] -group [get_clocks {clock_16}]
-set_operating_conditions -grade c -model fast -speed 6 -setup
+
 // The PSRAM state machine is kicked off by a 0->1 of phi2 which is ~7 16MHz cycles after the CPU is "clocked"
-// 3/2 96MHz cycles is the smallest value that allows timing to be met
+// 4/3 96MHz cycles is the smallest value that allows timing to be met
 // TODO: should we treat Phi2 as asynchronous and synchronise it?
-set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -setup 3
-set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -hold 2
+set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -setup 4
+set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -hold 3
+
+// Correct for the part on the Tang Nano 9K
+set_operating_conditions -grade c -model fast -speed 6 -setup
