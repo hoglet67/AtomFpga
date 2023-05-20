@@ -41,19 +41,7 @@ entity PsramController is
         );
 end PsramController;
 
-
 architecture behavioral of PsramController is
-    
-    function MAX(A:natural; B:natural) return natural is
-    begin
-        if A>B then
-            return A;
-        else
-            return B;
-        end if;
-    end function;
-
-
     component IDDR
 --        generic (
 --            Q0_INIT : bit := '0';
@@ -64,7 +52,7 @@ architecture behavioral of PsramController is
             Q1  : out std_logic;
             D   : in  std_logic;
             CLK : in  std_logic
-        );
+            );
     end component;
 
     component ODDR
@@ -79,7 +67,7 @@ architecture behavioral of PsramController is
             D1  : in  std_logic;
             TX  : in  std_logic;
             CLK : in  std_logic
-        );
+            );
     end component;
 
     function f_log2 (x : positive) return natural is
@@ -110,7 +98,7 @@ architecture behavioral of PsramController is
     signal ub                 : std_logic; -- 1 for upper byte
 
     signal w_din              : std_logic_vector(15 downto 0);
-    signal cycles_sr          : std_logic_vector(MAX(2+LATENCY*2,9) downto 0); -- shift register counting cycles
+    signal cycles_sr          : std_logic_vector(23 downto 0); -- shift register counting cycles
     signal dq_sr              : std_logic_vector(63 downto 0); -- shifts left 8-bit every cycle
 
     signal rst_cnt            : std_logic_vector(f_log2(INIT_TIME + 1) - 1 downto 0);
@@ -136,12 +124,8 @@ architecture behavioral of PsramController is
 
     signal dq_out_tbuf        : std_logic_vector(7 downto 0);
     signal dq_oen_tbuf        : std_logic_vector(7 downto 0);
-    
-    signal i_write_cycle_active : std_logic;
 
 begin
-
-    assert LATENCY >= 3 and LATENCY <= 6 report "LATENCY must be >= 3 and <= 5";
 
     dq_out_ris <= dq_sr(63 downto 56);
     dq_out_fal <= dq_sr(55 downto 48);
@@ -155,34 +139,20 @@ begin
 
     busy <= '0' when state = IDLE_ST else '1';
 
-    -- LATENCY 3 requires special case, x2 indication from rwds is same cycle as write
-    g_wL3_1:if LATENCY = 3 generate
-        i_write_cycle_active <= '1' when cycles_sr(2+LATENCY) = '1' and IO_psram_rwds(0) = '0' else
-                                '1' when cycles_sr(2+LATENCY*2) = '1' else
-                                '0';
-    end generate;
-    g_wL3_2:if LATENCY /=3 generate
-        i_write_cycle_active <= '1' when cycles_sr(2+LATENCY) = '1' and additional_latency = '0' else
-                                '1' when cycles_sr(2+LATENCY*2) = '1' else
-                                '0';
-    end generate;
-
     -- Main FSM for HyperRAM read/write
     process (clk)
     begin
         if rising_edge(clk) then
-            cycles_sr <= cycles_sr(cycles_sr'high-1 downto cycles_sr'low) & '0';
+            cycles_sr <= cycles_sr(22 downto 0) & '0';
             dq_sr <= dq_sr(47 downto 0) & x"0000";          -- shift 16-bits each cycle
             ck_e_p <= ck_e;
 
-            case state is
-            when INIT_ST =>
-                if cfg_now = '1' then
-                    cycles_sr <= (0 => '1', others => '0');
-                    ram_cs_n <= '0';
-                    state <= CONFIG_ST;            
-                end if;
-            when CONFIG_ST =>
+            if state = INIT_ST and cfg_now = '1' then
+                cycles_sr <= x"000001";
+                ram_cs_n <= '0';
+                state <= CONFIG_ST;
+            end if;
+            if state = CONFIG_ST then
                 if cycles_sr(0) = '1' then
                     dq_sr <= x"6000010000008f" & CR_LATENCY & x"7";      -- last byte, 'e' (3 cycle latency max 83Mhz), '7' (variable 1x/2x latency)
                     dq_oen <= '0';
@@ -191,11 +161,12 @@ begin
                 if cycles_sr(4) = '1' then
                     state <= IDLE_ST;
                     ck_e <= '0';
-                    cycles_sr <= (0 => '1', others => '0');
+                    cycles_sr <= x"000001";
                     dq_oen <= '1';
                     ram_cs_n <= '1';
                 end if;
-            when IDLE_ST =>
+            end if;
+            if state = IDLE_ST then
                 rwds_oen <= '1';
                 ck_e <= '0';
                 ram_cs_n <= '1';
@@ -208,14 +179,15 @@ begin
                     dq_oen <= '0';
                     wait_for_rd_data <= '0';
                     w_din <= din;
-                    cycles_sr <= (1 => '1', others =>'0');    -- start from cycle 1
+                    cycles_sr <= x"000002";    -- start from cycle 1
                     if write = '1' then
                         state <= WRITE_ST;
                     else
                         state <= READ_ST;
                     end if;
                 end if;
-            when READ_ST =>
+            end if;
+            if state = READ_ST then
                 if cycles_sr(3) = '1' then
                     -- command sent, now wait for result
                     dq_oen <= '1';
@@ -229,23 +201,19 @@ begin
                     ck_e <= '0';
                     state <= IDLE_ST;
                 end if;
-            when WRITE_ST =>
-                if LATENCY /= 3 then
-                    if cycles_sr(5) = '1' then
-                        additional_latency <= IO_psram_rwds(0);  -- sample RWDS to see if we need additional latency, DB: don't pass through IDDR as then it is too late!
-                        -- Write timing is trickier - we sample RWDS at cycle 5 to determine whether we need to wait another tACC.
-                        -- If it is low, data starts at 2+LATENCY. If high, then data starts at 2+LATENCY*2.
-                    end if;
-                end if;
-                if cycles_sr(2+LATENCY-1) = '1' then
-                    --DB: apply correct rwds preamble
+            end if;
+            if state = WRITE_ST then
+                -- Write timing is trickier - we sample RWDS at cycle 5 to determine whether we need to wait another tACC.
+                -- If it is low, data starts at 2+LATENCY. If high, then data starts at 2+LATENCY*2.
+                if cycles_sr(5) = '1' then
+                    additional_latency <= IO_psram_rwds(0);  -- sample RWDS to see if we need additional latency
+                elsif cycles_sr(2+LATENCY-1) = '1' then
                     rwds_oen <= '0';
-                    rwds_out_ris <= '0';
+                    rwds_out_ris <= '0';      -- RWDS preamble
                     rwds_out_fal <= '0';
-                end if;
-                if i_write_cycle_active = '1' then
+                elsif (cycles_sr(2+LATENCY) = '1' and additional_latency = '0') or cycles_sr(2+LATENCY*2) = '1' then
                     rwds_oen <= '0';
-                    if byte_write = '1' then       -- RWDS is data mask (1 means not writing)
+                    if byte_write = '1' then  -- RWDS is data mask (1 means not writing)
                         rwds_out_ris <= not addr(0);
                         rwds_out_fal <= addr(0);
                     else
@@ -255,19 +223,17 @@ begin
                     dq_sr(63 downto 48) <= w_din;
                     state <= WRITE_STOP_ST;
                 end if;
-            when WRITE_STOP_ST =>
+            end if;
+            if state = WRITE_STOP_ST then
                 rwds_oen <= '1';
                 ram_cs_n <= '1';
                 ck_e <= '0';
                 state <= IDLE_ST;
-            end case;
-
-            if resetn = '0'then
+            end if;
+            if resetn = '0' then
                 state <= INIT_ST;
                 ram_cs_n <= '1';
                 ck_e <= '0';
-                additional_latency <= '0';
-                dout <= (others => '0');
             end if;
         end if;
     end process;
@@ -320,7 +286,6 @@ begin
         );
     IO_psram_rwds(0) <= 'Z' when rwds_oen_tbuf = '1' else rwds_tbuf;
 
-
     gen1: for i1 in 0 to 7 generate
         oddr_dq_i : ODDR port map (
             CLK => clk,
@@ -343,7 +308,6 @@ begin
         );
 
     O_psram_ck(0) <= ck_tbuf;
-
 
     -- Tristate DDR input
     iddr_rwds : IDDR port map (
