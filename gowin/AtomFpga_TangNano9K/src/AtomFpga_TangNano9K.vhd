@@ -458,7 +458,7 @@ begin
         CImplAtoMMC2            => CImplAtoMMC2,
         CImplGraphicsExt        => true,
         CImplSoftChar           => false,
-        CImplSID                => false,
+        CImplSID                => true,
         CImplVGA80x40           => true,
         CImplHWScrolling        => true,
         CImplMouse              => true,
