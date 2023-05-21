@@ -36,7 +36,7 @@
  "Initialize_Primitives" : false,
  "JTAG" : false,
  "MODE_IO" : false,
- "MSPI" : false,
+ "MSPI" : true,
  "Multiple_File_Compilation_Unit" : true,
  "Number_of_Critical_Paths" : "",
  "Number_of_Start/End_Points" : "",

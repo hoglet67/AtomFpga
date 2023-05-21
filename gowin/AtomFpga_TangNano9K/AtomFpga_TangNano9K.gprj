@@ -11,6 +11,8 @@
         <File path="src/dpram_8k/dpram_8k.vhd" type="file.vhdl" enable="1"/>
         <File path="src/dvi_tx/dvi_tx.vhd" type="file.vhdl" enable="1"/>
         <File path="src/tmds_encoder.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/bootstrap.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../src/xilinx/spi_flash.vhd" type="file.vhdl" enable="1"/>
         <File path="../../src/common/AlanD/R65Cx2.vhd" type="file.vhdl" enable="1"/>
         <File path="../../src/common/AtomFpga_Core.vhd" type="file.vhdl" enable="1"/>
         <File path="../../src/common/AtomGodilVideo/AtomGodilVideo.vhd" type="file.vhdl" enable="1"/>

@@ -10,6 +10,7 @@ entity AtomFpga_TangNano9K is
         CImplDVIOpenSource : boolean := true;
         CImplSDDOS         : boolean := false;
         CImplAtoMMC2       : boolean := true;
+        CImplSID           : boolean := true;
         -- Options that use the GPIO outputs, select just one
         CImplVGA           : boolean := true;
         CImplTrace         : boolean := false;
@@ -37,6 +38,11 @@ entity AtomFpga_TangNano9K is
         tmds_d_p        : out   std_logic_vector(2 downto 0);
         tmds_d_n        : out   std_logic_vector(2 downto 0);
         gpio            : out   std_logic_vector(10 downto 0);
+        -- Flash
+        flash_cs        : out   std_logic;
+        flash_ck        : out   std_logic;
+        flash_si        : out   std_logic;
+        flash_so        : in    std_logic;
         -- Magic ports for PSRAM to be inferred
         O_psram_ck      : out   std_logic_vector(1 downto 0);
         O_psram_ck_n    : out   std_logic_vector(1 downto 0);
@@ -59,6 +65,7 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal ext_reset_n     : std_logic;
     signal powerup_reset_n : std_logic;
     signal delayed_reset_n : std_logic;
+    signal hard_reset_n    : std_logic;
     signal reset           : std_logic;
     signal led1            : std_logic;
     signal led2            : std_logic;
@@ -88,32 +95,34 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal serialized_b    : std_logic;
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
-    signal RomCE           : std_logic;
-    signal RamCE           : std_logic;
     signal ExternCE        : std_logic;
     signal ExternWE        : std_logic;
     signal ExternA         : std_logic_vector (18 downto 0);
     signal ExternDin       : std_logic_vector (7 downto 0);
     signal ExternDout      : std_logic_vector (7 downto 0);
-    signal RamDout         : std_logic_vector (7 downto 0);
-    signal RomDout         : std_logic_vector (31 downto 0);
-    signal xadr            : std_logic_vector (8 downto 0);
-    signal yadr            : std_logic_vector (5 downto 0);
 
     -- Signals used for tracing 6502 activity (CImplDebug)
     signal phi2            : std_logic;
-    signal phi2d           : std_logic;
     signal sync            : std_logic;
     signal rnw             : std_logic;
     signal data            : std_logic_vector (7 downto 0);
 
+    -- Signals for the SPI FLASH bootstrap
+    signal bootstrap_busy  : std_logic;
+
     -- Signals for the internal side of the PS Ram
+    signal psram_phi2      : std_logic;
+    signal psram_phi2d     : std_logic;
+    signal psram_ce        : std_logic;
+    signal psram_we        : std_logic;
     signal psram_read      : std_logic;
     signal psram_write     : std_logic;
     signal psram_busy      : std_logic;
     signal psram_addr      : std_logic_vector(21 downto 0);
     signal psram_din       : std_logic_vector(15 downto 0);
     signal psram_dout      : std_logic_vector(15 downto 0);
+    signal psram_din8      : std_logic_vector(7 downto 0);
+    signal psram_dout8     : std_logic_vector(7 downto 0);
 
     component DVI_TX_Top
         port (
@@ -221,44 +230,6 @@ architecture behavioral of AtomFpga_TangNano9K is
         );
     end component;
 
-    component FLASH608K
-        port (
-            DOUT: out std_logic_vector(31 downto 0);
-            XE: in std_logic;
-            YE: in std_logic;
-            SE: in std_logic;
-            PROG: in std_logic;
-            ERASE: in std_logic;
-            NVSTR: in std_logic;
-            XADR: in std_logic_vector(8 downto 0);
-            YADR: in std_logic_vector(5 downto 0);
-            DIN: in std_logic_vector(31 downto 0)
-        );
-    end component;
-
---    component PsramController
---        generic (
---            FREQ : in integer;
---            LATENCY : in integer
---        );
---        port (
---            clk           : in    std_logic;
---            clk_p         : in    std_logic;
---            resetn        : in    std_logic;
---            read          : in    std_logic;
---            write         : in    std_logic;
---            addr          : in    std_logic_vector(21 downto 0);
---            din           : in    std_logic_vector(15 downto 0);
---            byte_write    : in    std_logic;
---            dout          : out   std_logic_vector(15 downto 0);
---            busy          : out   std_logic;
---            O_psram_ck    : out   std_logic_vector(1 downto 0);
---            IO_psram_rwds : inout std_logic_vector(1 downto 0);
---            IO_psram_dq   : inout std_logic_vector(15 downto 0);
---            O_psram_cs_n  : out   std_logic_vector(1 downto 0)
---        );
---    end component;
-
 begin
 
     pll1 : rPLL
@@ -327,30 +298,15 @@ begin
             CALIB  => '1'
         );
 
---  ram_0000_3fff : entity work.RAM_16K port map(
---      clk     => clock_16,
---      we_uP   => ExternWE,
---      ce      => RamCE1,
---      addr_uP => ExternA(13 downto 0),
---      D_uP    => ExternDin,
---      Q_uP    => RamDout1
---  );
---
---  ram_4000_7fff : entity work.RAM_16K port map(
---      clk     => clock_16,
---      we_uP   => ExternWE,
---      ce      => RamCE2,
---      addr_uP => ExternA(13 downto 0),
---      D_uP    => ExternDin,
---      Q_uP    => RamDout2
---  );
-
+    --------------------------------------------------------
+    -- Power Up Reset Generation
+    --------------------------------------------------------
 
     powerup_reset_n <= btn1_n;
     ext_reset_n     <= btn2_n;
     O_psram_reset_n <= powerup_reset_n & powerup_reset_n;
 
-    -- On power up, wait for the psram controller to initialize before releasing AtomFpgaCore
+    -- On power up, wait for the psram controller to initialize before bootstrapping SPI flash
     process(clock_16)
     begin
         if rising_edge(clock_16) then
@@ -361,6 +317,13 @@ begin
             end if;
         end if;
     end process;
+
+    -- On power up, wait for the flash bootstrap to complete before releasing the core
+    hard_reset_n <= delayed_reset_n and not bootstrap_busy;
+
+    --------------------------------------------------------
+    -- PSRAM
+    --------------------------------------------------------
 
     ram : entity work.PsramController
         generic map (
@@ -391,13 +354,13 @@ begin
     process(clock_96)
     begin
         if rising_edge(clock_96) then
-            phi2d <= phi2;
-            if phi2d = '0' and phi2 = '1' and RamCE = '1' and ExternWE = '0' then
+            psram_phi2d <= psram_phi2;
+            if psram_phi2d = '0' and psram_phi2 = '1' and psram_ce = '1' and psram_we = '0' then
                 psram_read <= '1';
             else
                 psram_read <= '0';
             end if;
-            if phi2d = '0' and phi2 = '1' and RamCE = '1' and ExternWE = '1' then
+            if psram_phi2d = '0' and psram_phi2 = '1' and psram_ce = '1' and psram_we = '1' then
                 psram_write <= '1';
             else
                 psram_write <= '0';
@@ -405,51 +368,44 @@ begin
         end if;
     end process;
 
-    psram_addr <= "00000" & ExternA(16 downto 0);
+    psram_din   <= psram_din8 & psram_din8;
+    psram_dout8 <= psram_dout(15 downto 8) when psram_addr(0) = '1' else psram_dout(7 downto 0);
 
-    psram_din  <= ExternDin & ExternDin;
+    boot : entity work.bootstrap
+    port map (
+        clock           => clock_16,
 
-    RamDout <= psram_dout(15 downto 8) when ExternA(0) = '1' else psram_dout(7 downto 0);
+        -- initiate bootstrap
+        powerup_reset_n => delayed_reset_n,
 
-    flash_inst: FLASH608K
-        port map (
-            DOUT  => RomDout,
-            XE    => '1',
-            YE    => '1',
-            SE    => phi2,
-            PROG  => '0',
-            ERASE => '0',
-            NVSTR => '0',
-            XADR  => xadr,
-            YADR  => yadr,
-            DIN   => (others => '0')
-            );
+        -- high when FLASH is being copied to SRAM, can be used by user as active high reset
+        bootstrap_busy  => bootstrap_busy,
 
-    -------------------------------------------------
-    -- External address decoding
-    --
-    -- external address bus is 18..0 (512KB)
-    -- bit 18 indicates an unmapped access (e.g to I/O space)
-    -- bit 17 selects between ROM (0) and RAM (1)
-    -- bits 16..0 select with 128KB block
-    -------------------------------------------------
+        -- start address of user data in FLASH
+        user_address    => (others => '0'),
 
-    -- Unusual ROM mapping to squeeze ROM from 128KB down to 64KB
-    -- Map 0x00000->0x07FFF to 1st 32KB of RAM (this is the 8x Atom ROMs)
-    -- Map 0x10000->0x17FFF to 2nd 32KB of ROM (this is the 8x Basic/Float/AtomMMC/Kernel ROMs)
+        -- interface from Atom core
+        RAM_Phi2        => phi2,
+        RAM_CE          => ExternCE,
+        RAM_WE          => ExternWE,
+        RAM_A           => ExternA,
+        RAM_Din         => ExternDin,
+        RAM_Dout        => ExternDout,
 
-    xadr <= '0' & ExternA(16) & ExternA(14 downto 8);
-    yadr <= ExternA(7 downto 2);
+        -- interface to the PSRAM
+        PSRAM_Phi2      => psram_phi2,
+        PSRAM_CE        => psram_ce,
+        PSRAM_WE        => psram_we,
+        PSRAM_A         => psram_addr,
+        PSRAM_Din       => psram_din8,
+        PSRAM_Dout      => psram_dout8,
 
-    RamCE <= '1' when ExternCE = '1' and ExternA(18 downto 17) = "01" else '0';
-    RomCE <= '1' when ExternCE = '1' and ExternA(18 downto 17) = "00" and ExternA(15) = '0' else '0';
-
-    ExternDout(7 downto 0) <= RamDout when RamCE = '1' else
-                              RomDout( 7 downto  0)  when RomCE  = '1' and ExternA(1 downto 0) = "00" else
-                              RomDout(15 downto  8)  when RomCE  = '1' and ExternA(1 downto 0) = "01" else
-                              RomDout(23 downto 16)  when RomCE  = '1' and ExternA(1 downto 0) = "10" else
-                              RomDout(31 downto 24)  when RomCE  = '1' and ExternA(1 downto 0) = "11" else
-                              "11110001";
+        -- interface to external FLASH
+        FLASH_CS        => flash_cs,
+        FLASH_CK        => flash_ck,
+        FLASH_SI        => flash_si,
+        FLASH_SO        => flash_so
+        );
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
@@ -458,7 +414,7 @@ begin
         CImplAtoMMC2            => CImplAtoMMC2,
         CImplGraphicsExt        => true,
         CImplSoftChar           => false,
-        CImplSID                => true,
+        CImplSID                => CImplSID,
         CImplVGA80x40           => true,
         CImplHWScrolling        => true,
         CImplMouse              => true,
@@ -488,7 +444,7 @@ begin
         ps2_mouse_clk       => ps2_mouse_clk,
         ps2_mouse_data      => ps2_mouse_data,
         -- Resets
-        powerup_reset_n     => delayed_reset_n,
+        powerup_reset_n     => hard_reset_n,
         ext_reset_n         => ext_reset_n,
         int_reset_n         => open,
         -- Video
@@ -734,7 +690,7 @@ begin
 
     psram: if (CImplDbgPsram) generate
         -- PSRAM debugging
-        gpio <= phi2 & sync & rnw & powerup_reset_n & delayed_reset_n & RamCE & psram_read & psram_write & psram_busy & IO_psram_rwds(0) & IO_psram_dq(0);
+        gpio <= phi2 & sync & rnw & powerup_reset_n & delayed_reset_n & psram_ce & psram_read & psram_write & psram_busy & IO_psram_rwds(0) & IO_psram_dq(0);
     end generate;
 
     vga: if (CImplVGA) generate
