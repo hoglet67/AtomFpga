@@ -8,7 +8,7 @@ OPTIONS="--std=93 --ieee=synopsys -fexplicit --syn-binding -Wno-hide"
 # 116ms is enough to Boot the OS, start SDDOS, and get the INTERFACE? error
 SIMOPTIONS=" --ieee-asserts=disable --stop-time=116ms"
 
-#SIMOPTIONS="$SIMOPTIONS --vcd=dump.vcd"
+SIMOPTIONS="$SIMOPTIONS --vcd=dump.vcd"
 
 echo "Analyzing VHDL..."
 
@@ -20,10 +20,12 @@ ghdl -a $OPTIONS dvi_tx.vhd
 # Verilog impl)
 
 ghdl -a $OPTIONS prim_sim.vhd
-ghdl -a $OPTIONS InternalROM.vhd
+ghdl -a $OPTIONS ../src/psram_controller.vhd
 ghdl -a $OPTIONS ../src/dpram_8k/dpram_8k.vhd
 ghdl -a $OPTIONS ../src/VideoRam.vhd
 ghdl -a $OPTIONS ../src/tmds_encoder.vhd
+ghdl -a $OPTIONS ../../../src/xilinx/spi_flash.vhd
+ghdl -a $OPTIONS ../src/bootstrap.vhd
 ghdl -a $OPTIONS ../../../src/common/AlanD/R65Cx2.vhd
 ghdl -a $OPTIONS ../../../src/common/T6502/T65_Pack.vhd
 ghdl -a $OPTIONS ../../../src/common/T6502/T65_ALU.vhd
@@ -77,7 +79,7 @@ echo "Running Simulation (takes about 15 minutes)..."
 time ghdl -r  $OPTIONS test_bench $SIMOPTIONS | tee log
 
 echo "Decoding trace file..."
-grep "trace" log  | cut -d: -f7 | tail +53 | xxd -r -p | dd conv=swab status=none | decode6502 --machine=atom --cpu=6502 -ahiys --phi2= --rst= --sync= --mem=00f > trace
+grep "trace" log  | cut -d: -f7 | tail +53 | tr '!' 'F' | xxd -r -p | dd conv=swab status=none | decode6502 --machine=atom --cpu=6502 -ahiys --phi2= --rst= --sync= --mem=00f > trace
 
 ls -l log trace
 

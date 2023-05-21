@@ -92,6 +92,7 @@ begin
             tmds_clk_n     => tmds_clk_n     ,
             tmds_d_p       => tmds_d_p       ,
             tmds_d_n       => tmds_d_n       ,
+            flash_so       => '0'            ,
             gpio           => gpio
             );
 

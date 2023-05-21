@@ -2736,8 +2736,8 @@ use work.glb.GSRO;
 
 entity ODDR is
     GENERIC (
-        TXCLK_POL : bit := '0'; --'0':Rising edge output; '1':Falling edge output
-        CONSTANT INIT : std_logic := '0'
+        TXCLK_POL : std_logic := '0'; --'0':Rising edge output; '1':Falling edge output
+        CONSTANT INIT : bit := '0'
     );
     PORT (
 	    Q0 : OUT std_logic;
