@@ -21,6 +21,8 @@ set_clock_groups -asynchronous -group [get_clocks {clock_25}] -group [get_clocks
 // TODO: should we treat Phi2 as asynchronous and synchronise it?
 set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -setup 4
 set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -hold 3
+set_multicycle_path -from [get_clocks {clock_32}] -to [get_clocks {clock_96}] -setup 4
+set_multicycle_path -from [get_clocks {clock_32}] -to [get_clocks {clock_96}] -hold 3
 
 // Correct for the part on the Tang Nano 9K
 set_operating_conditions -grade c -model fast -speed 6 -setup
