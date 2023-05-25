@@ -58,12 +58,12 @@ end AtomFpga_TangNano9K;
 
 architecture behavioral of AtomFpga_TangNano9K is
 
-    signal clock_16        : std_logic;
-    signal clock_25        : std_logic;
-    signal clock_125       : std_logic;
-    signal clock_32        : std_logic;
-    signal clock_96        : std_logic;
-    signal clock_96_p      : std_logic;
+    signal clock_main      : std_logic;
+    signal clock_vga       : std_logic;
+    signal clock_hdmi      : std_logic;
+    signal clock_sid       : std_logic;
+    signal clock_psram     : std_logic;
+    signal clock_psram_p   : std_logic;
 
     signal ext_reset_n     : std_logic;
     signal powerup_reset_n : std_logic;
@@ -269,10 +269,10 @@ begin
         )
         port map (
             CLKIN    => clock_27,
-            CLKOUT   => clock_96,
-            CLKOUTD  => clock_16,
-            CLKOUTP  => clock_96_p,
-            CLKOUTD3 => clock_32,
+            CLKOUT   => clock_psram,
+            CLKOUTD  => clock_main,
+            CLKOUTP  => clock_psram_p,
+            CLKOUTD3 => clock_sid,
             LOCK     => open,
             RESET    => '0',
             RESET_P  => '0',
@@ -295,7 +295,7 @@ begin
         )
         port map (
             CLKIN    => clock_27,
-            CLKOUT   => clock_125,
+            CLKOUT   => clock_hdmi,
             CLKOUTP  => open,
             CLKOUTD  => open,
             CLKOUTD3 => open,
@@ -318,8 +318,8 @@ begin
         )
         port map (
             RESETN => '1', -- TODO, reset when previous PLL locked
-            HCLKIN => clock_125,
-            CLKOUT => clock_25,
+            HCLKIN => clock_hdmi,
+            CLKOUT => clock_vga,
             CALIB  => '1'
         );
 
@@ -332,9 +332,9 @@ begin
     O_psram_reset_n <= powerup_reset_n & powerup_reset_n;
 
     -- On power up, wait for the psram controller to initialize before bootstrapping SPI flash
-    process(clock_16)
+    process(clock_main)
     begin
-        if rising_edge(clock_16) then
+        if rising_edge(clock_main) then
             if powerup_reset_n = '0' then
                 delayed_reset_n <= '0';
             elsif psram_busy = '0' then
@@ -356,8 +356,8 @@ begin
             LATENCY => 4
         )
         port map (
-            clk           => clock_96,
-            clk_p         => clock_96_p, -- phase-shifted clock for driving O_psram_ck
+            clk           => clock_psram,
+            clk_p         => clock_psram_p, -- phase-shifted clock for driving O_psram_ck
             resetn        => powerup_reset_n,
             read          => psram_read,
             write         => psram_write,
@@ -376,9 +376,9 @@ begin
             O_psram_cs_n  => O_psram_cs_n
         );
 
-    process(clock_96)
+    process(clock_psram)
     begin
-        if rising_edge(clock_96) then
+        if rising_edge(clock_psram) then
             psram_phi2d <= psram_phi2;
             if psram_phi2d = '0' and psram_phi2 = '1' and psram_ce = '1' and psram_we = '0' then
                 psram_read <= '1';
@@ -453,7 +453,7 @@ begin
 
         boot : entity work.bootstrap
         port map (
-            clock           => clock_16,
+            clock           => clock_main,
 
             -- initiate bootstrap
             powerup_reset_n => delayed_reset_n,
@@ -532,12 +532,12 @@ begin
     )
     port map(
         -- Clocking
-        clk_vga             => clock_25,
-        clk_main            => clock_16,
-        clk_avr             => clock_16,
+        clk_vga             => clock_vga,
+        clk_main            => clock_main,
+        clk_avr             => clock_main,
         clk_avr_debug       => '0',
-        clk_dac             => clock_32,
-        clk_32M00           => clock_32,
+        clk_dac             => clock_sid,
+        clk_32M00           => clock_sid,
         -- Keyboard/mouse
         kbd_pa              => open,
         kbd_pb              => (others => '1'),
@@ -611,8 +611,8 @@ begin
         dvi_tx1 : DVI_TX_Top
             port map (
                 I_rst_n => btn1_n,
-                I_serial_clk => clock_125,
-                I_rgb_clk => clock_25,
+                I_serial_clk => clock_hdmi,
+                I_rgb_clk => clock_vga,
                 I_rgb_vs => rgb_vs,
                 I_rgb_hs => rgb_hs,
                 I_rgb_de => rgb_de,
@@ -640,7 +640,7 @@ begin
 
         tr : entity work.tmds_encoder(rtl)
             port map (
-                clk  => clock_25,
+                clk  => clock_vga,
                 en   => rgb_de,
                 ctrl => "00",
                 din  => rgb_r,
@@ -649,7 +649,7 @@ begin
 
         tg : entity work.tmds_encoder(rtl)
             port map (
-                clk  => clock_25,
+                clk  => clock_vga,
                 en   => rgb_de,
                 ctrl => "00",
                 din  => rgb_g,
@@ -658,7 +658,7 @@ begin
 
         tb : entity work.tmds_encoder(rtl)
             port map (
-                clk  => clock_25,
+                clk  => clock_vga,
                 en   => rgb_de,
                 ctrl => ctrl,
                 din  => rgb_b,
@@ -673,8 +673,8 @@ begin
                 LSREN => "true"
                 )
             port map(
-                PCLK  => clock_25,
-                FCLK  => clock_125,
+                PCLK  => clock_vga,
+                FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_b,
                 D0    => encoded_b(0),
@@ -695,8 +695,8 @@ begin
                 LSREN => "true"
                 )
             port map (
-                PCLK  => clock_25,
-                FCLK  => clock_125,
+                PCLK  => clock_vga,
+                FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_g,
                 D0    => encoded_g(0),
@@ -717,8 +717,8 @@ begin
                 LSREN => "true"
                 )
             port map (
-                PCLK  => clock_25,
-                FCLK  => clock_125,
+                PCLK  => clock_vga,
+                FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_r,
                 D0    => encoded_r(0),
@@ -739,8 +739,8 @@ begin
                 LSREN => "true"
                 )
             port map (
-                PCLK  => clock_25,
-                FCLK  => clock_125,
+                PCLK  => clock_vga,
+                FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_c,
                 D0    => '1',
