@@ -11,10 +11,13 @@ entity AtomFpga_TangNano9K is
         CImplSDDOS         : boolean := false;
         CImplAtoMMC2       : boolean := true;
         CImplSID           : boolean := true;
+        CImplUserFlash     : boolean := false;
+        CImplBootstrap     : boolean := true;
         -- Options that use the GPIO outputs, select just one
         CImplVGA           : boolean := true;
         CImplTrace         : boolean := false;
-        CImplDbgPsram      : boolean := false
+        CImplDbgPsram      : boolean := false;
+        DefaultTurbo       : std_logic_vector(1 downto 0) := "00"
     );
     port (
         clock_27        : in    std_logic;
@@ -95,6 +98,8 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal serialized_b    : std_logic;
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
+    signal RamCE           : std_logic;
+    signal RomCE           : std_logic;
     signal ExternCE        : std_logic;
     signal ExternWE        : std_logic;
     signal ExternA         : std_logic_vector (18 downto 0);
@@ -109,6 +114,11 @@ architecture behavioral of AtomFpga_TangNano9K is
 
     -- Signals for the SPI FLASH bootstrap
     signal bootstrap_busy  : std_logic;
+
+    -- Signals for the User Flash
+    signal RomDout      : std_logic_vector (31 downto 0);
+    signal xadr         : std_logic_vector (8 downto 0);
+    signal yadr         : std_logic_vector (5 downto 0);
 
     -- Signals for the internal side of the PS Ram
     signal psram_phi2      : std_logic;
@@ -203,7 +213,7 @@ architecture behavioral of AtomFpga_TangNano9K is
         generic (
             GSREN : string := "false";
             LSREN : string := "true"
-            );
+        );
         port (
             Q : out std_logic;
             D0 : in std_logic;
@@ -219,7 +229,7 @@ architecture behavioral of AtomFpga_TangNano9K is
             FCLK : in std_logic;
             PCLK : in std_logic;
             RESET : in std_logic
-            );
+        );
     end component;
 
     component ELVDS_OBUF
@@ -227,6 +237,21 @@ architecture behavioral of AtomFpga_TangNano9K is
             I : in std_logic;
             O : out std_logic;
             OB : out std_logic
+        );
+    end component;
+
+    component FLASH608K
+        port (
+            DOUT: out std_logic_vector(31 downto 0);
+            XE: in std_logic;
+            YE: in std_logic;
+            SE: in std_logic;
+            PROG: in std_logic;
+            ERASE: in std_logic;
+            NVSTR: in std_logic;
+            XADR: in std_logic_vector(8 downto 0);
+            YADR: in std_logic_vector(5 downto 0);
+            DIN: in std_logic_vector(31 downto 0)
         );
     end component;
 
@@ -258,7 +283,7 @@ begin
             PSDA     => (others => '0'),
             DUTYDA   => (others => '0'),
             FDLY     => (others => '0')
-            );
+        );
 
     pll2 : rPLL
         generic map (
@@ -284,7 +309,7 @@ begin
             PSDA     => (others => '0'),
             DUTYDA   => (others => '0'),
             FDLY     => (others => '0')
-            );
+        );
 
     clkdiv5 : CLKDIV
         generic map (
@@ -349,7 +374,7 @@ begin
             IO_psram_rwds => IO_psram_rwds,
             IO_psram_dq   => IO_psram_dq,
             O_psram_cs_n  => O_psram_cs_n
-            );
+        );
 
     process(clock_96)
     begin
@@ -371,41 +396,118 @@ begin
     psram_din   <= psram_din8 & psram_din8;
     psram_dout8 <= psram_dout(15 downto 8) when psram_addr(0) = '1' else psram_dout(7 downto 0);
 
-    boot : entity work.bootstrap
-    port map (
-        clock           => clock_16,
+    --------------------------------------------------------
+    -- User Flash
+    --------------------------------------------------------
 
-        -- initiate bootstrap
-        powerup_reset_n => delayed_reset_n,
+    -- CImplBootstrap CImplUserFlash    Notes
+    --      false          false        Used to speed up simulation, where PSRAM can be pre-loaded
+    --      false          true         ROM content stored in Internal User Flash
+    --      true           false        ROM content stored in External SPI flash and bootsrapped into SRAM
+    --      true           true         Invalid (doesn't make sense)
 
-        -- high when FLASH is being copied to SRAM, can be used by user as active high reset
-        bootstrap_busy  => bootstrap_busy,
+    cimpluserflash_true : if CImplUserFlash generate
 
-        -- start address of user data in FLASH
-        user_address    => (others => '0'),
+        flash_inst : FLASH608K
+        port map (
+            DOUT  => RomDout,
+            XE    => '1',
+            YE    => '1',
+            SE    => phi2,
+            PROG  => '0',
+            ERASE => '0',
+            NVSTR => '0',
+            XADR  => xadr,
+            YADR  => yadr,
+            DIN   => (others => '0')
+                );
+        xadr <= "000" & ExternA(13 downto 8);
+        yadr <= ExternA(7 downto 2);
 
-        -- interface from Atom core
-        RAM_Phi2        => phi2,
-        RAM_CE          => ExternCE,
-        RAM_WE          => ExternWE,
-        RAM_A           => ExternA,
-        RAM_Din         => ExternDin,
-        RAM_Dout        => ExternDout,
+        RomCE <= '1' when ExternCE = '1' and ExternA(18 downto 17) = "00" else '0';
+        RamCE <= '1' when ExternCE = '1' and ExternA(18 downto 17) = "01" else '0';
 
-        -- interface to the PSRAM
-        PSRAM_Phi2      => psram_phi2,
-        PSRAM_CE        => psram_ce,
-        PSRAM_WE        => psram_we,
-        PSRAM_A         => psram_addr,
-        PSRAM_Din       => psram_din8,
-        PSRAM_Dout      => psram_dout8,
+        ExternDout <= psram_dout8           when RamCE = '1'                                else
+                      RomDout( 7 downto  0) when RomCE = '1' and ExternA(1 downto 0) = "00" else
+                      RomDout(15 downto  8) when RomCE = '1' and ExternA(1 downto 0) = "01" else
+                      RomDout(23 downto 16) when RomCE = '1' and ExternA(1 downto 0) = "10" else
+                      RomDout(31 downto 24) when RomCE = '1' and ExternA(1 downto 0) = "11" else
+                      x"AA";
 
-        -- interface to external FLASH
-        FLASH_CS        => flash_cs,
-        FLASH_CK        => flash_ck,
-        FLASH_SI        => flash_si,
-        FLASH_SO        => flash_so
-        );
+    end generate;
+
+    cimpluserflash_false : if not CImplUserFlash generate
+
+        RomCE <= '0';
+        RamCE <= '1' when ExternCE = '1' and ExternA(18) = '0' else '0';
+
+        ExternDout <= psram_dout8 when RamCE = '1' else
+                      x"AA";
+    end generate;
+
+    --------------------------------------------------------
+    -- Bootstrap ROM content from SPI Flash into PSRAM
+    --------------------------------------------------------
+
+    cimplbootstrap_true : if CImplBootstrap generate
+
+        boot : entity work.bootstrap
+        port map (
+            clock           => clock_16,
+
+            -- initiate bootstrap
+            powerup_reset_n => delayed_reset_n,
+
+            -- high when FLASH is being copied to SRAM, can be used by user as active high reset
+            bootstrap_busy  => bootstrap_busy,
+
+            -- start address of user data in FLASH
+            user_address    => (others => '0'),
+
+            -- interface with the Atom core
+            RAM_Phi2        => phi2,
+            RAM_CE          => RamCE,
+            RAM_WE          => ExternWE,
+            RAM_A           => ExternA,
+            RAM_Din         => ExternDin,
+            RAM_Dout        => open,        -- Internally this is pass through anyway
+
+            -- interface with the PSRAM
+            PSRAM_Phi2      => psram_phi2,
+            PSRAM_CE        => psram_ce,
+            PSRAM_WE        => psram_we,
+            PSRAM_A         => psram_addr,
+            PSRAM_Din       => psram_din8,
+            PSRAM_Dout      => psram_dout8,
+
+            -- interface with the external FLASH
+            FLASH_CS        => flash_cs,
+            FLASH_CK        => flash_ck,
+            FLASH_SI        => flash_si,
+            FLASH_SO        => flash_so
+            );
+
+    end generate;
+
+    cimplbootstrap_false : if not CImplBootstrap generate
+
+        psram_phi2 <= phi2;
+        psram_ce <= '1' when RamCE = '1' else '0';
+        psram_we <= ExternWE;
+        psram_addr <= "000" & ExternA;
+        psram_din8 <= ExternDin;
+
+        flash_cs <= '1';
+        flash_ck <= '1';
+        flash_si <= '1';
+
+        bootstrap_busy <= '0';
+
+    end generate;
+
+    --------------------------------------------------------
+    -- Atom FPGA Core
+    --------------------------------------------------------
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
@@ -425,7 +527,8 @@ begin
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
         MainClockSpeed          => 16000000,
-        DefaultBaud             => 115200
+        DefaultBaud             => 115200,
+        DefaultTurbo            => DefaultTurbo
     )
     port map(
         -- Clocking
@@ -491,7 +594,9 @@ begin
 
     led <= btn2_n & btn2_n & btn2_n & led2 & led2 & btn1_n;
 
+    --------------------------------------------------------
     -- DVI / HDMI output
+    --------------------------------------------------------
 
     rgb_r <= red   & "00000";
     rgb_g <= green & "00000";
