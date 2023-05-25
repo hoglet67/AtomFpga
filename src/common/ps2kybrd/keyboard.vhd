@@ -4,6 +4,9 @@ use IEEE.numeric_std.all;
 use ieee.std_logic_unsigned.all;
 
 entity keyboard is
+    generic (
+        DefaultTurbo : std_logic_vector(1 downto 0) := "00"
+    );
     port (
         CLOCK      : in  std_logic;
         nRESET     : in  std_logic;
@@ -12,16 +15,16 @@ entity keyboard is
         PS2_DATA   : in  std_logic;
         KEYOUT     : out std_logic_vector(5 downto 0);
         ROW        : in  std_logic_vector(3 downto 0);
-        ESC_IN     : in  std_logic;        
-        BREAK_IN   : in  std_logic;        
+        ESC_IN     : in  std_logic;
+        BREAK_IN   : in  std_logic;
         SHIFT_OUT  : out std_logic;
         CTRL_OUT   : out std_logic;
         REPEAT_OUT : out std_logic;
         BREAK_OUT  : out std_logic;
         TURBO      : out std_logic_vector(1 downto 0);
         ESC_OUT    : out std_logic;
-        Joystick1  : in  std_logic_vector (7 downto 0); 
-        Joystick2  : in  std_logic_vector (7 downto 0)        
+        Joystick1  : in  std_logic_vector (7 downto 0);
+        Joystick2  : in  std_logic_vector (7 downto 0)
         );
 end entity;
 
@@ -45,7 +48,7 @@ architecture rtl of keyboard is
     type   key_matrix is array(0 to 9) of std_logic_vector(5 downto 0);
     signal keys       : key_matrix;
     signal col        : unsigned(3 downto 0);
-    signal release    : std_logic;
+    signal released   : std_logic;
     signal extended   : std_logic;
     signal ESC_IN1    : std_logic;
     signal BREAK_IN1  : std_logic;
@@ -81,15 +84,15 @@ begin
     process(CLOCK, nRESET, ESC_IN, BREAK_IN)
     begin
         if nRESET = '0' then
-            release  <= '0';
-            extended <= '0';
-            TURBO    <= "00";
+            released  <= '0';
+            extended  <= '0';
+            TURBO     <= DefaultTurbo;
 
             BREAK_OUT  <= '1';
             SHIFT_OUT  <= '1';
             CTRL_OUT   <= '1';
             REPEAT_OUT <= '1';
-            
+
             ESC_IN1 <= ESC_IN;
             BREAK_IN1 <= BREAK_IN;
 
@@ -105,107 +108,107 @@ begin
             keys(9) <= (others => '1');
 
         elsif rising_edge(CLOCK) then
-        
+
             -- handle the escape key seperately, as it's value also depends on ESC_IN
             if keyb_valid = '1' and keyb_data = X"76" then
-                keys(0)(5) <= release;
+                keys(0)(5) <= released;
             elsif ESC_IN /= ESC_IN1 then
                 keys(0)(5) <= ESC_IN;
             end if;
 
-            ESC_IN1 <= ESC_IN;           
+            ESC_IN1 <= ESC_IN;
             -- handle the break key seperately, as it's value also depends on BREAK_IN
             if keyb_valid = '1' and keyb_data = X"09" then
-                BREAK_OUT <= release;
+                BREAK_OUT <= released;
             elsif BREAK_IN /= BREAK_IN1 then
                 BREAK_OUT <= BREAK_IN;
             end if;
             BREAK_IN1 <= BREAK_IN;
-            
+
             if keyb_valid = '1' then
                 if keyb_data = X"e0" then
                     extended <= '1';
                 elsif keyb_data = X"f0" then
-                    release <= '1';
+                    released <= '1';
                 else
-                    release  <= '0';
+                    released  <= '0';
                     extended <= '0';
-                    
+
                     case keyb_data is
                         when X"05" => TURBO      <= "00";     -- F1 (1MHz)
                         when X"06" => TURBO      <= "01";     -- F2 (2MMz)
                         when X"04" => TURBO      <= "10";     -- F3 (4MHz)
                         when X"0C" => TURBO      <= "11";     -- F4 (8MHz)
---                        when X"09" => BREAK_OUT  <= release;  -- F10 (BREAK)
-                        when X"11" => REPEAT_OUT <= release;  -- LEFT ALT (SHIFT LOCK)
+--                        when X"09" => BREAK_OUT  <= released;  -- F10 (BREAK)
+                        when X"11" => REPEAT_OUT <= released;  -- LEFT ALT (SHIFT LOCK)
                         when X"12" | X"59" =>
                             if (extended = '0') then -- Ignore fake shifts
-                                SHIFT_OUT  <= release; -- Left SHIFT -- Right SHIFT
-                            end if; 
-                        when X"14" => CTRL_OUT   <= release;  -- LEFT/RIGHT CTRL (CTRL) 
+                                SHIFT_OUT  <= released; -- Left SHIFT -- Right SHIFT
+                            end if;
+                        when X"14" => CTRL_OUT   <= released;  -- LEFT/RIGHT CTRL (CTRL)
                         -----------------------------------------------------
                         -- process matrix
                         -----------------------------------------------------
-                        when X"29" => keys(9)(0) <= release;  -- SPACE
-                        when X"54" => keys(8)(0) <= release;  -- [       
-                        when X"5D" => keys(7)(0) <= release;  -- \       
-                        when X"5B" => keys(6)(0) <= release;  -- ]
-                        when X"0D" => keys(5)(0) <= release;  -- UP      
-                        when X"58" => keys(4)(0) <= release;  -- CAPS LOCK                                       
-                        when X"74" => keys(3)(0) <= release;  -- RIGHT           
-                        when X"75" => keys(2)(0) <= release;  -- UP
+                        when X"29" => keys(9)(0) <= released;  -- SPACE
+                        when X"54" => keys(8)(0) <= released;  -- [
+                        when X"5D" => keys(7)(0) <= released;  -- \
+                        when X"5B" => keys(6)(0) <= released;  -- ]
+                        when X"0D" => keys(5)(0) <= released;  -- UP
+                        when X"58" => keys(4)(0) <= released;  -- CAPS LOCK
+                        when X"74" => keys(3)(0) <= released;  -- RIGHT
+                        when X"75" => keys(2)(0) <= released;  -- UP
 
-                        when X"5A" => keys(6)(1) <= release;  -- RETURN
-                        when X"69" => keys(5)(1) <= release;  -- END (COPY)
-                        when X"66" => keys(4)(1) <= release;  -- BACKSPACE (DELETE)
-                        when X"45" => keys(3)(1) <= release;  -- 0
-                        when X"16" => keys(2)(1) <= release;  -- 1
-                        when X"1E" => keys(1)(1) <= release;  -- 2
-                        when X"26" => keys(0)(1) <= release;  -- 3
+                        when X"5A" => keys(6)(1) <= released;  -- RETURN
+                        when X"69" => keys(5)(1) <= released;  -- END (COPY)
+                        when X"66" => keys(4)(1) <= released;  -- BACKSPACE (DELETE)
+                        when X"45" => keys(3)(1) <= released;  -- 0
+                        when X"16" => keys(2)(1) <= released;  -- 1
+                        when X"1E" => keys(1)(1) <= released;  -- 2
+                        when X"26" => keys(0)(1) <= released;  -- 3
 
-                        when X"25" => keys(9)(2) <= release;  -- 4
-                        when X"2E" => keys(8)(2) <= release;  -- 5                                       
-                        when X"36" => keys(7)(2) <= release;  -- 6
-                        when X"3D" => keys(6)(2) <= release;  -- 7               
-                        when X"3E" => keys(5)(2) <= release;  -- 8                               
-                        when X"46" => keys(4)(2) <= release;  -- 9
-                        when X"52" => keys(3)(2) <= release;  -- '   full colon substitute
-                        when X"4C" => keys(2)(2) <= release;  -- ;
-                        when X"41" => keys(1)(2) <= release;  -- ,       
-                        when X"4E" => keys(0)(2) <= release;  -- -
+                        when X"25" => keys(9)(2) <= released;  -- 4
+                        when X"2E" => keys(8)(2) <= released;  -- 5
+                        when X"36" => keys(7)(2) <= released;  -- 6
+                        when X"3D" => keys(6)(2) <= released;  -- 7
+                        when X"3E" => keys(5)(2) <= released;  -- 8
+                        when X"46" => keys(4)(2) <= released;  -- 9
+                        when X"52" => keys(3)(2) <= released;  -- '   full colon substitute
+                        when X"4C" => keys(2)(2) <= released;  -- ;
+                        when X"41" => keys(1)(2) <= released;  -- ,
+                        when X"4E" => keys(0)(2) <= released;  -- -
 
-                        when X"49" => keys(9)(3) <= release;  -- .
-                        when X"4A" => keys(8)(3) <= release;  -- /
-                        when X"55" => keys(7)(3) <= release;  -- @ (TAB)
-                        when X"1C" => keys(6)(3) <= release;  -- A
-                        when X"32" => keys(5)(3) <= release;  -- B
-                        when X"21" => keys(4)(3) <= release;  -- C
-                        when X"23" => keys(3)(3) <= release;  -- D
-                        when X"24" => keys(2)(3) <= release;  -- E       
-                        when X"2B" => keys(1)(3) <= release;  -- F
-                        when X"34" => keys(0)(3) <= release;  -- G
+                        when X"49" => keys(9)(3) <= released;  -- .
+                        when X"4A" => keys(8)(3) <= released;  -- /
+                        when X"55" => keys(7)(3) <= released;  -- @ (TAB)
+                        when X"1C" => keys(6)(3) <= released;  -- A
+                        when X"32" => keys(5)(3) <= released;  -- B
+                        when X"21" => keys(4)(3) <= released;  -- C
+                        when X"23" => keys(3)(3) <= released;  -- D
+                        when X"24" => keys(2)(3) <= released;  -- E
+                        when X"2B" => keys(1)(3) <= released;  -- F
+                        when X"34" => keys(0)(3) <= released;  -- G
 
-                        when X"33" => keys(9)(4) <= release;  -- H
-                        when X"43" => keys(8)(4) <= release;  -- I
-                        when X"3B" => keys(7)(4) <= release;  -- J                                       
-                        when X"42" => keys(6)(4) <= release;  -- K
-                        when X"4B" => keys(5)(4) <= release;  -- L
-                        when X"3A" => keys(4)(4) <= release;  -- M
-                        when X"31" => keys(3)(4) <= release;  -- N
-                        when X"44" => keys(2)(4) <= release;  -- O
-                        when X"4D" => keys(1)(4) <= release;  -- P
-                        when X"15" => keys(0)(4) <= release;  -- Q
+                        when X"33" => keys(9)(4) <= released;  -- H
+                        when X"43" => keys(8)(4) <= released;  -- I
+                        when X"3B" => keys(7)(4) <= released;  -- J
+                        when X"42" => keys(6)(4) <= released;  -- K
+                        when X"4B" => keys(5)(4) <= released;  -- L
+                        when X"3A" => keys(4)(4) <= released;  -- M
+                        when X"31" => keys(3)(4) <= released;  -- N
+                        when X"44" => keys(2)(4) <= released;  -- O
+                        when X"4D" => keys(1)(4) <= released;  -- P
+                        when X"15" => keys(0)(4) <= released;  -- Q
 
-                        when X"2D" => keys(9)(5) <= release;  -- R
-                        when X"1B" => keys(8)(5) <= release;  -- S
-                        when X"2C" => keys(7)(5) <= release;  -- T
-                        when X"3C" => keys(6)(5) <= release;  -- U
-                        when X"2A" => keys(5)(5) <= release;  -- V
-                        when X"1D" => keys(4)(5) <= release;  -- W
-                        when X"22" => keys(3)(5) <= release;  -- X
-                        when X"35" => keys(2)(5) <= release;  -- Y       
-                        when X"1A" => keys(1)(5) <= release;  -- Z
---                        when X"76" => keys(0)(5) <= release;  -- ESCAPE
+                        when X"2D" => keys(9)(5) <= released;  -- R
+                        when X"1B" => keys(8)(5) <= released;  -- S
+                        when X"2C" => keys(7)(5) <= released;  -- T
+                        when X"3C" => keys(6)(5) <= released;  -- U
+                        when X"2A" => keys(5)(5) <= released;  -- V
+                        when X"1D" => keys(4)(5) <= released;  -- W
+                        when X"22" => keys(3)(5) <= released;  -- X
+                        when X"35" => keys(2)(5) <= released;  -- Y
+                        when X"1A" => keys(1)(5) <= released;  -- Z
+--                        when X"76" => keys(0)(5) <= released;  -- ESCAPE
 
                         when others => null;
                     end case;
@@ -216,14 +219,12 @@ begin
                     keys(7)(1) <= '1';
                     keys(8)(1) <= '1';
                     keys(9)(1) <= '1';
-                    
+
                 end if;
             end if;
         end if;
     end process;
-    
+
     ESC_OUT <= keys(0)(5);
 
 end architecture;
-
-

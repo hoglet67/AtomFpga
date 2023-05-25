@@ -40,7 +40,8 @@ entity AtomFpga_Core is
        CImplVIA                : boolean := true;
        CImplProfilingCounters  : boolean := false;
        MainClockSpeed          : integer;
-       DefaultBaud             : integer
+       DefaultBaud             : integer;
+       DefaultTurbo            : std_logic_vector(1 downto 0) := "00"
     );
     port (
         -- Clocking
@@ -474,24 +475,28 @@ begin
 -- PS/2 Keyboard Emulation
 ---------------------------------------------------------------------
 
-    input : entity work.keyboard port map(
-        CLOCK      => clk_main,
-        nRESET     => powerup_reset_n_sync,
-        CLKEN_1MHZ => cpu_clken,
-        PS2_CLK    => ps2_clk,
-        PS2_DATA   => ps2_data,
-        KEYOUT     => ps2dataout,
-        ROW        => i8255_pa_data(3 downto 0),
-        ESC_IN     => uart_escape,
-        BREAK_IN   => uart_break,
-        SHIFT_OUT  => key_shift,
-        CTRL_OUT   => key_ctrl,
-        REPEAT_OUT => key_repeat,
-        BREAK_OUT  => key_break,
-        TURBO      => key_turbo,
-        ESC_OUT    => key_escape,
-        Joystick1  => Joystick1,
-        Joystick2  => Joystick2
+    input : entity work.keyboard
+        generic map (
+            DefaultTurbo => DefaultTurbo
+        )
+        port map (
+            CLOCK      => clk_main,
+            nRESET     => powerup_reset_n_sync,
+            CLKEN_1MHZ => cpu_clken,
+            PS2_CLK    => ps2_clk,
+            PS2_DATA   => ps2_data,
+            KEYOUT     => ps2dataout,
+            ROW        => i8255_pa_data(3 downto 0),
+            ESC_IN     => uart_escape,
+            BREAK_IN   => uart_break,
+            SHIFT_OUT  => key_shift,
+            CTRL_OUT   => key_ctrl,
+            REPEAT_OUT => key_repeat,
+            BREAK_OUT  => key_break,
+            TURBO      => key_turbo,
+            ESC_OUT    => key_escape,
+            Joystick1  => Joystick1,
+            Joystick2  => Joystick2
         );
 
 ---------------------------------------------------------------------
