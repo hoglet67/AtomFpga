@@ -24,5 +24,8 @@ set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -h
 set_multicycle_path -from [get_clocks {clock_32}] -to [get_clocks {clock_96}] -setup 4
 set_multicycle_path -from [get_clocks {clock_32}] -to [get_clocks {clock_96}] -hold 3
 
+set_multicycle_path -from [get_clocks {clock_96}] -to [get_clocks {clock_16}] -setup 2
+set_multicycle_path -from [get_clocks {clock_96}] -to [get_clocks {clock_16}] -hold 1
+
 // Correct for the part on the Tang Nano 9K
 set_operating_conditions -grade c -model slow -speed 6 -setup
