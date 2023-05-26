@@ -392,7 +392,8 @@ begin
     ram : entity work.PsramController
         generic map (
             FREQ => 96_000_000,
-            LATENCY => 4
+            LATENCY => 4,
+            CS_DELAY => true
         )
         port map (
             clk           => clock_psram,
