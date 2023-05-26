@@ -17,7 +17,8 @@ entity AtomFpga_TangNano9K is
         CImplVGA           : boolean := false;
         CImplTrace         : boolean := false;
         CImplDebug         : boolean := true;
-        DefaultTurbo       : std_logic_vector(1 downto 0) := "00"
+        DefaultTurbo       : std_logic_vector(1 downto 0) := "00";
+        ResetCounterSize   : integer := 20
     );
     port (
         clock_27        : in    std_logic;
@@ -64,8 +65,8 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal clock_psram_p   : std_logic;
 
     signal ext_reset_n     : std_logic;
-    signal reset_counter   : std_logic_vector(19 downto 0) := (others => '0'); -- 32ms
-    signal powerup_reset_n : std_logic;
+    signal reset_counter   : std_logic_vector(ResetCounterSize - 1 downto 0) := (others => '0'); -- 32ms
+    signal powerup_reset_n : std_logic := '0';
     signal delayed_reset_n : std_logic;
     signal hard_reset_n    : std_logic;
     signal reset           : std_logic;
@@ -353,7 +354,7 @@ begin
     -- Power Up Reset Generation
     --------------------------------------------------------
 
-    ext_reset_n     <= btn2_n;
+    ext_reset_n     <= '1'; -- was btn2_n
 
     -- The external reset signal is not asserted on power up
     ResetProcess : process (clock_main)
@@ -831,13 +832,18 @@ begin
     -- TODO: the addesses on match when CImplAtoMMC2 is true, as this setting affects the OSRomBank
 
     process(clock_main)
-        variable last : std_logic;
+        variable last_phi2 : std_logic;
+        variable last_psram_phi2 : std_logic;
     begin
         if rising_edge(clock_main) then
             case (state) is
                 when DBG_00 =>
                     if powerup_reset_n = '0' then
-                        state <= DBG_01;
+                        if CImplBootstrap then
+                            state <= DBG_01;
+                        else
+                            state <= DBG_08;
+                        end if;
                     end if;
                 when DBG_01 =>
                     if powerup_reset_n = '1' then
@@ -852,8 +858,8 @@ begin
                         state <= DBG_04;
                     end if;
                 when DBG_04 =>
-                    -- check write on rising edge
-                    if psram_phi2 = '1' and last = '0' then
+                    -- check write, as seen by the psram, on rising edge
+                    if psram_phi2 = '1' and last_psram_phi2 = '0' then
                         if psram_addr(19 downto 0) = x"13F3F" then
                             if psram_din8 = x"A2" then
                                 state <= DBG_05;
@@ -863,8 +869,8 @@ begin
                         end if;
                     end if;
                 when DBG_05 =>
-                    -- check write on rising edge
-                    if psram_phi2 = '1' and last = '0' then
+                    -- check, as seen by the psram, write on rising edge
+                    if psram_phi2 = '1' and last_psram_phi2 = '0' then
                         if psram_addr(19 downto 0) = x"13F40" then
                             if psram_din8 = x"17" then
                                 state <= DBG_06;
@@ -874,8 +880,8 @@ begin
                         end if;
                     end if;
                 when DBG_06 =>
-                    -- check write on rising edge
-                    if psram_phi2 = '1' and last = '0' then
+                    -- check, as seen by the psram, write on rising edge
+                    if psram_phi2 = '1' and last_psram_phi2 = '0' then
                         if psram_addr(19 downto 0) = x"13FFC" then
                             if psram_din8 = x"3F" then
                                 state <= DBG_07;
@@ -885,8 +891,8 @@ begin
                         end if;
                     end if;
                 when DBG_07 =>
-                    -- check write on rising edge
-                    if psram_phi2 = '1' and last = '0' then
+                    -- check, as seen by the psram, write on rising edge
+                    if psram_phi2 = '1' and last_psram_phi2 = '0' then
                         if psram_addr(19 downto 0) = x"13FFD" then
                             if psram_din8 = x"FF" then
                                 state <= DBG_08;
@@ -904,10 +910,10 @@ begin
                         state <= DBG_0A;
                     end if;
                 when DBG_0A =>
-                    -- check read on falling edge
-                    if psram_phi2 = '0' and last = '1' then
-                        if psram_addr(19 downto 0) = x"13FFC" then
-                            if psram_dout8 = x"3F" then
+                    -- check read, as seen by the CPU, on falling edge
+                    if phi2 = '0' and last_phi2 = '1' then
+                        if ExternA = ("001" & x"3FFC") then
+                            if ExternDout = x"3F" then
                                 state <= DBG_0B;
                             else
                                 state(5) <= '1';
@@ -915,10 +921,10 @@ begin
                         end if;
                     end if;
                 when DBG_0B =>
-                    -- check read on falling edge
-                    if psram_phi2 = '0' and last = '1' then
-                        if psram_addr(19 downto 0) = x"13FFD" then
-                            if psram_dout8 = x"FF" then
+                    -- check read, as seen by the CPU, on falling edge
+                    if phi2 = '0' and last_phi2 = '1' then
+                        if ExternA = ("001" & x"3FFD") then
+                            if ExternDout = x"FF" then
                                 state <= DBG_0C;
                             else
                                 state(5) <= '1';
@@ -926,10 +932,10 @@ begin
                         end if;
                     end if;
                 when DBG_0C =>
-                    -- check read on falling edge
-                    if psram_phi2 = '0' and last = '1' then
-                        if psram_addr(19 downto 0) = x"13F3F" then
-                            if psram_dout8 = x"A2" then
+                    -- check read, as seen by the CPU, on falling edge
+                    if phi2 = '0' and last_phi2 = '1' then
+                        if ExternA = ("001" & x"3F3F") then
+                            if ExternDout = x"A2" then
                                 state <= DBG_0D;
                             else
                                 state(5) <= '1';
@@ -937,10 +943,10 @@ begin
                         end if;
                     end if;
                 when DBG_0D =>
-                    -- check read on falling edge
-                    if psram_phi2 = '0' and last = '1' then
-                        if psram_addr(19 downto 0) = x"13F40" then
-                            if psram_dout8 = x"17" then
+                    -- check read, as seen by the CPU, on falling edge
+                    if phi2 = '0' and last_phi2 = '1' then
+                        if ExternA = ("001" & x"3F40") then
+                            if ExternDout = x"17" then
                                 state <= DBG_DONE;
                             else
                                 state(5) <= '1';
@@ -952,7 +958,8 @@ begin
                         state <= DBG_00;
                     end if;
             end case;
-            last := psram_phi2;
+            last_phi2 := phi2;
+            last_psram_phi2 := psram_phi2;
         end if;
     end process;
 
@@ -966,12 +973,14 @@ begin
     trace: if (CImplTrace) generate
         -- Audio/6502 Decoder tracing to the GPIO bus
         data <= ExternDout when ExternCE = '1' and rnw = '1' else ExternDin;
-        gpio <= audiol & audior & '0' & phi2 & sync & rnw & data;
+        gpio <= audiol & audior & hard_reset_n & phi2 & sync & rnw & data;
     end generate;
 
     debug: if (CImplDebug) generate
         -- Debug output to the GPIO bus
-        gpio <= '0' & state(5) & psram_write & psram_read & psram_busy & IO_psram_rwds(0) & flash_cs & flash_ck & flash_si & flash_so & psram_din(3 downto 0) when state(3) = '0' else
+        data <= ExternDout when ExternCE = '1' and rnw = '1' else ExternDin;
+        gpio <= audiol & audior & hard_reset_n & phi2 & sync & rnw & data when btn2_n = '0' else
+                '0' & state(5) & psram_write & psram_read & psram_busy & IO_psram_rwds(0) & flash_cs & flash_ck & flash_si & flash_so & psram_din(3 downto 0) when state(3) = '0' else
                 '0' & state(5) & psram_write & psram_read & psram_busy & IO_psram_rwds(0) & psram_dout8;
     end generate;
 
