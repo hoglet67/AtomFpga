@@ -99,7 +99,7 @@ module tb_timing;
 		// 256KB is plenty (128K ROM + 128K RAM)
         .MemSize  (25'h3FFFF),
 		// 64K x 16 bit ROM image in the current directory
-        .mem_file_name ("../InternalROM.hex")
+        .mem_file_name ("../roms/InternalROM.hex")
         )
       ram
 		(
