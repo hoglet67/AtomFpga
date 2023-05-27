@@ -3,3 +3,8 @@ trace
 work-obj93.cf
 dump.vcd
 a.out
+functional/vunit_out/modelsim/libraries/
+functional/vunit_out/modelsim/modelsim.ini
+functional/vunit_out/project_database/
+functional/vunit_out/test_output/
+*.vstf
