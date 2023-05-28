@@ -33,10 +33,12 @@ entity PsramController is
         dout          : out   std_logic_vector(15 downto 0);
         busy          : out   std_logic;                      -- Last read data. Read is always word-based.
                                                               -- 1 while an operation is in progress
+--      o_state       : out   std_logic_vector(2 downto 0);
 
         -- HyperRAM physical interface. Gowin interface is for 2 dies.
         -- We currently only use the first die (4MB).
         O_psram_ck    : out   std_logic_vector(1 downto 0);
+        O_psram_ck_n  : out   std_logic_vector(1 downto 0);
         IO_psram_rwds : inout std_logic_vector(1 downto 0);
         IO_psram_dq   : inout std_logic_vector(15 downto 0);
         O_psram_cs_n  : out   std_logic_vector(1 downto 0)
@@ -133,6 +135,7 @@ architecture behavioral of PsramController is
     signal additional_latency : std_logic;
     signal cs_n_tbuf          : std_logic;
     signal ck_tbuf            : std_logic;
+    signal ck_tbuf_n          : std_logic;
     signal rwds_oen_tbuf      : std_logic;
     signal rwds_tbuf          : std_logic;
 
@@ -170,6 +173,17 @@ begin
                                 '1' when cycles_sr(2+LATENCY*2) = '1' else
                                 '0';
     end generate;
+
+--  DMB: Debugging for psram controller hanging
+--
+--  o_state <= "000" when state = INIT_ST else
+--             "001" when state = CONFIG_ST else
+--             "010" when state = IDLE_ST else
+--             "011" when state = CS_DELAY_ST else
+--             "100" when state = READ_ST else
+--             "101" when state = WRITE_ST else
+--             "110" when state = WRITE_STOP_ST else
+--             "111";
 
     -- Main FSM for HyperRAM read/write
     process (clk)
@@ -226,7 +240,8 @@ begin
                 if cycles_sr(9) = '1' then
                     wait_for_rd_data <= '1';
                 end if;
-                if wait_for_rd_data = '1' and (rwds_in_ris /= rwds_in_fal) then     -- sample rwds falling edge to get a word / \_
+                -- DMB: Wait for RWDS to be driven high on the first byte of read data
+                if wait_for_rd_data = '1' and (rwds_in_ris = '1' or rwds_in_fal = '1') then
                     dout <= dq_in_ris & dq_in_fal;
                     ram_cs_n <= '1';
                     ck_e <= '0';
@@ -367,7 +382,19 @@ begin
         TX => '0'
         );
 
+
     O_psram_ck(0) <= ck_tbuf;
+
+    -- DMB: Add the inverted clock output
+    oddr_ck_n : ODDR port map (
+        CLK => clk_p,
+        D0  => not ck_e_p,
+        D1  => '1',
+        Q0  => ck_tbuf_n,
+        TX => '0'
+        );
+
+    O_psram_ck_n(0) <= ck_tbuf_n;
 
 
     -- Tristate DDR input

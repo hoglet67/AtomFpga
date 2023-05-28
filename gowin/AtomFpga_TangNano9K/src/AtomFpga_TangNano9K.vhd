@@ -411,6 +411,7 @@ begin
             -- HyperRAM physical interface. Gowin interface is for 2 dies.
             -- We currently only use the first die (4MB).
             O_psram_ck    => O_psram_ck,
+            O_psram_ck_n  => O_psram_ck_n,
             IO_psram_rwds => IO_psram_rwds,
             IO_psram_dq   => IO_psram_dq,
             O_psram_cs_n  => O_psram_cs_n
