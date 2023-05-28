@@ -3,8 +3,8 @@
 module tb_timing;
 
    reg clock_27           = 1'b0;
-   reg btn1_n             = 1'b0;
-   reg btn2_n             = 1'b0;
+   reg btn1_n             = 1'b0; // Active low power up reset
+   reg btn2_n             = 1'b0; // Output 6502 trace data on the gpio pins
    reg ps2_clk            = 1'b1;
    reg ps2_data           = 1'b1;
 
@@ -43,8 +43,8 @@ module tb_timing;
    end
 
    initial begin
-	  //$dumpvars;
-
+	  // $sdf_annotate("../../impl/pnr/AtomFpga_TangNano9K.sdf", dut);
+	  // $dumpvars;
 	  btn1_n <= 1'b0;
 	  @(negedge phi2);
 	  @(negedge phi2);
@@ -80,9 +80,9 @@ module tb_timing;
       .gpio           (gpio           ),
 
       // Flash (not implemented)
-      .flash_cs       (open           ),
-      .flash_ck       (open           ),
-      .flash_si       (open           ),
+      .flash_cs       (               ),
+      .flash_ck       (               ),
+      .flash_si       (               ),
       .flash_so       (1'b0           ),
 
       // PSRAM
