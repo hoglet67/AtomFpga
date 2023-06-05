@@ -33,7 +33,6 @@ entity PsramController is
         dout          : out   std_logic_vector(15 downto 0);
         busy          : out   std_logic;                      -- Last read data. Read is always word-based.
                                                               -- 1 while an operation is in progress
---      o_state       : out   std_logic_vector(2 downto 0);
 
         -- HyperRAM physical interface. Gowin interface is for 2 dies.
         -- We currently only use the first die (4MB).
@@ -174,17 +173,6 @@ begin
                                 '0';
     end generate;
 
---  DMB: Debugging for psram controller hanging
---
---  o_state <= "000" when state = INIT_ST else
---             "001" when state = CONFIG_ST else
---             "010" when state = IDLE_ST else
---             "011" when state = CS_DELAY_ST else
---             "100" when state = READ_ST else
---             "101" when state = WRITE_ST else
---             "110" when state = WRITE_STOP_ST else
---             "111";
-
     -- Main FSM for HyperRAM read/write
     process (clk)
     variable v_start_trans  : boolean;
@@ -240,8 +228,7 @@ begin
                 if cycles_sr(9) = '1' then
                     wait_for_rd_data <= '1';
                 end if;
-                -- DMB: Wait for RWDS to be driven high on the first byte of read data
-                if wait_for_rd_data = '1' and (rwds_in_ris = '1' or rwds_in_fal = '1') then
+                if wait_for_rd_data = '1' and (rwds_in_ris /= rwds_in_fal) then     -- sample rwds falling edge to get a word / \_
                     dout <= dq_in_ris & dq_in_fal;
                     ram_cs_n <= '1';
                     ck_e <= '0';
@@ -382,7 +369,6 @@ begin
         TX => '0'
         );
 
-
     O_psram_ck(0) <= ck_tbuf;
 
     -- DMB: Add the inverted clock output
@@ -395,7 +381,6 @@ begin
         );
 
     O_psram_ck_n(0) <= ck_tbuf_n;
-
 
     -- Tristate DDR input
     iddr_rwds : IDDR port map (
@@ -413,5 +398,12 @@ begin
             Q1 => dq_in_fal(i2)
             );
     end generate;
+
+    -- Assign outputs to avoid warnings controlling the second PSRAM to avoid warnings
+    O_psram_cs_n(1)  <= '1';
+    O_psram_ck(1)    <= '1';
+    O_psram_ck_n(1)  <= '0';
+    IO_psram_rwds(1) <= 'Z';
+    IO_psram_dq(15 downto 8) <= (others => 'Z');
 
 end behavioral;
