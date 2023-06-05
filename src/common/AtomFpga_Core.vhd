@@ -39,6 +39,7 @@ entity AtomFpga_Core is
        CImplRamRomSchakelKaart : boolean;
        CImplVIA                : boolean := true;
        CImplProfilingCounters  : boolean := false;
+       CImplSampleExternData   : boolean := true;
        MainClockSpeed          : integer;
        DefaultBaud             : integer;
        DefaultTurbo            : std_logic_vector(1 downto 0) := "00"
@@ -670,14 +671,20 @@ begin
 -- Ram Rom board functionality
 ---------------------------------------------------------------------
 
-    process(clk_main)
-    begin
-        if rising_edge(clk_main) then
-            if sample_data = '1' then
-                ExternDout1 <= ExternDout;
+    GenSampleData : if CImplSampleExternData generate
+        process(clk_main)
+        begin
+            if rising_edge(clk_main) then
+                if sample_data = '1' then
+                    ExternDout1 <= ExternDout;
+                end if;
             end if;
-        end if;
-    end process;
+        end process;
+    end generate;
+
+    GenNotSampleData : if not CImplSampleExternData generate
+        ExternDout1 <= ExternDout;
+    end generate;
 
     Inst_RamRomNone: if (CImplRamRomNone) generate
         Inst_RamRomNone_comp: entity work.RamRom_None
