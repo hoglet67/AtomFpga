@@ -15,9 +15,9 @@ entity AtomFpga_TangNano9K is
         CImplBootstrap     : boolean := true;
         CImplMonitor       : boolean := true;
         -- Options that use the GPIO outputs, select just one
-        CImplVGA           : boolean := false;
+        CImplVGA           : boolean := true;
         CImplTrace         : boolean := false;
-        CImplDebug         : boolean := true;
+        CImplDebug         : boolean := false;
         DefaultTurbo       : std_logic_vector(1 downto 0) := "00";
         ResetCounterSize   : integer := 20
     );
