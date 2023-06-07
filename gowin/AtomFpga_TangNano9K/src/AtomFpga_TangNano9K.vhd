@@ -428,9 +428,52 @@ begin
             O_psram_cs_n  => O_psram_cs_n
         );
 
+-- VARIENT A
+--
+-- At 4MHz there is very little margin for error in the placement of the PSRAM read
+--
+-- PSRAM: CS_DELAY = true
+--
+--             phi2d1    stb    state
+-- 96m 16m  phi2  |phi2d2 | ps_rd |
+--  0   ^     0   0   1   0   0  IDLE
+--  1         0   0   1   0   0  IDLE
+--  2         0   0   1   0   0  IDLE
+--  3   v     0   0   0   1   0  IDLE
+--  4         0   0   0   1   1  IDLE
+--  5         0   0   0   1   1  CS DELAY
+--  6   ^     1   0   0   1   1  READ * psram_addr latched
+--  7         1   0   0   1   1  READ
+--  8         1   0   0   1   1  READ
+--  9   v     1   1   0   0   1  READ
+-- 10         1   1   0   0   0  READ
+-- 11         1   1   0   0   0  READ
+-- 12   ^     1   1   0   0   0  READ
+-- 13         1   1   0   0   0  READ
+-- 14         1   1   0   0   0  READ
+-- 15   v     1   1   1   0   0  READ
+-- 16         1   1   1   0   0  READ
+-- 17         1   1   1   0   0  READ
+-- 18   ^ 1   0   1   1   0   0  IDLE * psram_dout latched (latency = 1x)
+-- 19     1   0   1   1   0   0  IDLE
+-- 20     1   0   1   1   0   0  IDLE
+-- 21   v 1   0   0   1   0   0  IDLE
+-- 22     1   0   0   1   0   0  IDLE * psram_dout latched (latency = 2x)
+-- 23     1   0   0   1   0   0  IDLE
+-- 24   ^ |
+--     cpuclken
+--
+-- In this varient there are:
+--
+--    6x 96MHz cycles from CPU being clocked to address being latched
+--    (CS_DELAY=false will rereduce this by one)
+--
+--    2x 96MHz cycles from read data available to CPU being clocked
+--    (CS_DELAY=false will increase this by one)
+
     process(clock_main)
     begin
-        if rising_edge(clock_main) then
+        if falling_edge(clock_main) then
             phi2d1 <= phi2;
             phi2d2 <= phi2d1;
             if phi2d1 = '0' and phi2d2 = '1' then
@@ -440,6 +483,61 @@ begin
             end if;
         end if;
     end process;
+
+-- VARIENT B
+--
+-- At 4MHz there is very little margin for error in the placement of the PSRAM read
+--
+-- PSRAM: CS_DELAY = true
+--
+--             phi2d1   ps_rd
+-- 96m 16m  phi2  |  stb  | state
+--  0   ^     0   0   1   0  IDLE
+--  1         0   0   1   1  IDLE
+--  2         0   0   1   1  CS DELAY
+--  3   v     0   0   1   1  READ * psram_addr latched
+--  4         0   0   1   1  READ
+--  5         0   0   1   1  READ
+--  6   ^     1   0   0   1  READ
+--  7         1   0   0   0  READ
+--  8         1   0   0   0  READ
+--  9   v     1   1   0   0  READ
+-- 10         1   1   0   0  READ
+-- 11         1   1   0   0  READ
+-- 12   ^     1   1   0   0  READ
+-- 13         1   1   0   0  READ
+-- 14         1   1   0   0  READ
+-- 15   v     1   1   0   0  IDLE * psram_dout latched (latency = 1x)
+-- 16         1   1   0   0  IDLE
+-- 17         1   1   0   0  IDLE
+-- 18   ^ 1   0   1   0   0  IDLE
+-- 19     1   0   1   0   0  IDLE * psram_dout latched (latency = 2x)
+-- 20     1   0   1   0   0  IDLE
+-- 21   v 1   0   0   0   0  IDLE
+-- 22     1   0   0   0   0  IDLE
+-- 23     1   0   0   0   0  IDLE
+-- 24   ^ |
+--     cpuclken
+--
+-- In this varient there are:
+--
+--    3x 96MHz cycles from CPU being clocked to address being latched
+--    (CS_DELAY=false will rereduce this by one)
+--
+--    5x 96MHz cycles from read data available to CPU being clocked
+--    (CS_DELAY=false will increase this by one)
+
+--  process(clock_main)
+--  begin
+--      if rising_edge(clock_main) then
+--          phi2d1 <= phi2;
+--          if phi2 = '0' and phi2d1 = '1' then
+--              stb <= '1';
+--          else
+--              stb <= '0';
+--          end if;
+--      end if;
+--  end process;
 
     process(clock_psram)
     begin
@@ -1024,7 +1122,7 @@ begin
                 test_write <= cmd_write1 and not cmd_write2;
                 -- Check reads at the end of the read cycle
                 if psram_stb = '1' and psram_ce = '1' and psram_we = '0' then
-                    cmd_read1  <= '1';
+                    cmd_read1 <= '1';
                 elsif psram_busy = '0' then
                     cmd_read1 <= '0';
                 end if;
