@@ -404,7 +404,7 @@ begin
         generic map (
             FREQ => 96_000_000,
             LATENCY => 4,
-            CS_DELAY => true
+            CS_DELAY => false
         )
         port map (
             clk           => clock_psram,
