@@ -9,7 +9,7 @@ use std.textio.all;
 entity test_tb is
     generic (
         runner_cfg : string;
-        DefaultTurbo : std_logic_vector(1 downto 0) := "00"
+        DefaultTurbo : std_logic_vector(1 downto 0) := "10"
     );
 end test_tb;
 
