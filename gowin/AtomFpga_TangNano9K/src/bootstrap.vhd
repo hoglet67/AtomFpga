@@ -37,7 +37,7 @@ entity bootstrap is
         user_address    : in std_logic_vector(23 downto 0);
 
         -- interface from Atom core
-        RAM_Phi2        : in   std_logic;
+        RAM_STB         : in   std_logic;
         RAM_CE          : in   std_logic;
         RAM_WE          : in   std_logic;
         RAM_A           : in   std_logic_vector (18 downto 0);
@@ -45,7 +45,7 @@ entity bootstrap is
         RAM_Dout        : out  std_logic_vector (7 downto 0);
 
         -- interface to the PSRAM
-        PSRAM_Phi2      : out  std_logic;
+        PSRAM_STB       : out  std_logic;
         PSRAM_WE        : out  std_logic;
         PSRAM_CE        : out  std_logic;
         PSRAM_A         : out  std_logic_vector (21 downto 0);
@@ -77,7 +77,7 @@ signal bs_A             : std_logic_vector(18 downto 0);
 signal bs_Din           : std_logic_vector(7 downto 0);
 signal bs_CE            : std_logic;
 signal bs_WE            : std_logic;
-signal bs_Phi2          : std_logic;
+signal bs_STB           : std_logic;
 
 signal bs_busy          : std_logic;
 
@@ -99,7 +99,7 @@ begin
 
     RAM_Dout              <= PSRAM_Dout; -- pass through
 
-    PSRAM_Phi2            <= bs_Phi2 when bs_busy = '1' else RAM_Phi2;
+    PSRAM_STB             <= bs_STB  when bs_busy = '1' else RAM_STB;
     PSRAM_CE              <= bs_CE   when bs_busy = '1' else RAM_CE;
     PSRAM_WE              <= bs_WE   when bs_busy = '1' else RAM_WE;
     PSRAM_Din             <= bs_Din  when bs_busy = '1' else RAM_Din;
@@ -123,8 +123,9 @@ begin
         begin
             if powerup_reset_n = '0' then                         -- external reset pin
                 bs_state <= INIT;                                 -- move state machine to INIT state
-                bs_busy <= '1';                 
+                bs_busy <= '1';
             elsif rising_edge(clock) then
+                bs_STB <= '0';
                 if clock_en = '1' then
                     case bs_state is
                         when INIT =>
@@ -133,7 +134,6 @@ begin
                             bs_A   <= (others => '1');            -- PSRAM address all ones (becomes zero on first increment)
                             bs_CE <= '1';                         -- PSRAM always selected during bootstrap
                             bs_WE <= '0';                         -- PSRAM write enable inactive default state
-                            bs_Phi2 <= '0';                       -- PSRAM starts with Phi2 high (rising edge triggers the psram cycle)
                             bs_state <= START_READ_FLASH;
                         when START_READ_FLASH =>
                             flash_init <= '1';                    -- allow FLASH to exit init state
@@ -181,14 +181,13 @@ begin
                             bs_state <= FLASH3;
                         when FLASH3 =>
                             bs_state <= FLASH4;                   -- idle
-                            bs_Phi2 <= '1';                       -- Trigger PSRAM cycle
+                            bs_STB <= '1';                         -- Trigger PSRAM cycle
                         when FLASH4 =>
                             bs_state <= FLASH5;                   -- idle
                         when FLASH5 =>
                             bs_state <= FLASH6;                   -- idle
                         when FLASH6 =>
                             bs_WE <= '0';                         -- PSRAM write disable
-                            bs_Phi2 <= '0';
                             bs_state <= FLASH7;
                         when FLASH7 =>
                             if "000" & bs_A = user_length then    -- when we've reached end address

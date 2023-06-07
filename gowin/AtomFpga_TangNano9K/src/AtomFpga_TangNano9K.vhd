@@ -13,6 +13,7 @@ entity AtomFpga_TangNano9K is
         CImplSID           : boolean := true;
         CImplUserFlash     : boolean := false;
         CImplBootstrap     : boolean := true;
+        CImplMonitor       : boolean := true;
         -- Options that use the GPIO outputs, select just one
         CImplVGA           : boolean := false;
         CImplTrace         : boolean := false;
@@ -35,10 +36,18 @@ entity AtomFpga_TangNano9K is
         uart_rx         : in    std_logic;
         uart_tx         : out   std_logic;
         led             : out   std_logic_vector (5 downto 0);
+        -- VGA (1.8V)
+        vga_r           : out   std_logic;
+        vga_b           : out   std_logic;
+        vga_g           : out   std_logic;
+        vga_hs          : out   std_logic;
+        vga_vs          : out   std_logic;
+        -- HDMI
         tmds_clk_p      : out   std_logic;
         tmds_clk_n      : out   std_logic;
         tmds_d_p        : out   std_logic_vector(2 downto 0);
         tmds_d_n        : out   std_logic_vector(2 downto 0);
+        -- GPIO (3.3V) (VGA, Trace or Debug)
         gpio            : out   std_logic_vector(13 downto 0);
         -- Flash
         flash_cs        : inout   std_logic;
@@ -100,6 +109,8 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal serialized_b    : std_logic;
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
+    signal stb             : std_logic;
+    signal phi2d           : std_logic;
     signal RamCE           : std_logic;
     signal RomCE           : std_logic;
     signal ExternCE        : std_logic;
@@ -118,13 +129,12 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal bootstrap_busy  : std_logic;
 
     -- Signals for the User Flash
-    signal RomDout      : std_logic_vector (31 downto 0);
-    signal xadr         : std_logic_vector (8 downto 0);
-    signal yadr         : std_logic_vector (5 downto 0);
+    signal RomDout         : std_logic_vector (31 downto 0);
+    signal xadr            : std_logic_vector (8 downto 0);
+    signal yadr            : std_logic_vector (5 downto 0);
 
     -- Signals for the internal side of the PS Ram
-    signal psram_phi2      : std_logic;
-    signal psram_phi2d     : std_logic;
+    signal psram_stb       : std_logic;
     signal psram_ce        : std_logic;
     signal psram_we        : std_logic;
     signal psram_read      : std_logic;
@@ -417,17 +427,28 @@ begin
             O_psram_cs_n  => O_psram_cs_n
         );
 
+    process(clock_main)
+    begin
+        if rising_edge(clock_main) then
+            phi2d <= phi2;
+            if phi2 = '1' and phi2d = '0' then
+                stb <= '1';
+            else
+                stb <= '0';
+            end if;
+        end if;
+    end process;
+
     process(clock_psram)
     begin
         if rising_edge(clock_psram) then
             O_psram_reset_n <= powerup_reset_n & powerup_reset_n;
-            psram_phi2d <= psram_phi2;
-            if psram_phi2d = '0' and psram_phi2 = '1' and psram_ce = '1' and psram_we = '0' then
+            if psram_stb = '1' and psram_ce = '1' and psram_we = '0' then
                 psram_read <= '1';
             else
                 psram_read <= '0';
             end if;
-            if psram_phi2d = '0' and psram_phi2 = '1' and psram_ce = '1' and psram_we = '1' then
+            if psram_stb = '1' and psram_ce = '1' and psram_we = '1' then
                 psram_write <= '1';
             else
                 psram_write <= '0';
@@ -507,7 +528,7 @@ begin
             user_address    => (others => '0'),
 
             -- interface with the Atom core
-            RAM_Phi2        => phi2,
+            RAM_STB         => stb,
             RAM_CE          => RamCE,
             RAM_WE          => ExternWE,
             RAM_A           => ExternA,
@@ -515,7 +536,7 @@ begin
             RAM_Dout        => open,        -- Internally this is pass through anyway
 
             -- interface with the PSRAM
-            PSRAM_Phi2      => psram_phi2,
+            PSRAM_STB       => psram_stb,
             PSRAM_CE        => psram_ce,
             PSRAM_WE        => psram_we,
             PSRAM_A         => psram_addr,
@@ -533,7 +554,7 @@ begin
 
     cimplbootstrap_false : if not CImplBootstrap generate
 
-        psram_phi2 <= phi2;
+        psram_stb <= stb;
         psram_ce <= '1' when RamCE = '1' else '0';
         psram_we <= ExternWE;
         psram_addr <= "000" & ExternA;
@@ -568,6 +589,7 @@ begin
         CImplRamRomPhill        => false,
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
+        CImplSampleExternData   => false,
         MainClockSpeed          => 16000000,
         DefaultBaud             => 115200,
         DefaultTurbo            => DefaultTurbo
@@ -827,159 +849,213 @@ begin
 
     end generate;
 
-    --------------------------------------------------------
     -- Statemachine for debugging bootstrap failures
     --------------------------------------------------------
 
-    -- TODO: the addesses on match when CImplAtoMMC2 is true, as this setting affects the OSRomBank
+    mon : if CImplMonitor generate
 
-    process(clock_main)
-        variable last_phi2 : std_logic;
-        variable last_psram_phi2 : std_logic;
+        -- TODO: the addesses on match when CImplAtoMMC2 is true, as this setting affects the OSRomBank
+
+        -- Signals for the bootstrap health monitor
+        signal ADDR_INS0 : std_logic_vector(18 downto 0);
+        signal ADDR_INS1 : std_logic_vector(18 downto 0);
+        signal ADDR_VEC0 : std_logic_vector(18 downto 0);
+        signal ADDR_VEC1 : std_logic_vector(18 downto 0);
+
+        signal DATA_INS0 : std_logic_vector(7 downto 0);
+        signal DATA_INS1 : std_logic_vector(7 downto 0);
+        signal DATA_VEC0 : std_logic_vector(7 downto 0);
+        signal DATA_VEC1 : std_logic_vector(7 downto 0);
+
+        signal i_X_A     : std_logic_vector(18 downto 0);
+        signal i_X_Din   : std_logic_vector(7 downto 0);
+        signal i_X_Dout  : std_logic_vector(7 downto 0);
+
+        signal cmd_write1 : std_logic;
+        signal cmd_write2 : std_logic;
+        signal test_write : std_logic;
+        signal cmd_read1  : std_logic;
+        signal cmd_read2  : std_logic;
+        signal test_read  : std_logic;
+        signal test_Dout  : std_logic_vector(7 downto 0);
+
     begin
-        if rising_edge(clock_main) then
-            case (state) is
-                when DBG_00 =>
-                    if powerup_reset_n = '0' then
-                        if CImplBootstrap then
-                            state <= DBG_01;
-                        else
-                            state <= DBG_08;
-                        end if;
-                    end if;
-                when DBG_01 =>
-                    if powerup_reset_n = '1' then
-                        state <= DBG_02;
-                    end if;
-                when DBG_02 =>
-                    if delayed_reset_n = '0' then
-                        state <= DBG_03;
-                    end if;
-                when DBG_03 =>
-                    if delayed_reset_n = '1' then
-                        state <= DBG_04;
-                    end if;
-                when DBG_04 =>
-                    -- check write, as seen by the psram, on rising edge
-                    if psram_phi2 = '1' and last_psram_phi2 = '0' then
-                        if psram_addr(19 downto 0) = x"13F3F" then
-                            if psram_din8 = x"A2" then
-                                state <= DBG_05;
+
+        ADDR_INS0 <= "001" & x"3F3F";
+        ADDR_INS1 <= "001" & x"3F40";
+        ADDR_VEC0 <= "001" & x"3FFC";
+        ADDR_VEC1 <= "001" & x"3FFD";
+
+        DATA_INS0 <= x"A2";
+        DATA_INS1 <= x"17";
+        DATA_VEC0 <= x"3F";
+        DATA_VEC1 <= x"FF";
+
+        i_X_A     <= psram_addr(18 downto 0);
+        i_X_Dout  <= psram_dout8;
+        i_X_Din   <= psram_din8;
+
+        process(clock_main)
+        begin
+            if rising_edge(clock_main) then
+                case (state) is
+                    when DBG_00 =>
+                        if powerup_reset_n = '0' then
+                            if CimplBootstrap then
+                                state <= DBG_01;
                             else
-                                state(5) <= '1';
-                            end if;
-                        end if;
-                    end if;
-                when DBG_05 =>
-                    -- check, as seen by the psram, write on rising edge
-                    if psram_phi2 = '1' and last_psram_phi2 = '0' then
-                        if psram_addr(19 downto 0) = x"13F40" then
-                            if psram_din8 = x"17" then
-                                state <= DBG_06;
-                            else
-                                state(5) <= '1';
-                            end if;
-                        end if;
-                    end if;
-                when DBG_06 =>
-                    -- check, as seen by the psram, write on rising edge
-                    if psram_phi2 = '1' and last_psram_phi2 = '0' then
-                        if psram_addr(19 downto 0) = x"13FFC" then
-                            if psram_din8 = x"3F" then
-                                state <= DBG_07;
-                            else
-                                state(5) <= '1';
-                            end if;
-                        end if;
-                    end if;
-                when DBG_07 =>
-                    -- check, as seen by the psram, write on rising edge
-                    if psram_phi2 = '1' and last_psram_phi2 = '0' then
-                        if psram_addr(19 downto 0) = x"13FFD" then
-                            if psram_din8 = x"FF" then
                                 state <= DBG_08;
-                            else
-                                state(5) <= '1';
                             end if;
                         end if;
-                    end if;
-                when DBG_08 =>
-                    if hard_reset_n = '0' then
-                        state <= DBG_09;
-                    end if;
-                when DBG_09 =>
-                    if hard_reset_n = '1' then
-                        state <= DBG_0A;
-                    end if;
-                when DBG_0A =>
-                    -- check read, as seen by the CPU, on falling edge
-                    if phi2 = '0' and last_phi2 = '1' then
-                        if ExternA = ("001" & x"3FFC") then
-                            if ExternDout = x"3F" then
-                                state <= DBG_0B;
-                            else
-                                state(5) <= '1';
+                    when DBG_01 =>
+                        if powerup_reset_n = '1' then
+                            state <= DBG_02;
+                        end if;
+                    when DBG_02 =>
+                        if delayed_reset_n = '0' then
+                            state <= DBG_03;
+                        end if;
+                    when DBG_03 =>
+                        if delayed_reset_n = '1' then
+                            state <= DBG_04;
+                        end if;
+                    when DBG_04 =>
+                        if test_write = '1' then
+                            if i_X_A = ADDR_INS0 then
+                                if i_X_Din = DATA_INS0 then
+                                    state <= DBG_05;
+                                else
+                                    state(5) <= '1';
+                                end if;
                             end if;
                         end if;
-                    end if;
-                when DBG_0B =>
-                    -- check read, as seen by the CPU, on falling edge
-                    if phi2 = '0' and last_phi2 = '1' then
-                        if ExternA = ("001" & x"3FFD") then
-                            if ExternDout = x"FF" then
-                                state <= DBG_0C;
-                            else
-                                state(5) <= '1';
+                    when DBG_05 =>
+                        if test_write = '1' then
+                            if i_X_A = ADDR_INS1 then
+                                if i_X_Din = DATA_INS1 then
+                                    state <= DBG_06;
+                                else
+                                    state(5) <= '1';
+                                end if;
                             end if;
                         end if;
-                    end if;
-                when DBG_0C =>
-                    -- check read, as seen by the CPU, on falling edge
-                    if phi2 = '0' and last_phi2 = '1' then
-                        if ExternA = ("001" & x"3F3F") then
-                            if ExternDout = x"A2" then
-                                state <= DBG_0D;
-                            else
-                                state(5) <= '1';
+                    when DBG_06 =>
+                        if test_write = '1' then
+                            if i_X_A = ADDR_VEC0 then
+                                if i_X_Din = DATA_VEC0 then
+                                    state <= DBG_07;
+                                else
+                                    state(5) <= '1';
+                                end if;
                             end if;
                         end if;
-                    end if;
-                when DBG_0D =>
-                    -- check read, as seen by the CPU, on falling edge
-                    if phi2 = '0' and last_phi2 = '1' then
-                        if ExternA = ("001" & x"3F40") then
-                            if ExternDout = x"17" then
-                                state <= DBG_DONE;
-                            else
-                                state(5) <= '1';
+                    when DBG_07 =>
+                        if  test_write = '1' then
+                            if i_X_A = ADDR_VEC1 then
+                                if i_X_Din = DATA_VEC1 then
+                                    state <= DBG_08;
+                                else
+                                    state(5) <= '1';
+                                end if;
                             end if;
                         end if;
-                    end if;
-                when others =>
-                    if powerup_reset_n = '0' then
-                        state <= DBG_00;
-                    end if;
-            end case;
-            last_phi2 := phi2;
-            last_psram_phi2 := psram_phi2;
-        end if;
-    end process;
+                    when DBG_08 =>
+                        if bootstrap_busy = '1' then
+                            state <= DBG_09;
+                        end if;
+                    when DBG_09 =>
+                        if bootstrap_busy = '0' then
+                            state <= DBG_0A;
+                        end if;
+                    when DBG_0A =>
+                        if test_read = '1' then
+                            if i_X_A = ADDR_VEC0 then
+                                if test_Dout = DATA_VEC0 then
+                                    state <= DBG_0B;
+                                else
+                                    state(5) <= '1';
+                                end if;
+                            end if;
+                        end if;
+                    when DBG_0B =>
+                        if test_read = '1' then
+                            if i_X_A = ADDR_VEC1 then
+                                if test_Dout = DATA_VEC1 then
+                                    state <= DBG_0C;
+                                else
+                                    state(5) <= '1';
+                                end if;
+                            end if;
+                        end if;
+                    when DBG_0C =>
+                        if test_read = '1' then
+                            if i_X_A = ADDR_INS0 then
+                                if test_Dout = DATA_INS0 then
+                                    state <= DBG_0D;
+                                else
+                                    state(5) <= '1';
+                                end if;
+                            end if;
+                        end if;
+                    when DBG_0D =>
+                        if test_read = '1' then
+                            if i_X_A = ADDR_INS1 then
+                                if test_Dout = DATA_INS1 then
+                                    state <= DBG_DONE;
+                                else
+                                    state(5) <= '1';
+                                end if;
+                            end if;
+                        end if;
+                    when others =>
+                        if powerup_reset_n = '0' then
+                            state <= DBG_00;
+                        end if;
+                end case;
+                -- Check writes at the start of the write cycle
+                if psram_stb = '1' and psram_ce = '1' and psram_we = '1' then
+                    cmd_write1 <= '1';
+                elsif psram_busy = '0' then
+                    cmd_write1 <= '0';
+                end if;
+                cmd_write2 <= cmd_write1;
+                test_write <= cmd_write1 and not cmd_write2;
+                -- Check reads at the end of the read cycle
+                if psram_stb = '1' and psram_ce = '1' and psram_we = '0' then
+                    cmd_read1  <= '1';
+                elsif psram_busy = '0' then
+                    cmd_read1 <= '0';
+                end if;
+                cmd_read2  <= cmd_read1;
+                test_read  <= not cmd_read1 and cmd_read2;
+                -- Move dout back to main domain
+                test_Dout <= i_X_Dout;
+            end if;
+        end process;
+    end generate;
 
     led <= state xor "111111";
 
+    -- 1.8V VGA outputs, as per BeebFpga
+    vga_r  <= red(2);
+    vga_g  <= green(2);
+    vga_b  <= blue(2);
+    vga_hs <= hsync;
+    vga_vs <= vsync;
+
+    -- Audio/VGA output to the 3.3V GPIO bus
     vga: if (CImplVGA) generate
-        -- Audio/VGA output to the GPIO bus
         gpio <= audiol & audior & (not blank) & vsync & hsync & red(2) & blue & red(1 downto 0) & green;
     end generate;
 
+    -- Audio/6502 Decoder tracing to the 3.3V GPIO bus
     trace: if (CImplTrace) generate
-        -- Audio/6502 Decoder tracing to the GPIO bus
         data <= ExternDout when ExternCE = '1' and rnw = '1' else ExternDin;
         gpio <= audiol & audior & hard_reset_n & phi2 & sync & rnw & data;
     end generate;
 
+    -- Debug output to the 3.3V GPIO bus
     debug: if (CImplDebug) generate
-        -- Debug output to the GPIO bus
         data <= ExternDout when ExternCE = '1' and rnw = '1' else ExternDin;
         gpio <= audiol & audior & hard_reset_n & phi2 & sync & rnw & data when btn2_n = '0' else
                 '0' & state(5) & psram_write & psram_read & psram_busy & IO_psram_rwds(0) & flash_cs & flash_ck & flash_si & flash_so & psram_din(3 downto 0) when state(3) = '0' else
