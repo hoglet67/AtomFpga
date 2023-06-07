@@ -110,7 +110,8 @@ architecture behavioral of AtomFpga_TangNano9K is
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
     signal stb             : std_logic;
-    signal phi2d           : std_logic;
+    signal phi2d1          : std_logic;
+    signal phi2d2          : std_logic;
     signal RamCE           : std_logic;
     signal RomCE           : std_logic;
     signal ExternCE        : std_logic;
@@ -430,8 +431,9 @@ begin
     process(clock_main)
     begin
         if rising_edge(clock_main) then
-            phi2d <= phi2;
-            if phi2 = '1' and phi2d = '0' then
+            phi2d1 <= phi2;
+            phi2d2 <= phi2d1;
+            if phi2d1 = '0' and phi2d2 = '1' then
                 stb <= '1';
             else
                 stb <= '0';

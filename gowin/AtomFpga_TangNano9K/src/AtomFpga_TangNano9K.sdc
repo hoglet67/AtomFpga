@@ -31,3 +31,5 @@ set_multicycle_path -from [get_clocks {clock_96}] -to [get_clocks {clock_16}] -h
 set_operating_conditions -grade c -model slow -speed 6 -setup
 
 set_false_path -from [get_clocks {clock_96}] -through [get_nets {inst_AtomFpga_Core/cpu_din*}] -to [get_clocks {clock_96}]
+
+set_false_path -from [get_clocks {clock_96}] -through [get_nets {cimplbootstrap*/*}] -to [get_clocks {clock_96}]
