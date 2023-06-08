@@ -113,7 +113,7 @@ architecture behavioral of PsramController is
     signal ub                 : std_logic; -- 1 for upper byte
 
     signal w_din              : std_logic_vector(15 downto 0);
-    signal cycles_sr          : std_logic_vector(MAX(2+LATENCY*2,9) downto 0); -- shift register counting cycles
+    signal cycles_sr          : std_logic_vector(MAX(8+LATENCY*2,9) downto 0); -- shift register counting cycles
     signal dq_sr              : std_logic_vector(63 downto 0); -- shifts left 8-bit every cycle
 
     signal rst_cnt            : std_logic_vector(f_log2(INIT_TIME + 1) - 1 downto 0);
@@ -147,7 +147,7 @@ architecture behavioral of PsramController is
 
 begin
 
-    assert LATENCY >= 3 and LATENCY <= 6 report "LATENCY must be >= 3 and <= 5";
+    assert LATENCY >= 3 and LATENCY <= 6 report "LATENCY must be >= 3 and <= 6";
 
     dq_out_ris <= dq_sr(63 downto 56);
     dq_out_fal <= dq_sr(55 downto 48);
@@ -182,6 +182,13 @@ begin
             cycles_sr <= cycles_sr(cycles_sr'high-1 downto cycles_sr'low) & '0';
             dq_sr <= dq_sr(47 downto 0) & x"0000";          -- shift 16-bits each cycle
             ck_e_p <= ck_e;
+
+            -- sample RWDS to see if we need additional latency, DB: don't pass through IDDR as then it is too late!
+            -- Write timing is trickier - we sample RWDS at cycle 5 to determine whether we need to wait another tACC.
+            -- If it is low, write data starts at 2+LATENCY. If high, then data starts at 2+LATENCY*2.
+            if cycles_sr(5) = '1' then
+                additional_latency <= IO_psram_rwds(0);
+            end if;
 
             v_start_trans := false;
 
@@ -225,23 +232,13 @@ begin
                     -- command sent, now wait for result
                     dq_oen <= '1';
                 end if;
-                if cycles_sr(9) = '1' then
-                    wait_for_rd_data <= '1';
-                end if;
-                if wait_for_rd_data = '1' and (rwds_in_ris /= rwds_in_fal) then     -- sample rwds falling edge to get a word / \_
+                if (cycles_sr(8+LATENCY) = '1' and additional_latency = '0') or cycles_sr(8+2*LATENCY) = '1' then
                     dout <= dq_in_ris & dq_in_fal;
                     ram_cs_n <= '1';
                     ck_e <= '0';
                     state <= IDLE_ST;
                 end if;
             when WRITE_ST =>
-                if LATENCY /= 3 then
-                    if cycles_sr(5) = '1' then
-                        additional_latency <= IO_psram_rwds(0);  -- sample RWDS to see if we need additional latency, DB: don't pass through IDDR as then it is too late!
-                        -- Write timing is trickier - we sample RWDS at cycle 5 to determine whether we need to wait another tACC.
-                        -- If it is low, data starts at 2+LATENCY. If high, then data starts at 2+LATENCY*2.
-                    end if;
-                end if;
                 if cycles_sr(2+LATENCY-1) = '1' then
                     --DB: apply correct rwds preamble
                     rwds_oen <= '0';
