@@ -168,7 +168,7 @@ begin
     trace <= "111111" & gpio(9 downto 0) after 1 ns;
     phi2  <= gpio(10);
 
-    process(gpio)
+    process(phi2)
     begin
         if falling_edge(phi2) then
             write(output, "trace: " & to_hstring(trace) & LF);
