@@ -222,8 +222,8 @@ begin
         generic map (
             READ_MODE0 => '0',
             READ_MODE1 => '0',
-            WRITE_MODE0 => "10",
-            WRITE_MODE1 => "10",
+            WRITE_MODE0 => "00",
+            WRITE_MODE1 => "00",
             BIT_WIDTH_0 => 2,
             BIT_WIDTH_1 => 2,
             RESET_MODE => "SYNC",
@@ -260,8 +260,8 @@ begin
         generic map (
             READ_MODE0 => '0',
             READ_MODE1 => '0',
-            WRITE_MODE0 => "10",
-            WRITE_MODE1 => "10",
+            WRITE_MODE0 => "00",
+            WRITE_MODE1 => "00",
             BIT_WIDTH_0 => 2,
             BIT_WIDTH_1 => 2,
             RESET_MODE => "SYNC",
@@ -297,8 +297,8 @@ begin
         generic map (
             READ_MODE0 => '0',
             READ_MODE1 => '0',
-            WRITE_MODE0 => "10",
-            WRITE_MODE1 => "10",
+            WRITE_MODE0 => "00",
+            WRITE_MODE1 => "00",
             BIT_WIDTH_0 => 2,
             BIT_WIDTH_1 => 2,
             RESET_MODE => "SYNC",
@@ -334,8 +334,8 @@ begin
         generic map (
             READ_MODE0 => '0',
             READ_MODE1 => '0',
-            WRITE_MODE0 => "10",
-            WRITE_MODE1 => "10",
+            WRITE_MODE0 => "00",
+            WRITE_MODE1 => "00",
             BIT_WIDTH_0 => 2,
             BIT_WIDTH_1 => 2,
             RESET_MODE => "SYNC",
