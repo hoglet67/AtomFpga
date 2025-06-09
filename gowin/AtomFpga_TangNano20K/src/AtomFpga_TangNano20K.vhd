@@ -50,14 +50,14 @@ use work.version_config_pack.all;
 entity AtomFpga_TangNano20K is
     generic (
         CImplCpu65c02      : boolean := false;
-        CImplDebugger      : boolean := false;
+        CImplDebugger      : boolean := G_CONFIG_DEBUGGER;
         CImplDVI           : boolean := true;
         CImplSDDOS         : boolean := false;
         CImplAtoMMC2       : boolean := true;
         CImplSID           : boolean := true;
         CImplBootstrap     : boolean := true;
         CImplMonitor       : boolean := true;
-        CImplVGA           : boolean := true;
+        CImplVGA           : boolean := G_CONFIG_VGA;
         CImplI2SAudio      : boolean := true;
         DefaultTurbo       : std_logic_vector(1 downto 0) := "00";
         ResetCounterSize   : integer := 20;
@@ -314,6 +314,7 @@ architecture rtl of AtomFpga_TangNano20K is
     signal clock_sid       : std_logic;
     signal clock_sdram     : std_logic;
     signal clock_sdram_p   : std_logic;
+    signal clock_icet65    : std_logic;
     signal spdif_clk       : std_logic; -- 6.144MHz SPDIF clock
 
     signal ext_reset_n     : std_logic;
@@ -399,11 +400,11 @@ begin
             PSDA_SEL => "1000" -- CLKOUTP 180 degree phase shift
         )
         port map (
-            CLKIN    => sys_clk,  -- 27MHz
-            CLKOUT   => clock_sdram,
-            CLKOUTD  => clock_main,
-            CLKOUTP  => clock_sdram_p,
-            CLKOUTD3 => clock_sid,
+            CLKIN    => sys_clk,       -- 27.0 MHz
+            CLKOUT   => clock_sdram,   -- 96.0 MHz
+            CLKOUTD  => clock_main,    -- 16.0 MHz
+            CLKOUTP  => clock_sdram_p, -- 96.0 MHz / 180 degree phase shift
+            CLKOUTD3 => clock_sid,     -- 32.0 MHz
             LOCK     => open,
             RESET    => '0',
             RESET_P  => '0',
@@ -425,8 +426,8 @@ begin
             ODIV_SEL => 4
         )
         port map (
-            CLKIN    => sys_clk, -- 27MHz
-            CLKOUT   => clock_hdmi,
+            CLKIN    => sys_clk,       --  27.0 MHz
+            CLKOUT   => clock_hdmi,    -- 126.0 MHz
             CLKOUTP  => open,
             CLKOUTD  => open,
             CLKOUTD3 => open,
@@ -442,15 +443,27 @@ begin
             FDLY     => (others => '0')
         );
 
-    clkdiv5 : CLKDIV
+    clkdiv_vga : CLKDIV
         generic map (
             DIV_MODE => "5",
             GSREN => "false"
         )
         port map (
-            RESETN => '1', -- TODO, reset when previous PLL locked
-            HCLKIN => clock_hdmi,
-            CLKOUT => clock_vga,
+            RESETN => '1',
+            HCLKIN => clock_hdmi,      -- 126.0MHz
+            CLKOUT => clock_vga,       --  25.2MHz
+            CALIB  => '1'
+        );
+
+    clkdiv_avr_debug : CLKDIV
+        generic map (
+            DIV_MODE => "4",
+            GSREN => "false"
+        )
+        port map (
+            RESETN => '1',
+            HCLKIN => clock_sdram,     -- 96.0MHz
+            CLKOUT => clock_icet65,    -- 24.MHz
             CALIB  => '1'
         );
 
@@ -492,6 +505,7 @@ begin
 
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
+        CImplDebugger           => CImplDebugger,
         CImplCpu65c02           => CImplCpu65c02,
         CImplSDDOS              => CImplSDDOS,
         CImplAtoMMC2            => CImplAtoMMC2,
@@ -514,12 +528,12 @@ begin
     )
     port map(
         -- Clocking
-        clk_vga             => clock_vga,
-        clk_main            => clock_main,
-        clk_avr             => clock_main,
-        clk_avr_debug       => '0',
-        clk_dac             => clock_sid,
-        clk_32M00           => clock_sid,
+        clk_vga             => clock_vga,    -- 25.2 MHz
+        clk_main            => clock_main,   -- 16.0 MHz
+        clk_avr             => clock_main,   -- 16.0 MHz
+        clk_avr_debug       => clock_icet65, -- 24.0 MHz
+        clk_dac             => clock_sid,    -- 32.0 MHz
+        clk_32M00           => clock_sid,    -- 32.0 MHz
         -- Keyboard/mouse
         kbd_pa              => open,
         kbd_pb              => (others => '1'),
@@ -559,10 +573,10 @@ begin
         SDCLK               => tf_sclk,
         SDMOSI              => tf_mosi,
         -- Serial
-        uart_RxD            => uart_rx,
-        uart_TxD            => uart_tx,
-        avr_RxD             => '1',
-        avr_TxD             => open,
+        uart_RxD            => '1',
+        uart_TxD            => open,
+        avr_RxD             => uart_rx,
+        avr_TxD             => uart_tx,
         -- Cassette
         cas_in              => '0',
         cas_out             => open,
