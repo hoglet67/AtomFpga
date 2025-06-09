@@ -354,9 +354,6 @@ architecture rtl of AtomFpga_TangNano20K is
     signal serialized_b    : std_logic;
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
-    signal stb             : std_logic;
-    signal RamCE           : std_logic;
-    signal RomCE           : std_logic;
     signal ExternCE        : std_logic;
     signal ExternWE        : std_logic;
     signal ExternA         : std_logic_vector (18 downto 0);
@@ -369,8 +366,9 @@ architecture rtl of AtomFpga_TangNano20K is
     signal rnw             : std_logic;
     signal data            : std_logic_vector (7 downto 0);
 
-    -- Signals for the SPI FLASH bootstrap
+    -- Signals for the memory controller
     signal mem_ready       : std_logic;
+    signal mem_strobe      : std_logic;
 
     -- Joystick / Config Shift Register
     signal joystick1       : std_logic_vector(4 downto 0) := (others => '1');
@@ -379,12 +377,10 @@ architecture rtl of AtomFpga_TangNano20K is
     signal last_phi2       : std_logic := '0';
     signal sr_counter      : unsigned(3 downto 0) := (others => '0');
     signal sr_mirror       : std_logic_vector(15 downto 0) := (others => '0');
-    signal mem_strobe      : std_logic;
 
     -- LEDs
     signal normal_leds     : std_logic_vector(5 downto 0);
     signal monitor_leds     : std_logic_vector(5 downto 0);
-
 
 begin
 
@@ -400,7 +396,7 @@ begin
             FBDIV_SEL => 31,
             ODIV_SEL => 8,
             DYN_SDIV_SEL => 6,
-            PSDA_SEL => "0100" -- CLKOUTP 90 degree phase shift
+            PSDA_SEL => "1000" -- CLKOUTP 180 degree phase shift
         )
         port map (
             CLKIN    => sys_clk,  -- 27MHz
