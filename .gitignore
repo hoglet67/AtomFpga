@@ -38,4 +38,7 @@ src/xilinx/ipcore_dir/update_WatchEvents.tcl
 src/common/AtomGodilVideo
 src/common/AtomGodilVideo/
 
-gowin/AtomFpga_TangNano9K/AtomFpga_TangNano9K.gprj.user
+**/impl/pnr
+**/impl/gwsynthesis
+**/impl/temp
+*.gprj.user
