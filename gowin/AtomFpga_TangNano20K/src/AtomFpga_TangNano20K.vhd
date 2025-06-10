@@ -47,6 +47,23 @@ use work.board_config_pack.all;
 library work;
 use work.version_config_pack.all;
 
+-- TODO:
+--   Colour output (multiple orange levels)
+--   Update debugger hardware/software to the latest version
+--   Add CImplTrace support
+--   Reduce audio levels
+--   Digital audio
+--   true HDMI ?
+--   version support somewhere in page Bxxx
+--   pitube builds
+--   32MHz core to allow 8MHz operation (?)
+--   Change break to F12 (like the Beeb)
+--   Test joysticks
+--   Test mouse
+--   Enable double buffering
+--   Configuration jumpers
+--   Other Atom2K18 features (?) SAM/PAM/Pallette/RTC/LEDs/Profiling
+
 entity AtomFpga_TangNano20K is
     generic (
         CImplCpu65c02      : boolean := false;
