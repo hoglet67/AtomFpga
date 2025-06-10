@@ -994,8 +994,8 @@ begin
                 sr_mirror  <= sr_mirror(14 downto 0) & js_data;
                 sr_counter <= sr_counter + 1;
             end if;
-            mem_strobe  <= last_phi2 and not phi2; -- on the falling edge
-            mem_refresh <= phi2 and not last_phi2; -- on the tising edge
+            mem_strobe  <= phi2 and not last_phi2; -- on the tising edge
+            mem_refresh <= last_phi2 and not phi2; -- on the falling edge
             last_phi2   <= phi2;
         end if;
     end process;

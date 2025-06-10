@@ -12,13 +12,11 @@ create_generated_clock -name spdif_clk -source [get_ports {audio_clk}] -master_c
 set_clock_groups -asynchronous -group [get_clocks {clock_16}] -group [get_clocks {clock_25}]
 set_clock_groups -asynchronous -group [get_clocks {clock_25}] -group [get_clocks {clock_16}]
 
-// The PSRAM state machine is kicked off by a 0->1 of phi2 which is ~7 16MHz cycles after the CPU is "clocked"
-// 4/3 96MHz cycles is the smallest value that allows timing to be met
+// The SDRAM state machine is kicked off by a 0->1 of phi2 which is ~7 16MHz cycles after the CPU is "clocked"
+// 3/2 96MHz cycles is the smallest value that allows timing to be met
 // TODO: should we treat Phi2 as asynchronous and synchronise it?
-set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -setup 4
-set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -hold 3
-set_multicycle_path -from [get_clocks {clock_32}] -to [get_clocks {clock_96}] -setup 4
-set_multicycle_path -from [get_clocks {clock_32}] -to [get_clocks {clock_96}] -hold 3
+set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -setup 3
+set_multicycle_path -from [get_clocks {clock_16}] -to [get_clocks {clock_96}] -hold 2
 
 set_multicycle_path -from [get_clocks {clock_96}] -to [get_clocks {clock_16}] -setup 2
 set_multicycle_path -from [get_clocks {clock_96}] -to [get_clocks {clock_16}] -hold 1
