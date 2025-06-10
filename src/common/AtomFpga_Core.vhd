@@ -37,6 +37,7 @@ entity AtomFpga_Core is
        CImplRamRomPhill        : boolean;
        CImplRamRomAtom2015     : boolean;
        CImplRamRomSchakelKaart : boolean;
+       CImplHDMI               : boolean := false;
        CImplVIA                : boolean := true;
        CImplProfilingCounters  : boolean := false;
        CImplSampleExternData   : boolean := true;
@@ -64,7 +65,12 @@ entity AtomFpga_Core is
         powerup_reset_n  : in    std_logic := '1'; -- power up reset only (optional)
         ext_reset_n      : in    std_logic := '1'; -- external bus reset (optional)
         int_reset_n      : out   std_logic;        -- internal bus reset (e.g. PS/2 break)
-        -- Video
+        -- HDMI Video
+        hdmi_audio_en    : in    std_logic := '0';
+        tmds_r           : out   std_logic_vector(9 downto 0);
+        tmds_g           : out   std_logic_vector(9 downto 0);
+        tmds_b           : out   std_logic_vector(9 downto 0);
+        -- VGA Video
         red              : out   std_logic_vector (2 downto 0);
         green            : out   std_logic_vector (2 downto 0);
         blue             : out   std_logic_vector (2 downto 0);
@@ -91,6 +97,7 @@ entity AtomFpga_Core is
         sid_audio_d      : out   std_logic_vector (17 downto 0);
         sid_audio        : out   std_logic;
         atom_audio       : out   std_logic;
+        mixed_audio      : out   signed(15 downto 0);
         -- SD Card
         SDMISO           : in    std_logic;
         SDSS             : out   std_logic;
@@ -114,6 +121,31 @@ entity AtomFpga_Core is
 end AtomFpga_Core;
 
 architecture BEHAVIORAL of AtomFpga_Core is
+
+    component hdmi is
+        generic (
+            FREQ: integer;
+            FS: integer;
+            CTS: integer;
+            N: integer
+            );
+        port (
+            I_CLK_PIXEL    : in std_logic;
+            I_R            : in std_logic_vector(7 downto 0);
+            I_G            : in std_logic_vector(7 downto 0);
+            I_B            : in std_logic_vector(7 downto 0);
+            I_BLANK        : in std_logic;
+            I_HSYNC        : in std_logic;
+            I_VSYNC        : in std_logic;
+            I_ASPECT_169   : in std_logic;
+            I_AUDIO_ENABLE : in std_logic;
+            I_AUDIO_PCM_L  : in std_logic_vector(15 downto 0);
+            I_AUDIO_PCM_R  : in std_logic_vector(15 downto 0);
+            O_RED          : out std_logic_vector(9 downto 0);
+            O_GREEN        : out std_logic_vector(9 downto 0);
+            O_BLUE         : out std_logic_vector(9 downto 0)
+            );
+    end component;
 
     function InitBFFE_Atom2015 return std_logic_vector is
     begin
@@ -251,6 +283,14 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal avr_TxD_atommc    : std_logic;
 
 ----------------------------------------------------
+-- Audio Signals
+----------------------------------------------------
+    signal sid_audio_d_int  : std_logic_vector (17 downto 0);
+    signal sid_audio_int    : std_logic;
+    signal atom_audio_int   : std_logic;
+    signal mixed_audio_int  : signed (15 downto 0);
+
+----------------------------------------------------
 -- Profiling Counter Signals
 ----------------------------------------------------
 
@@ -381,8 +421,8 @@ begin
             reg_we => reg_we,
             sid_cs => sid_enable,
             sid_we => sid_we,
-            sid_audio => sid_audio,
-            sid_audio_d => sid_audio_d,
+            sid_audio => sid_audio_int,
+            sid_audio_d => sid_audio_d_int,
             PS2_CLK => ps2_mouse_clk,
             PS2_DATA => ps2_mouse_data,
             uart_cs => uart_enable,
@@ -401,6 +441,23 @@ begin
             charSet => charSet
             );
 
+    -- Simple audio mixer
+    process(atom_audio_int, sid_audio_d_int)
+        variable tmp : std_logic_vector(15 downto 0);
+    begin
+        -- Atom Audio is a single bit
+        if (atom_audio_int = '1') then
+            tmp := x"1000";
+        else
+            tmp := x"EFFF";
+        end if;
+        -- SID output is 18-bit unsigned
+        if CImplSID then
+            tmp := tmp + sid_audio_d_int(17 downto 2) - x"8000";
+        end if;
+        mixed_audio_int <= signed(tmp);
+    end process;
+
     -- external ouputs
     red(2 downto 0)   <= vdg_red & vdg_red & vdg_red;
     green(2 downto 0) <= vdg_green1 & vdg_green0 & vdg_green0;
@@ -408,6 +465,71 @@ begin
     vsync             <= vdg_vsync;
     hsync             <= vdg_hsync;
     blank             <= vdg_blank;
+    sid_audio_d       <= sid_audio_d_int;
+    sid_audio         <= sid_audio_int;
+    atom_audio        <= atom_audio_int;
+    mixed_audio       <= mixed_audio_int;
+
+
+--------------------------------------------------------
+-- HDMI
+--------------------------------------------------------
+
+    GenHDMI: if CImplHDMI generate
+        signal hdmi_red   : std_logic_vector(7 downto 0);
+        signal hdmi_green : std_logic_vector(7 downto 0);
+        signal hdmi_blue  : std_logic_vector(7 downto 0);
+        signal hdmi_hsync : std_logic;
+        signal hdmi_vsync : std_logic;
+        signal hdmi_blank : std_logic;
+        signal hdmi_audio : std_logic_vector (15 downto 0);
+    begin
+        hdmi_red   <= vdg_red & vdg_red & vdg_red & "00000";
+        hdmi_green <= vdg_green1 & vdg_green0 & vdg_green0 & "00000";
+        hdmi_blue  <= vdg_blue & vdg_blue & vdg_blue & "00000";
+        hdmi_blank <= vdg_blank;
+        hdmi_hsync <= vdg_hsync;
+        hdmi_vsync <= vdg_vsync;
+        hdmi_audio <= std_logic_vector(mixed_audio_int);
+
+        inst_hdmi : hdmi
+            generic map (
+                FREQ => 25200000,  -- pixel clock frequency
+                FS   => 48000,     -- audio sample rate - should be 32000, 44100 or 48000
+                CTS  => 25200,     -- CTS = Freq(pixclk) * N / (128 * Fs)
+                N    => 6144       -- N = 128 * Fs /1000,  128 * Fs /1500 <= N <= 128 * Fs /300
+                --FS   => 32000,   -- audio sample rate - should be 32000, 44100 or 48000
+                --CTS  => 27000,   -- CTS = Freq(pixclk) * N / (128 * Fs)
+                --N    => 4096     -- N = 128 * Fs /1000,  128 * Fs /1500 <= N <= 128 * Fs /300
+                )
+            port map (
+                -- clocks
+                I_CLK_PIXEL      => clk_vga,
+                -- components
+                I_R              => hdmi_red,
+                I_G              => hdmi_green,
+                I_B              => hdmi_blue,
+                I_BLANK          => hdmi_blank,
+                I_HSYNC          => hdmi_hsync,
+                I_VSYNC          => hdmi_vsync,
+                I_ASPECT_169     => '0',
+                -- PCM audio
+                I_AUDIO_ENABLE   => hdmi_audio_en,
+                I_AUDIO_PCM_L    => hdmi_audio,
+                I_AUDIO_PCM_R    => hdmi_audio,
+                -- TMDS parallel pixel synchronous outputs (serialize LSB first)
+                O_RED            => tmds_r,
+                O_GREEN          => tmds_g,
+                O_BLUE           => tmds_b
+                );
+
+    end generate;
+
+    GenNotHDMI: if not CImplHDMI generate
+        tmds_r <= (others => '0');
+        tmds_g <= (others => '0');
+        tmds_b <= (others => '0');
+    end generate;
 
 ---------------------------------------------------------------------
 -- 8255 PIA
@@ -449,8 +571,8 @@ begin
     --    bit 2 (output) Audio
     --    bit 1 (output) Enable 2.4KHz tone to casette output
     --    bit 0 (output) Cassette output
-    vdg_css       <= i8255_pc_data(3)          when RSTn='1' else '0';
-    atom_audio    <= i8255_pc_data(2);
+    vdg_css        <= i8255_pc_data(3) when RSTn='1' else '0';
+    atom_audio_int <= i8255_pc_data(2);
 
     i8255_pc_idata <= vdg_fs_n & (key_repeat and kbd_pc(6)) & cas_in & cas_tone & i8255_pc_data (3 downto 0);
 
