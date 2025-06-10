@@ -55,12 +55,8 @@ build_64k_rom "64K_avr.bin" "_avr"
 
 build_16k_rom "16K_avr.bin" "_avr"
 
+# Convert to ascii binary
 for file in 16K_avr 64K_avr
 do
-    echo "Building $file.bit"
-    echo "ibase=16" > tmp.hex
-    echo "obase=2" >> tmp.hex
-    od -An -tx1 -w1 -v $file.bin | tr -d " " | tr "a-f" "A-F" >> tmp.hex
-    bc < tmp.hex > $file.bit
-    rm tmp.hex
+    xxd  -c1 -b $file.bin | awk '{print $2}' > $file.bit
 done
