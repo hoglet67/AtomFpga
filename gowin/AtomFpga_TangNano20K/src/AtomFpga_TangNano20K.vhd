@@ -51,9 +51,7 @@ use work.version_config_pack.all;
 --   Colour output (multiple orange levels)
 --   Update debugger hardware/software to the latest version
 --   Add CImplTrace support
---   Reduce audio levels
 --   Digital audio
---   true HDMI ?
 --   version support somewhere in page Bxxx
 --   pitube builds
 --   32MHz core to allow 8MHz operation (?)
