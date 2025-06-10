@@ -51,7 +51,6 @@ use work.version_config_pack.all;
 --   Colour output (multiple orange levels)
 --   Update debugger hardware/software to the latest version
 --   Add CImplTrace support
---   Digital audio
 --   version support somewhere in page Bxxx
 --   pitube builds
 --   32MHz core to allow 8MHz operation (?)
@@ -75,6 +74,7 @@ entity AtomFpga_TangNano20K is
         CImplMonitor       : boolean := true;
         CImplVGA           : boolean := G_CONFIG_VGA;
         CImplI2SAudio      : boolean := true;
+        CImplSPDIFAudio    : boolean := true;
         DefaultTurbo       : std_logic_vector(1 downto 0) := "00";
         ResetCounterSize   : integer := 20;
         PRJ_ROOT           : string  := "../../..";
@@ -856,6 +856,52 @@ begin
     end generate;
 
     --------------------------------------------------------
+    -- SPDIF
+    --------------------------------------------------------
+
+    -- Note: this block assumes a fixed 48KHz sample rate derived
+    -- from an external spdif_clk of 6.144MHz, which must be
+    -- locked to the main system clock. This constraint is
+    -- satisfied by virtue of the way we configure the MS5351A
+    -- clock generator.
+
+    gen_spdif_audio : if CImplSPDIFAudio generate
+        signal spdif_in        : std_logic_vector(19 downto 0);
+        signal spdif_load      : std_logic;
+        signal div64           : unsigned(5 downto 0) := (others => '0');
+    begin
+
+        spdif_in <= std_logic_vector(audio) & "0000";
+
+        process(spdif_clk)
+        begin
+            if rising_edge(spdif_clk) then
+                div64 <= div64 + 1;
+                if div64 = 0 then
+                    spdif_load <= '1';
+                else
+                    spdif_load <= '0';
+                end if;
+            end if;
+        end process;
+
+        spdif_serialize: entity work.spdif_serializer
+            port map (
+                clk          => spdif_clk,
+                clken        => '1',
+                auxAudioBits => (others => '0'),
+                sample       => spdif_in,
+                load         => spdif_load,
+                -- channelA  => channelA, -- not used as we are mono only
+                spdifOut     => audio_spdif
+                );
+    end generate;
+
+    gen_no_spdif_audio : if not CImplSPDIFAudio generate
+        audio_spdif <= '0';
+    end generate;
+
+    --------------------------------------------------------
     -- SDRAM Memory Controller
     --------------------------------------------------------
 
@@ -1046,6 +1092,5 @@ begin
 
     audiol <= sid_audio;
     audior <= atom_audio;
-    audio_spdif <= '0';
 
 end architecture;
