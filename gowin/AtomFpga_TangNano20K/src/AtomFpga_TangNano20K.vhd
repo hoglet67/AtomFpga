@@ -48,18 +48,15 @@ library work;
 use work.version_config_pack.all;
 
 -- TODO:
---   Colour output (multiple orange levels)
 --   Update debugger hardware/software to the latest version
 --   Add CImplTrace support
 --   version support somewhere in page Bxxx
 --   pitube builds
 --   32MHz core to allow 8MHz operation (?)
 --   Change break to F12 (like the Beeb)
---   Test joysticks
---   Test mouse
 --   Enable double buffering
 --   Configuration jumpers
---   Other Atom2K18 features (?) SAM/PAM/Pallette/RTC/LEDs/Profiling
+--   Other Atom2K18 features (?) SAM/PAM/Palette/RTC/LEDs/Profiling
 
 entity AtomFpga_TangNano20K is
     generic (
@@ -73,6 +70,7 @@ entity AtomFpga_TangNano20K is
         CImplBootstrap     : boolean := true;
         CImplMonitor       : boolean := true;
         CImplVGA           : boolean := G_CONFIG_VGA;
+        CImplVGADAC        : boolean := false;         -- Allows 4 bit R/G/B when we add the palette
         CImplI2SAudio      : boolean := true;
         CImplSPDIFAudio    : boolean := true;
         DefaultTurbo       : std_logic_vector(1 downto 0) := "00";
@@ -324,14 +322,16 @@ architecture rtl of AtomFpga_TangNano20K is
     --------------------------------------------------------
     -- Signals
     --------------------------------------------------------
-    signal clock_main      : std_logic;
-    signal clock_vga       : std_logic;
-    signal clock_hdmi      : std_logic;
-    signal clock_sid       : std_logic;
-    signal clock_sdram     : std_logic;
-    signal clock_sdram_p   : std_logic;
-    signal clock_icet65    : std_logic;
-    signal spdif_clk       : std_logic; -- 6.144MHz SPDIF clock
+    signal clock_main      : std_logic; --  16.0 MHz
+    signal clock_vga       : std_logic; --  25.2 MHz
+    signal clock_hdmi      : std_logic; -- 126.0 MHz
+    signal clock_vgadac5   : std_logic; -- 378.0 MHz
+    signal clock_vgadac1   : std_logic; --  75.6 MHz
+    signal clock_sid       : std_logic; --  32.0 MHz
+    signal clock_sdram     : std_logic; --  96.0 MHz
+    signal clock_sdram_p   : std_logic; --  96.0 MHz witha 180 degree phase shift
+    signal clock_icet65    : std_logic; --  24.0 MHz
+    signal spdif_clk       : std_logic; --   6.144MHz SPDIF clock
 
     signal ext_reset_n     : std_logic;
     signal reset_counter   : std_logic_vector(ResetCounterSize - 1 downto 0) := (others => '0'); -- 32ms
@@ -432,16 +432,16 @@ begin
         generic map (
             FCLKIN => "27",
             DEVICE => "GW2AR-18C",
-            IDIV_SEL => 2,
-            FBDIV_SEL => 13,
-            ODIV_SEL => 4
+            IDIV_SEL => 0,
+            FBDIV_SEL => 13,           -- PLL
+            ODIV_SEL => 2
         )
         port map (
             CLKIN    => sys_clk,       --  27.0 MHz
-            CLKOUT   => clock_hdmi,    -- 126.0 MHz
+            CLKOUT   => clock_vgadac5, -- 378.0 MHz
             CLKOUTP  => open,
             CLKOUTD  => open,
-            CLKOUTD3 => open,
+            CLKOUTD3 => clock_hdmi,    -- 126.0 MHz
             LOCK     => open,
             RESET    => '0',
             RESET_P  => '0',
@@ -949,77 +949,90 @@ begin
         );
 
     --------------------------------------------------------
-    -- VGA outputs
+    -- VGA outputs (using high speed 1-bit DAC)
     --------------------------------------------------------
 
-    -- vga_1bit_dac : if IncludeVGADAC generate
-    -- begin
+    vgadac : if CImplVGADAC generate
+        signal vga_r_int : std_logic;
+        signal vga_g_int : std_logic;
+        signal vga_b_int : std_logic;
+    begin
 
-    --     -- TODO PORT
-    --     e_vidr:entity work.dac1_oser
-    --         port map (
-    --             rst_i               => not hard_reset_n,
-    --             clk_sample_i        => sys_clk,
-    --             clk_dac_px_i        => clock_81,
-    --             clk_dac_i           => clock_405,
-    --             sample_i            => unsigned(i_VGA_r),
-    --             bitstream_o         => vga_r_int
-    --             );
-    --     e_vidg:entity work.dac1_oser
-    --         port map (
-    --             rst_i               => not hard_reset_n,
-    --             clk_sample_i        => sys_clk,
-    --             clk_dac_px_i        => clock_81,
-    --             clk_dac_i           => clock_405,
-    --             sample_i            => unsigned(i_VGA_g),
-    --             bitstream_o         => vga_g_int
-    --             );
-    --     e_vidb:entity work.dac1_oser
-    --         port map (
-    --             rst_i               => not hard_reset_n,
-    --             clk_sample_i        => sys_clk,
-    --             clk_dac_px_i        => clock_81,
-    --             clk_dac_i           => clock_405,
-    --             sample_i            => unsigned(i_VGA_b),
-    --             bitstream_o         => vga_b_int
-    --             );
+        clkdiv_vgadac : CLKDIV
+            generic map (
+                DIV_MODE => "5",
+                GSREN => "false"
+                )
+            port map (
+                RESETN => '1',
+                HCLKIN => clock_vgadac5,      -- 378.0 MHz
+                CLKOUT => clock_vgadac1,      --  75.6 MHz
+                CALIB  => '1'
+                );
 
-    --     -- Manually instantiate differential output buffers to avoid
-    --     -- warning about vga_x_n being unused.
-
-    --     OBUFDS_r : ELVDS_OBUF
-    --         port map (
-    --             I  => vga_r_int,
-    --             O  => vga_r,
-    --             OB => vga_r_n
-    --          );
-
-    --     OBUFDS_g : ELVDS_OBUF
-    --         port map (
-    --             I  => vga_g_int,
-    --             O  => vga_g,
-    --             OB => vga_g_n
-    --          );
-
-    --     OBUFDS_b : ELVDS_OBUF
-    --         port map (
-    --             I  => vga_b_int,
-    --             O  => vga_b,
-    --             OB => vga_b_n
-    --          );
-
-    --     vga_hs <= vga_hs_int;
-    --     vga_vs <= vga_vs_int;
-
-    -- end generate;
-
-    vga : if CImplVGA generate
-
-    -- Note: It's a build error if both IncludeVGADAC and IncludeCoProExt are both set
-
+        e_vidr:entity work.dac1_oser
+            port map (
+                rst_i               => not hard_reset_n,
+                clk_sample_i        => clock_vga,
+                clk_dac_px_i        => clock_vgadac1,
+                clk_dac_i           => clock_vgadac5,
+                sample_i            => unsigned(red & "0"),
+                bitstream_o         => vga_r_int
+                );
+        e_vidg:entity work.dac1_oser
+            port map (
+                rst_i               => not hard_reset_n,
+                clk_sample_i        => clock_vga,
+                clk_dac_px_i        => clock_vgadac1,
+                clk_dac_i           => clock_vgadac5,
+                sample_i            => unsigned(green & "0"),
+                bitstream_o         => vga_g_int
+                );
+        e_vidb:entity work.dac1_oser
+            port map (
+                rst_i               => not hard_reset_n,
+                clk_sample_i        => clock_vga,
+                clk_dac_px_i        => clock_vgadac1,
+                clk_dac_i           => clock_vgadac5,
+                sample_i            => unsigned(blue & "0"),
+                bitstream_o         => vga_b_int
+                );
 
         -- Manually instantiate differential output buffers to avoid
         -- warning about vga_x_n being unused.
+
+        OBUFDS_r : ELVDS_OBUF
+            port map (
+                I  => vga_r_int,
+                O  => vga_r,
+                OB => vga_r_n
+             );
+
+        OBUFDS_g : ELVDS_OBUF
+            port map (
+                I  => vga_g_int,
+                O  => vga_g,
+                OB => vga_g_n
+             );
+
+        OBUFDS_b : ELVDS_OBUF
+            port map (
+                I  => vga_b_int,
+                O  => vga_b,
+                OB => vga_b_n
+             );
+
+        vga_hs <= hsync;
+
+        vga_vs <= vsync;
+
+    end generate;
+
+    --------------------------------------------------------
+    -- VGA outputs
+    --------------------------------------------------------
+
+    vga : if CImplVGA generate
 
         OBUFDS_r : ELVDS_OBUF
             port map (
