@@ -50,7 +50,6 @@ use work.version_config_pack.all;
 -- TODO:
 --   Update debugger hardware/software to the latest version
 --   Add CImplTrace support
---   version support somewhere in page Bxxx
 --   pitube builds
 --   32MHz core to allow 8MHz operation (?)
 --   Change break to F12 (like the Beeb)
@@ -283,9 +282,7 @@ architecture rtl of AtomFpga_TangNano20K is
     -- Version ROM
     --------------------------------------------------------
 
-    -- TODO: UNUSED
-
-    type version_rom_type is array(0 to 15) of unsigned(7 downto 0);
+    type version_rom_type is array(0 to 31) of unsigned(7 downto 0);
 
     function init_version_rom return version_rom_type is
         variable tmp : version_rom_type;
@@ -307,9 +304,40 @@ architecture rtl of AtomFpga_TangNano20K is
             tmp(i) := to_unsigned(character'pos('?'), 8);
             i := i + 1;
         end if;
-        tmp(i) := x"0D";
+        tmp(i) := to_unsigned(character'pos(' '), 8);
+        -- VGA vs PiTube
+        if G_CONFIG_VGA then
+            tmp(i+1) := to_unsigned(character'pos('V'), 8);
+            tmp(i+2) := to_unsigned(character'pos('G'), 8);
+            tmp(i+3) := to_unsigned(character'pos('A'), 8);
+            i := i + 4;
+        else
+            tmp(i+1) := to_unsigned(character'pos('P'), 8);
+            tmp(i+2) := to_unsigned(character'pos('I'), 8);
+            tmp(i+3) := to_unsigned(character'pos('T'), 8);
+            tmp(i+4) := to_unsigned(character'pos('U'), 8);
+            tmp(i+5) := to_unsigned(character'pos('B'), 8);
+            tmp(i+6) := to_unsigned(character'pos('E'), 8);
+            i := i + 7;
+        end if;
+        tmp(i) := to_unsigned(character'pos(' '), 8);
+        -- NoDebugger vs Debugger
+        if not G_CONFIG_DEBUGGER then
+            tmp(i+1) := to_unsigned(character'pos('N'), 8);
+            tmp(i+2) := to_unsigned(character'pos('O'), 8);
+            i := i + 2;
+        end if;
+        tmp(i+1) := to_unsigned(character'pos('D'), 8);
+        tmp(i+2) := to_unsigned(character'pos('E'), 8);
+        tmp(i+3) := to_unsigned(character'pos('B'), 8);
+        tmp(i+4) := to_unsigned(character'pos('U'), 8);
+        tmp(i+5) := to_unsigned(character'pos('G'), 8);
+        tmp(i+6) := to_unsigned(character'pos('G'), 8);
+        tmp(i+7) := to_unsigned(character'pos('E'), 8);
+        tmp(i+8) := to_unsigned(character'pos('R'), 8);
+        tmp(i+9) := x"0D";
         i := i + 10;
-        while (i < 16) loop
+        while (i < 32) loop
             tmp(i) := x"00";
             i := i + 1;
         end loop;
@@ -365,11 +393,13 @@ architecture rtl of AtomFpga_TangNano20K is
     signal audio           : signed(15 downto 0);
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
+    signal ExternBUS       : std_logic;
     signal ExternCE        : std_logic;
     signal ExternWE        : std_logic;
     signal ExternA         : std_logic_vector (18 downto 0);
     signal ExternDin       : std_logic_vector (7 downto 0);
     signal ExternDout      : std_logic_vector (7 downto 0);
+    signal SDRAMDout       : std_logic_vector (7 downto 0);
 
     -- Signals used for tracing 6502 activity (CImplDebug)
     signal phi2            : std_logic;
@@ -575,6 +605,7 @@ begin
         sync                => sync,
         rnw                 => rnw,
         -- External Bus/Ram/Rom interface
+        ExternBus           => ExternBus,
         ExternCE            => ExternCE,
         ExternWE            => ExternWE,
         ExternA             => ExternA,
@@ -902,6 +933,24 @@ begin
     end generate;
 
     --------------------------------------------------------
+    -- Version ROM
+    --------------------------------------------------------
+
+    process(clock_main)
+    begin
+        if rising_edge(clock_main) then
+            if ExternA(7 downto 0) < 32 then
+                version_rom_byte <= std_logic_vector(version_rom(conv_integer(ExternA(4 downto 0))));
+            else
+                version_rom_byte <= x"00";
+            end if;
+        end if;
+    end process;
+
+    ExternDout <= version_rom_byte when ExternBus = '1' and ExternA(15 downto 8) = x"B1" else
+                  SDRAMDout;
+
+    --------------------------------------------------------
     -- SDRAM Memory Controller
     --------------------------------------------------------
 
@@ -923,7 +972,7 @@ begin
             core_A_stb     => mem_strobe,
             core_A         => ExternA,
             core_Din       => ExternDin,
-            core_Dout      => ExternDout,
+            core_Dout      => SDRAMDout,
             core_nCS       => not ExternCE,
             core_nWE       => not (ExternWE and phi2),
             core_nWE_long  => not ExternWE,
