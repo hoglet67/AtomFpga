@@ -50,7 +50,6 @@ use work.version_config_pack.all;
 -- TODO:
 --   Update debugger hardware/software to the latest version
 --   Add CImplTrace support
---   pitube builds
 --   32MHz core to allow 8MHz operation (?)
 --   Change break to F12 (like the Beeb)
 --   Enable double buffering
@@ -68,8 +67,9 @@ entity AtomFpga_TangNano20K is
         CImplSID           : boolean := true;
         CImplBootstrap     : boolean := true;
         CImplMonitor       : boolean := true;
-        CImplVGA           : boolean := G_CONFIG_VGA;
-        CImplVGADAC        : boolean := false;         -- Allows 4 bit R/G/B when we add the palette
+        CImplVGA           : boolean := false;
+        CImplVGADAC        : boolean := G_CONFIG_VGA;         -- Allows 4 bit R/G/B when we add the palette
+        CImplCoProExt      : boolean := not G_CONFIG_VGA;
         CImplI2SAudio      : boolean := true;
         CImplSPDIFAudio    : boolean := true;
         DefaultTurbo       : std_logic_vector(1 downto 0) := "00";
@@ -267,17 +267,6 @@ architecture rtl of AtomFpga_TangNano20K is
     -- Functions
     --------------------------------------------------------
 
-    -- TODO: UNUSED
-
-    function RESETBITS return natural is
-    begin
-        if SIM then
-            return 10;
-        else
-            return 24; --DB: > 10ms for SPI to start up?
-        end if;
-    end function;
-
     --------------------------------------------------------
     -- Version ROM
     --------------------------------------------------------
@@ -350,6 +339,7 @@ architecture rtl of AtomFpga_TangNano20K is
     --------------------------------------------------------
     -- Signals
     --------------------------------------------------------
+
     signal clock_main      : std_logic; --  16.0 MHz
     signal clock_vga       : std_logic; --  25.2 MHz
     signal clock_hdmi      : std_logic; -- 126.0 MHz
@@ -365,6 +355,7 @@ architecture rtl of AtomFpga_TangNano20K is
     signal reset_counter   : std_logic_vector(ResetCounterSize - 1 downto 0) := (others => '0'); -- 32ms
     signal powerup_reset_n : std_logic := '0';
     signal hard_reset_n    : std_logic;
+    signal reset_n         : std_logic;
     signal led1            : std_logic;
     signal led2            : std_logic;
 
@@ -400,6 +391,11 @@ architecture rtl of AtomFpga_TangNano20K is
     signal ExternDin       : std_logic_vector (7 downto 0);
     signal ExternDout      : std_logic_vector (7 downto 0);
     signal SDRAMDout       : std_logic_vector (7 downto 0);
+
+    -- Signals used for the external Co Processor
+    signal ext_tube_ntube  : std_logic;
+    signal ext_tube_do     : std_logic_vector(7 downto 0);
+    signal ext_tube_ctrl   : std_logic_vector(5 downto 0); -- signals that use the LED output
 
     -- Signals used for tracing 6502 activity (CImplDebug)
     signal phi2            : std_logic;
@@ -587,7 +583,7 @@ begin
         -- Resets
         powerup_reset_n     => hard_reset_n,
         ext_reset_n         => ext_reset_n,
-        int_reset_n         => open,
+        int_reset_n         => reset_n,
         -- HDMI Video
         hdmi_audio_en       => hdmi_audio_en,
         tmds_r              => hdmi_tmds_r,
@@ -947,7 +943,12 @@ begin
         end if;
     end process;
 
+    --------------------------------------------------------
+    -- Bus data multiplexor
+    --------------------------------------------------------
+
     ExternDout <= version_rom_byte when ExternBus = '1' and ExternA(15 downto 8) = x"B1" else
+                  ext_tube_do      when ext_tube_ntube = '0'                             else
                   SDRAMDout;
 
     --------------------------------------------------------
@@ -1110,9 +1111,44 @@ begin
 
     end generate;
 
---------------------------------------------------------
--- External shift register for joysticks / config links
---------------------------------------------------------
+    --------------------------------------------------------
+    -- External PiTibeDirect
+    --------------------------------------------------------
+
+    ext_tube_ntube <= '0' when ExternBus = '1' and ExternA(15 downto 4) = x"BEE" else '1';
+
+    GenCoProExt: if CImplCoProExt generate
+    begin
+
+        ext_tube_do  <= vga_g & vga_b_n & vga_vs & vga_hs & vga_r_n & vga_b & vga_g_n & vga_r;
+
+        vga_g   <= ExternDin(7) when rnw = '0' and Phi2 = '1' else 'Z';
+        vga_b_n <= ExternDin(6) when rnw = '0' and Phi2 = '1' else 'Z';
+        vga_vs  <= ExternDin(5) when rnw = '0' and Phi2 = '1' else 'Z';
+        vga_hs  <= ExternDin(4) when rnw = '0' and Phi2 = '1' else 'Z';
+        vga_r_n <= ExternDin(3) when rnw = '0' and Phi2 = '1' else 'Z';
+        vga_b   <= ExternDin(2) when rnw = '0' and Phi2 = '1' else 'Z';
+        vga_g_n <= ExternDin(1) when rnw = '0' and Phi2 = '1' else 'Z';
+        vga_r   <= ExternDin(0) when rnw = '0' and Phi2 = '1' else 'Z';
+
+        ext_tube_ctrl(5) <= reset_n;
+        ext_tube_ctrl(4) <= ExternA(2);
+        ext_tube_ctrl(3) <= ExternA(1);
+        ext_tube_ctrl(2) <= ext_tube_ntube;
+        ext_tube_ctrl(1) <= rnw;
+        ext_tube_ctrl(0) <= ExternA(0);
+
+    end generate;
+
+    GenCoProNotExt: if not CImplCoProExt generate
+    begin
+        ext_tube_do  <= x"FE";
+        ext_tube_ctrl <= (others => '1');
+    end generate;
+
+    --------------------------------------------------------
+    -- External shift register for joysticks / config links
+    --------------------------------------------------------
 
     process(clock_main)
     begin
@@ -1140,15 +1176,17 @@ begin
 
     hdmi_audio_en <= jumper(3) or jumper(4);
 
---------------------------------------------------------
--- Outputs/signals whose function depends on the Includes
---------------------------------------------------------
+    --------------------------------------------------------
+    -- Outputs/signals whose function depends on the Includes
+    --------------------------------------------------------
 
     js_clk <= phi2;
 
     normal_leds <= (led1 & led2 & "0000") xor "111111";
 
-    led <= monitor_leds when CImplMonitor else normal_leds;
+    led <= ext_tube_ctrl                      when CImplCoProExt                                  else
+           monitor_leds                       when CImplMonitor                                   else
+           normal_leds;
 
     ws2812_din <= '0';
 
