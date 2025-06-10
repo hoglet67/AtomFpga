@@ -104,6 +104,10 @@
         <File path="../../../src/common/i82C55/i82c55.vhd" type="file.vhdl" enable="1"/>
         <File path="../../../src/common/ps2kybrd/keyboard.vhd" type="file.vhdl" enable="1"/>
         <File path="../../../src/common/ps2kybrd/ps2_intf.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../../src/common/hdmi/encoder.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../../src/common/hdmi/hdmidataencoder.v" type="file.verilog" enable="1"/>
+        <File path="../../../src/common/hdmi/hdmidelay.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../../src/common/hdmi/hdmi.vhd" type="file.vhdl" enable="1"/>
         <File path="../src/common.vhd" type="file.vhdl" enable="1"/>
         <File path="../src/AtomFpga_TangNano20K_vga.cst" type="file.cst" enable="1"/>
         <File path="../src/AtomFpga_TangNano20K.vhd" type="file.vhdl" enable="1"/>

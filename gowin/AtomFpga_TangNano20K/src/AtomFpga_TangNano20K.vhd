@@ -68,7 +68,8 @@ entity AtomFpga_TangNano20K is
     generic (
         CImplCpu65c02      : boolean := false;
         CImplDebugger      : boolean := G_CONFIG_DEBUGGER;
-        CImplDVI           : boolean := true;
+        CImplDVI           : boolean := false;
+        CImplHDMI          : boolean := true;
         CImplSDDOS         : boolean := false;
         CImplAtoMMC2       : boolean := true;
         CImplSID           : boolean := true;
@@ -338,9 +339,19 @@ architecture rtl of AtomFpga_TangNano20K is
     signal reset_counter   : std_logic_vector(ResetCounterSize - 1 downto 0) := (others => '0'); -- 32ms
     signal powerup_reset_n : std_logic := '0';
     signal hard_reset_n    : std_logic;
-    signal reset           : std_logic;
     signal led1            : std_logic;
     signal led2            : std_logic;
+
+    -- Signals used for HDMI video from the core
+    signal hdmi_audio_en   : std_logic;
+    signal hdmi_tmds_r     : std_logic_vector(9 downto 0);
+    signal hdmi_tmds_g     : std_logic_vector(9 downto 0);
+    signal hdmi_tmds_b     : std_logic_vector(9 downto 0);
+
+    -- Signals used for DVI video from this module
+    signal dvi_tmds_r     : std_logic_vector(9 downto 0);
+    signal dvi_tmds_g     : std_logic_vector(9 downto 0);
+    signal dvi_tmds_b     : std_logic_vector(9 downto 0);
 
     -- Signals used for VGA video from the core
     signal red             : std_logic_vector(2 downto 0);
@@ -351,25 +362,9 @@ architecture rtl of AtomFpga_TangNano20K is
     signal blank           : std_logic;
 
     -- Signals for audio
-    signal sid_audio_d     : std_logic_vector (17 downto 0);
     signal sid_audio       : std_logic;
     signal atom_audio      : std_logic;
-
-    -- Signals used for DVI/HDMI
-    signal rgb_r           : std_logic_vector(7 downto 0);
-    signal rgb_g           : std_logic_vector(7 downto 0);
-    signal rgb_b           : std_logic_vector(7 downto 0);
-    signal rgb_hs          : std_logic;
-    signal rgb_vs          : std_logic;
-    signal rgb_de          : std_logic;
-    signal ctrl            : std_logic_vector(1 downto 0);
-    signal encoded_r       : std_logic_vector(9 downto 0);
-    signal encoded_g       : std_logic_vector(9 downto 0);
-    signal encoded_b       : std_logic_vector(9 downto 0);
-    signal serialized_c    : std_logic;
-    signal serialized_r    : std_logic;
-    signal serialized_g    : std_logic;
-    signal serialized_b    : std_logic;
+    signal audio           : signed(15 downto 0);
 
     -- Signals used by the external bus interface (i.e. RAM and ROM)
     signal ExternCE        : std_logic;
@@ -525,6 +520,7 @@ begin
     generic map (
         CImplDebugger           => CImplDebugger,
         CImplCpu65c02           => CImplCpu65c02,
+        CImplHDMI               => CImplHDMI,
         CImplSDDOS              => CImplSDDOS,
         CImplAtoMMC2            => CImplAtoMMC2,
         CImplGraphicsExt        => true,
@@ -564,7 +560,12 @@ begin
         powerup_reset_n     => hard_reset_n,
         ext_reset_n         => ext_reset_n,
         int_reset_n         => open,
-        -- Video
+        -- HDMI Video
+        hdmi_audio_en       => hdmi_audio_en,
+        tmds_r              => hdmi_tmds_r,
+        tmds_g              => hdmi_tmds_g,
+        tmds_b              => hdmi_tmds_b,
+        -- VGA Video
         red                 => red,
         green               => green,
         blue                => blue,
@@ -583,8 +584,8 @@ begin
         ExternDout          => ExternDout,
         -- Audio
         sid_audio           => sid_audio,
-        sid_audio_d         => sid_audio_d,
         atom_audio          => atom_audio,
+        mixed_audio         => audio,
         -- SD Card
         SDMISO              => tf_miso,
         SDSS                => tf_cs,
@@ -607,27 +608,31 @@ begin
     );
 
     --------------------------------------------------------
-    -- DVI / HDMI output
+    -- DVI
     --------------------------------------------------------
 
-    rgb_r <= red   & "00000";
-    rgb_g <= green & "00000";
-    rgb_b <= blue  & "00000";
-    rgb_vs <= not vsync;
-    rgb_hs <= not hsync;
-    rgb_de <= not blank;
+    -- Encode vsync, hsync, blanking and rgb data to Transition-minimized differential signaling (TMDS) format.
+
 
     -- This is an opensource version from here:
     --     https://github.com/fcayci/vhdl-hdmi-out/tree/master
 
     dvi : if (CImplDVI) generate
-
-        -- TODO: The source for this could be made much smaller with some for/generate loops!
-
-        reset <= not powerup_reset_n;
+        signal ctrl         : std_logic_vector(1 downto 0);
+        signal rgb_r  : std_logic_vector(7 downto 0);
+        signal rgb_g  : std_logic_vector(7 downto 0);
+        signal rgb_b  : std_logic_vector(7 downto 0);
+        signal rgb_hs : std_logic;
+        signal rgb_vs : std_logic;
+        signal rgb_de : std_logic;
+    begin
+        rgb_r <= red   & "00000";
+        rgb_g <= green & "00000";
+        rgb_b <= blue  & "00000";
+        rgb_vs <= not vsync;
+        rgb_hs <= not hsync;
+        rgb_de <= not blank;
         ctrl  <= rgb_vs & rgb_hs;
-
-        -- Encode vsync, hsync, blanking and rgb data to Transition-minimized differential signaling (TMDS) format.
 
         tr : entity work.tmds_encoder(rtl)
             port map (
@@ -635,7 +640,7 @@ begin
                 en   => rgb_de,
                 ctrl => "00",
                 din  => rgb_r,
-                dout => encoded_r
+                dout => dvi_tmds_r
                 );
 
         tg : entity work.tmds_encoder(rtl)
@@ -644,7 +649,7 @@ begin
                 en   => rgb_de,
                 ctrl => "00",
                 din  => rgb_g,
-                dout => encoded_g
+                dout => dvi_tmds_g
                 );
 
         tb : entity work.tmds_encoder(rtl)
@@ -653,10 +658,27 @@ begin
                 en   => rgb_de,
                 ctrl => ctrl,
                 din  => rgb_b,
-                dout => encoded_b
+                dout => dvi_tmds_b
                 );
+    end generate;
 
-        --  Serialize the three 10-bit TMDS channels to three serialized 1-bit TMDS streams
+    --  Serialize the three 10-bit TMDS channels to three serialized 1-bit TMDS streams
+
+    hdmi_and_dvi: if CImplDVI or CImplHDMI generate
+        signal reset        : std_logic;
+        signal serialized_c : std_logic;
+        signal serialized_r : std_logic;
+        signal serialized_g : std_logic;
+        signal serialized_b : std_logic;
+        signal tmds_r       : std_logic_vector(9 downto 0);
+        signal tmds_g       : std_logic_vector(9 downto 0);
+        signal tmds_b       : std_logic_vector(9 downto 0);
+    begin
+
+        reset  <= not powerup_reset_n;
+        tmds_r <= hdmi_tmds_r when CImplHDMI else dvi_tmds_r;
+        tmds_g <= hdmi_tmds_g when CImplHDMI else dvi_tmds_g;
+        tmds_b <= hdmi_tmds_b when CImplHDMI else dvi_tmds_b;
 
         ser_b : OSER10
             generic map (
@@ -668,16 +690,16 @@ begin
                 FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_b,
-                D0    => encoded_b(0),
-                D1    => encoded_b(1),
-                D2    => encoded_b(2),
-                D3    => encoded_b(3),
-                D4    => encoded_b(4),
-                D5    => encoded_b(5),
-                D6    => encoded_b(6),
-                D7    => encoded_b(7),
-                D8    => encoded_b(8),
-                D9    => encoded_b(9)
+                D0    => tmds_b(0),
+                D1    => tmds_b(1),
+                D2    => tmds_b(2),
+                D3    => tmds_b(3),
+                D4    => tmds_b(4),
+                D5    => tmds_b(5),
+                D6    => tmds_b(6),
+                D7    => tmds_b(7),
+                D8    => tmds_b(8),
+                D9    => tmds_b(9)
                 );
 
         ser_g : OSER10
@@ -690,16 +712,16 @@ begin
                 FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_g,
-                D0    => encoded_g(0),
-                D1    => encoded_g(1),
-                D2    => encoded_g(2),
-                D3    => encoded_g(3),
-                D4    => encoded_g(4),
-                D5    => encoded_g(5),
-                D6    => encoded_g(6),
-                D7    => encoded_g(7),
-                D8    => encoded_g(8),
-                D9    => encoded_g(9)
+                D0    => tmds_g(0),
+                D1    => tmds_g(1),
+                D2    => tmds_g(2),
+                D3    => tmds_g(3),
+                D4    => tmds_g(4),
+                D5    => tmds_g(5),
+                D6    => tmds_g(6),
+                D7    => tmds_g(7),
+                D8    => tmds_g(8),
+                D9    => tmds_g(9)
                 );
 
         ser_r : OSER10
@@ -712,16 +734,16 @@ begin
                 FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_r,
-                D0    => encoded_r(0),
-                D1    => encoded_r(1),
-                D2    => encoded_r(2),
-                D3    => encoded_r(3),
-                D4    => encoded_r(4),
-                D5    => encoded_r(5),
-                D6    => encoded_r(6),
-                D7    => encoded_r(7),
-                D8    => encoded_r(8),
-                D9    => encoded_r(9)
+                D0    => tmds_r(0),
+                D1    => tmds_r(1),
+                D2    => tmds_r(2),
+                D3    => tmds_r(3),
+                D4    => tmds_r(4),
+                D5    => tmds_r(5),
+                D6    => tmds_r(6),
+                D7    => tmds_r(7),
+                D8    => tmds_r(8),
+                D9    => tmds_r(9)
                 );
 
         ser_c : OSER10
@@ -795,11 +817,21 @@ begin
     -- shouldn't matter.
 
     gen_i2s : if CImplI2SAudio generate
-        signal audio_l : std_logic_vector(19 downto 0);
-        signal audio_r : std_logic_vector(19 downto 0);
+        signal tmp : std_logic_vector(19 downto 0);
     begin
-        audio_l <= "0000" & sid_audio_d(17 downto 2);
-        audio_r <= "0001" & x"0000" when atom_audio = '1' else "1110" & x"0000";
+
+        -- Attenuate the speaker output
+        process(audio, pa_en)
+        begin
+            if pa_en = '1' then
+                -- Speaker
+                tmp <= (3 downto 0 => audio(15)) & std_logic_vector(audio);
+            else
+                -- Line out
+                tmp <= std_logic_vector(audio) & "0000";
+            end if;
+        end process;
+
         i2s : entity work.i2s_simple
             generic map (
                 ATTENUATE  => 0,         -- No attenuation, allows use of full dynamic range
@@ -809,8 +841,8 @@ begin
             port map (
                 clock      => spdif_clk,
                 reset_n    => '1',       -- Avoid a nasty click on powerup_reset_n
-                audio_l    => audio_l,
-                audio_r    => audio_r,
+                audio_l    => tmp,
+                audio_r    => tmp,
                 i2s_lrclk  => i2s_lrclk,
                 i2s_bclk   => i2s_bclk,
                 i2s_din    => i2s_din
@@ -994,11 +1026,13 @@ begin
                 sr_mirror  <= sr_mirror(14 downto 0) & js_data;
                 sr_counter <= sr_counter + 1;
             end if;
-            mem_strobe  <= phi2 and not last_phi2; -- on the tising edge
+            mem_strobe  <= phi2 and not last_phi2; -- on the rising edge (middle of the cyle)
             mem_refresh <= last_phi2 and not phi2; -- on the falling edge
             last_phi2   <= phi2;
         end if;
     end process;
+
+    hdmi_audio_en <= jumper(3) or jumper(4);
 
 --------------------------------------------------------
 -- Outputs/signals whose function depends on the Includes
