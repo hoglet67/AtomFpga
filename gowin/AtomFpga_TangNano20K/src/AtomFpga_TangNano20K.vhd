@@ -370,6 +370,7 @@ architecture rtl of AtomFpga_TangNano20K is
     -- Signals for the memory controller
     signal mem_ready       : std_logic;
     signal mem_strobe      : std_logic;
+    signal mem_refresh     : std_logic;
 
     -- Joystick / Config Shift Register
     signal joystick1       : std_logic_vector(4 downto 0) := (others => '1');
@@ -825,6 +826,7 @@ begin
             CLK_96         => clock_sdram,
             CLK_96_p       => clock_sdram_p,
             CLK_48         => clock_main,
+            core_rfsh_stb  => mem_refresh,
             core_A_stb     => mem_strobe,
             core_A         => ExternA,
             core_Din       => ExternDin,
@@ -974,11 +976,10 @@ begin
                 end if;
                 sr_mirror  <= sr_mirror(14 downto 0) & js_data;
                 sr_counter <= sr_counter + 1;
-                mem_strobe <= '1';
-            else
-                mem_strobe <= '0';
             end if;
-            last_phi2 <= phi2;
+            mem_strobe  <= last_phi2 and not phi2; -- on the falling edge
+            mem_refresh <= phi2 and not last_phi2; -- on the tising edge
+            last_phi2   <= phi2;
         end if;
     end process;
 

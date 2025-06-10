@@ -24,6 +24,7 @@ entity mem_tang_20k is
 
         READY             : out std_logic;
 
+        core_rfsh_stb     : in    std_logic;
         core_A_stb        : in    std_logic;
         core_A            : in    std_logic_vector (18 downto 0);
         core_Din          : in    std_logic_vector (7 downto 0);
@@ -181,7 +182,7 @@ begin
         sdram_nWE_o  => O_sdram_wen_n,
         sdram_DQM_o  => O_sdram_dqm,
 
-        ctl_rfsh_i   => '0',
+        ctl_rfsh_i   => core_rfsh_stb,
         ctl_reset_i  => not rst_n,
         ctl_stall_o  => i_sdram_busy,
         ctl_cyc_i    => i_sdram_cyc,
