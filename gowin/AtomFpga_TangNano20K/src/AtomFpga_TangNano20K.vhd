@@ -49,7 +49,6 @@ use work.version_config_pack.all;
 
 -- TODO:
 --   32MHz core to allow 8MHz operation (?)
---   btn2 to toggle dvi mode
 --   Move PWM DAC to top level
 --   Configuration jumpers
 --   Other Atom2K18 features (?) SAM/PAM/Palette/RTC/LEDs/Profiling
@@ -357,6 +356,8 @@ architecture rtl of AtomFpga_TangNano20K is
     signal reset_n         : std_logic;
     signal led1            : std_logic;
     signal led2            : std_logic;
+    signal config_counter  : std_logic_vector(20 downto 0) := (others => '0'); -- 16ms debounce
+    signal config_last     : std_logic := '0';
 
     -- Signals used for HDMI video from the core
     signal hdmi_audio_en   : std_logic;
@@ -533,6 +534,22 @@ begin
             end if;
             powerup_reset_n <= reset_counter(reset_counter'high);
             hard_reset_n <= not (not powerup_reset_n or not mem_ready);
+        end if;
+    end process;
+
+    ConfigProcess : process (clock_main)
+    begin
+        if rising_edge(clock_main) then
+            if powerup_reset_n = '0' then
+                hdmi_audio_en <= jumper(3) or jumper(4);
+            elsif btn2 = '1' then
+                config_counter <= (others => '1');
+            elsif config_counter(config_counter'high) = '1' then
+                config_counter <= config_counter - 1;
+            elsif config_last = '1' then
+                hdmi_audio_en <= not hdmi_audio_en;
+            end if;
+            config_last <= config_counter(config_counter'high);
         end if;
     end process;
 
@@ -1219,8 +1236,6 @@ begin
             last_phi2   <= phi2;
         end if;
     end process;
-
-    hdmi_audio_en <= jumper(3) or jumper(4);
 
     --------------------------------------------------------
     -- Outputs/signals whose function depends on the Includes
