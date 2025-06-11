@@ -50,8 +50,6 @@ use work.version_config_pack.all;
 -- TODO:
 --   Add CImplTrace support
 --   32MHz core to allow 8MHz operation (?)
---   Change break to F12 (like the Beeb)
---   Enable double buffering
 --   Configuration jumpers
 --   Other Atom2K18 features (?) SAM/PAM/Palette/RTC/LEDs/Profiling
 
@@ -547,18 +545,20 @@ begin
         CImplSDDOS              => CImplSDDOS,
         CImplAtoMMC2            => CImplAtoMMC2,
         CImplGraphicsExt        => true,
-        CImplSoftChar           => false,
+        CImplSoftChar           => true,
         CImplSID                => CImplSID,
         CImplVGA80x40           => true,
         CImplHWScrolling        => true,
         CImplMouse              => true,
-        CImplUart               => false,
-        CImplDoubleVideo        => false,
+        CImplUart               => false,    -- Need a way of switching UART vs AVR
+        CImplDoubleVideo        => true,
         CImplRamRomNone         => false,
         CImplRamRomPhill        => false,
         CImplRamRomAtom2015     => true,
         CImplRamRomSchakelKaart => false,
         CImplSampleExternData   => false,
+        CImplVIA                => true,
+        CImplProfilingCounters  => true,
         MainClockSpeed          => 16000000,
         DefaultBaud             => 115200,
         DefaultTurbo            => DefaultTurbo
