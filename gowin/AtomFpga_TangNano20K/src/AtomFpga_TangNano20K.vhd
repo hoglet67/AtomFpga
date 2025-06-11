@@ -50,6 +50,7 @@ use work.version_config_pack.all;
 -- TODO:
 --   Add CImplTrace support
 --   32MHz core to allow 8MHz operation (?)
+--   Move PWM DAC to top level
 --   Configuration jumpers
 --   Other Atom2K18 features (?) SAM/PAM/Palette/RTC/LEDs/Profiling
 
