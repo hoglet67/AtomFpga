@@ -118,7 +118,7 @@ begin
 
             ESC_IN1 <= ESC_IN;
             -- handle the break key seperately, as it's value also depends on BREAK_IN
-            if keyb_valid = '1' and keyb_data = X"09" then
+            if keyb_valid = '1' and keyb_data = X"07" then
                 BREAK_OUT <= released;
             elsif BREAK_IN /= BREAK_IN1 then
                 BREAK_OUT <= BREAK_IN;
@@ -139,7 +139,7 @@ begin
                         when X"06" => TURBO      <= "01";     -- F2 (2MMz)
                         when X"04" => TURBO      <= "10";     -- F3 (4MHz)
                         when X"0C" => TURBO      <= "11";     -- F4 (8MHz)
---                        when X"09" => BREAK_OUT  <= released;  -- F10 (BREAK)
+--                        when X"07" => BREAK_OUT  <= released;  -- F12 (BREAK)
                         when X"11" => REPEAT_OUT <= released;  -- LEFT ALT (SHIFT LOCK)
                         when X"12" | X"59" =>
                             if (extended = '0') then -- Ignore fake shifts
