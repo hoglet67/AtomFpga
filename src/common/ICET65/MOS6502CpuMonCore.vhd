@@ -79,8 +79,10 @@ architecture behavioral of MOS6502CpuMonCore is
     signal Din_int       : std_logic_vector(7 downto 0);
     signal Dout_int      : std_logic_vector(7 downto 0);
     signal R_W_n_int     : std_logic;
-    signal Rd_n_int      : std_logic;
-    signal Wr_n_int      : std_logic;
+    signal Rd_n_mon      : std_logic;
+    signal Wr_n_mon      : std_logic;
+    signal Sync_mon      : std_logic;
+    signal Done_mon      : std_logic;
     signal Sync_int      : std_logic;
     signal Addr_int      : std_logic_vector(23 downto 0);
 
@@ -95,7 +97,7 @@ architecture behavioral of MOS6502CpuMonCore is
     signal SS_Step       : std_logic;
     signal SS_Step_held  : std_logic;
     signal CountCycle    : std_logic;
-    signal special       : std_logic_vector(1 downto 0);
+    signal int_ctrl      : std_logic_vector(7 downto 0);
 
     signal memory_rd     : std_logic;
     signal memory_rd1    : std_logic;
@@ -106,13 +108,15 @@ architecture behavioral of MOS6502CpuMonCore is
     signal memory_din    : std_logic_vector(7 downto 0);
     signal memory_done   : std_logic;
 
-    signal NMI_n_masked  : std_logic;
+
     signal IRQ_n_masked  : std_logic;
+    signal NMI_n_masked  : std_logic;
+    signal Res_n_masked  : std_logic;
+    signal SO_n_masked   : std_logic;
 
     signal exec          : std_logic;
     signal exec_held     : std_logic;
     signal op3           : std_logic;
-
 
 begin
 
@@ -130,13 +134,13 @@ begin
         cpu_clken    => cpu_clken,
         Addr         => Addr_int(15 downto 0),
         Data         => Data,
-        Rd_n         => Rd_n_int,
-        Wr_n         => Wr_n_int,
+        Rd_n         => Rd_n_mon,
+        Wr_n         => Wr_n_mon,
         RdIO_n       => '1',
         WrIO_n       => '1',
-        Sync         => Sync_int,
+        Sync         => Sync_mon,
         Rdy          => open,
-        nRSTin       => Res_n,
+        nRSTin       => Res_n_masked,
         nRSTout      => cpu_reset_n,
         CountCycle   => CountCycle,
         trig         => trig,
@@ -156,16 +160,35 @@ begin
         AddrOut      => memory_addr,
         DataOut      => memory_dout,
         DataIn       => memory_din,
-        Done         => memory_done,
-        Special      => special,
+        Done         => Done_mon,
+        int_ctrl     => int_ctrl,
         SS_Step      => SS_Step,
         SS_Single    => SS_Single
     );
-    Wr_n_int <= R_W_n_int;
-    Rd_n_int <= not R_W_n_int;
+    Wr_n_mon <= Rdy and R_W_n_int;
+    Rd_n_mon <= Rdy and not R_W_n_int;
+    Sync_mon <= Rdy and Sync_int;
+    Done_mon <= Rdy and memory_done;
+
     Data <= Din when R_W_n_int = '1' else Dout_int;
-    NMI_n_masked <= NMI_n or special(1);
-    IRQ_n_masked <= IRQ_n or special(0);
+
+    -- The two int control bits work as follows
+    -- 00 -> IRQ_n                (enabled)
+    -- 01 -> IRQ_n or SS_Single   (enabled when free-running)
+    -- 10 -> 0                    (forced)
+    -- 11 -> 1                    (disabled)
+
+    IRQ_n_masked <= int_ctrl(0) when int_ctrl(1) = '1' else
+                    IRQ_n or (int_ctrl(0) and SS_single);
+
+    NMI_n_masked <= int_ctrl(2) when int_ctrl(3) = '1' else
+                    NMI_n or (int_ctrl(2) and SS_single);
+
+    Res_n_masked <= int_ctrl(4) when int_ctrl(5) = '1' else
+                     Res_n or (int_ctrl(4) and SS_single);
+
+    SO_n_masked  <= int_ctrl(6) when int_ctrl(7) = '1' else
+                    SO_n or (int_ctrl(6) and SS_single);
 
     -- The CPU is slightly pipelined and the register update of the last
     -- instruction overlaps with the opcode fetch of the next instruction.
@@ -200,7 +223,7 @@ begin
         inst_t65: entity work.T65 port map (
             mode            => "00",
             Abort_n         => '1',
-            SO_n            => SO_n,
+            SO_n            => SO_n_masked,
             Res_n           => cpu_reset_n,
             Enable          => cpu_clken_ss,
             Clk             => cpu_clk,

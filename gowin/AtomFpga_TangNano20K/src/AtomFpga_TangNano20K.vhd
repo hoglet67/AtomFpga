@@ -48,7 +48,6 @@ library work;
 use work.version_config_pack.all;
 
 -- TODO:
---   Update debugger hardware/software to the latest version
 --   Add CImplTrace support
 --   32MHz core to allow 8MHz operation (?)
 --   Change break to F12 (like the Beeb)
