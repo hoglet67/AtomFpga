@@ -48,7 +48,6 @@ library work;
 use work.version_config_pack.all;
 
 -- TODO:
---   32MHz core to allow 8MHz operation (?)
 --   Move PWM DAC to top level
 --   Configuration jumpers
 --   Other Atom2K18 features (?) SAM/PAM/Palette/RTC/LEDs/Profiling
@@ -338,12 +337,11 @@ architecture rtl of AtomFpga_TangNano20K is
     -- Signals
     --------------------------------------------------------
 
-    signal clock_main      : std_logic; --  16.0 MHz
+    signal clock_main      : std_logic; --  32.0 MHz
     signal clock_vga       : std_logic; --  25.2 MHz
     signal clock_hdmi      : std_logic; -- 126.0 MHz
     signal clock_vgadac5   : std_logic; -- 378.0 MHz
     signal clock_vgadac1   : std_logic; --  75.6 MHz
-    signal clock_sid       : std_logic; --  32.0 MHz
     signal clock_sdram     : std_logic; --  96.0 MHz
     signal clock_sdram_p   : std_logic; --  96.0 MHz witha 180 degree phase shift
     signal clock_icet65    : std_logic; --  24.0 MHz
@@ -440,9 +438,9 @@ begin
         port map (
             CLKIN    => sys_clk,       -- 27.0 MHz
             CLKOUT   => clock_sdram,   -- 96.0 MHz
-            CLKOUTD  => clock_main,    -- 16.0 MHz
+            CLKOUTD  => open,          -- 16.0 MHz
             CLKOUTP  => clock_sdram_p, -- 96.0 MHz / 180 degree phase shift
-            CLKOUTD3 => clock_sid,     -- 32.0 MHz
+            CLKOUTD3 => clock_main,    -- 32.0 MHz
             LOCK     => open,
             RESET    => '0',
             RESET_P  => '0',
@@ -579,18 +577,18 @@ begin
         CImplSampleExternData   => false,
         CImplVIA                => true,
         CImplProfilingCounters  => true,
-        MainClockSpeed          => 16000000,
+        MainClockSpeed          => 32000000,
         DefaultBaud             => 115200,
         DefaultTurbo            => DefaultTurbo
     )
     port map(
         -- Clocking
         clk_vga             => clock_vga,    -- 25.2 MHz
-        clk_main            => clock_main,   -- 16.0 MHz
-        clk_avr             => clock_main,   -- 16.0 MHz
+        clk_main            => clock_main,   -- 32.0 MHz
+        clk_avr             => clock_main,   -- 32.0 MHz
         clk_avr_debug       => clock_icet65, -- 24.0 MHz
-        clk_dac             => clock_sid,    -- 32.0 MHz
-        clk_32M00           => clock_sid,    -- 32.0 MHz
+        clk_dac             => clock_main,   -- 32.0 MHz
+        clk_32M00           => clock_main,   -- 32.0 MHz
         -- Keyboard/mouse
         kbd_pa              => open,
         kbd_pb              => (others => '1'),
@@ -719,7 +717,7 @@ begin
         signal tmds_b       : std_logic_vector(9 downto 0);
     begin
 
-        reset  <= not powerup_reset_n;
+        reset  <= '0'; --not powerup_reset_n;
         tmds_r <= hdmi_tmds_r when CImplHDMI else dvi_tmds_r;
         tmds_g <= hdmi_tmds_g when CImplHDMI else dvi_tmds_g;
         tmds_b <= hdmi_tmds_b when CImplHDMI else dvi_tmds_b;
