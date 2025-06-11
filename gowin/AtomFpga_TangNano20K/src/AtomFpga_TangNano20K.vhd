@@ -48,8 +48,8 @@ library work;
 use work.version_config_pack.all;
 
 -- TODO:
---   Add CImplTrace support
 --   32MHz core to allow 8MHz operation (?)
+--   btn2 to toggle dvi mode
 --   Move PWM DAC to top level
 --   Configuration jumpers
 --   Other Atom2K18 features (?) SAM/PAM/Palette/RTC/LEDs/Profiling
@@ -65,11 +65,12 @@ entity AtomFpga_TangNano20K is
         CImplSID           : boolean := true;
         CImplBootstrap     : boolean := true;
         CImplMonitor       : boolean := true;
-        CImplVGA           : boolean := false;
-        CImplVGADAC        : boolean := G_CONFIG_VGA;         -- Allows 4 bit R/G/B when we add the palette
-        CImplCoProExt      : boolean := not G_CONFIG_VGA;
+        CImplVGA           : boolean := false              and (not G_CONFIG_TRACE);
+        CImplVGADAC        : boolean := (    G_CONFIG_VGA) and (not G_CONFIG_TRACE);
+        CImplCoProExt      : boolean := (not G_CONFIG_VGA) and (not G_CONFIG_TRACE);
         CImplI2SAudio      : boolean := true;
         CImplSPDIFAudio    : boolean := true;
+        CImplTrace         : boolean := G_CONFIG_TRACE;
         DefaultTurbo       : std_logic_vector(1 downto 0) := "00";
         ResetCounterSize   : integer := 20;
         PRJ_ROOT           : string  := "../../..";
@@ -395,11 +396,12 @@ architecture rtl of AtomFpga_TangNano20K is
     signal ext_tube_do     : std_logic_vector(7 downto 0);
     signal ext_tube_ctrl   : std_logic_vector(5 downto 0); -- signals that use the LED output
 
-    -- Signals used for tracing 6502 activity (CImplDebug)
+    -- Signals used for tracing 6502 activity (CImplTrace)
     signal phi2            : std_logic;
     signal sync            : std_logic;
     signal rnw             : std_logic;
     signal data            : std_logic_vector (7 downto 0);
+    signal trace_ctrl      : std_logic_vector(5 downto 0); -- signals that use the LED output
 
     -- Signals for the memory controller
     signal mem_ready       : std_logic;
@@ -1143,7 +1145,51 @@ begin
     GenCoProNotExt: if not CImplCoProExt generate
     begin
         ext_tube_do  <= x"FE";
-        ext_tube_ctrl <= (others => '1');
+    end generate;
+
+    --------------------------------------------------------
+    -- 6502 Instruction Tracing via the debug connector
+    --------------------------------------------------------
+
+    -- Note: this has not been tested yet!
+
+    trace: if (CImplTrace) generate
+        signal data : std_logic_vector(7 downto 0);
+    begin
+        -- Debug connector:
+        --  1 = GND
+        --  2 = PHI2
+        --  3 = PWM_L
+        --  4 = PWM_R
+        --  5 = VGA_HS     data(7)
+        --  6 = LED0       sync
+        --  7 = LED1       rnw
+        --  8 = VGA_R      data(6)
+        --  9 = VGA_R_n    data(5)
+        -- 10 = VGA_G      data(4)
+        -- 11 = VGA_G_n    data(3)
+        -- 12 = VGA_B      data(2)
+        -- 13 = VGA_B_n    data(1)
+        -- 14 = VGA_VS     data(0)
+        -- 15 = LED2       '1' (nTube in case Pi present)
+        -- 16 = LED5       reset_n
+        -- 17 = LED4       '0'
+        -- 18 = LED3       '0;
+        -- 19 = KEY_CONF
+        -- 20 = GND
+        --
+        -- Note: data ordering is for simplicity of wiring, and
+        -- doesn't match the PiTube data ordering.
+        data <= ExternDout when ExternCE = '1' and rnw = '1' else ExternDin;
+        vga_hs  <= data(7);
+        vga_r   <= data(6);
+        vga_r_n <= data(5);
+        vga_g   <= data(4);
+        vga_g_n <= data(3);
+        vga_b   <= data(2);
+        vga_b_n <= data(1);
+        vga_vs  <= data(0);
+        trace_ctrl <= reset_n & "001" & rnw & sync;
     end generate;
 
     --------------------------------------------------------
@@ -1185,6 +1231,7 @@ begin
     normal_leds <= (led1 & led2 & "0000") xor "111111";
 
     led <= ext_tube_ctrl                      when CImplCoProExt                                  else
+           trace_ctrl                         when CImplTrace                                     else
            monitor_leds                       when CImplMonitor                                   else
            normal_leds;
 
