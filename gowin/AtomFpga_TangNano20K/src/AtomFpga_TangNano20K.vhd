@@ -577,6 +577,7 @@ begin
         CImplSampleExternData   => false,
         CImplVIA                => true,
         CImplProfilingCounters  => true,
+        CImplPalette            => true,
         MainClockSpeed          => 32000000,
         DefaultBaud             => 115200,
         DefaultTurbo            => DefaultTurbo
