@@ -40,6 +40,7 @@ entity AtomFpga_Core is
        CImplHDMI               : boolean := false;
        CImplVIA                : boolean := true;
        CImplProfilingCounters  : boolean := false;
+       CImplPalette            : boolean := false;
        CImplSampleExternData   : boolean := true;
        MainClockSpeed          : integer;
        DefaultBaud             : integer;
@@ -212,6 +213,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal sid_enable        : std_logic;
     signal uart_enable       : std_logic;
     signal counter_enable    : std_logic;
+    signal palette_enable    : std_logic;
     signal gated_we          : std_logic;
     signal video_ram_we      : std_logic;
     signal reg_we            : std_logic;
@@ -302,6 +304,18 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal p_reset           : std_logic;
     signal p_pause           : std_logic;
     signal p_reset_last      : std_logic;
+
+----------------------------------------------------
+-- Palette Signals
+----------------------------------------------------
+
+    signal palette_data    : std_logic_vector (7 downto 0);
+    signal red_int         : std_logic_vector (2 downto 0);
+    signal green_int       : std_logic_vector (2 downto 0);
+    signal blue_int        : std_logic_vector (2 downto 0);
+    signal vsync_int       : std_logic;
+    signal hsync_int       : std_logic;
+    signal blank_int       : std_logic;
 
 ----------------------------------------------------
 -- Unused port bits
@@ -459,17 +473,16 @@ begin
     end process;
 
     -- external ouputs
-    red(2 downto 0)   <= vdg_red & vdg_red & vdg_red;
-    green(2 downto 0) <= vdg_green1 & vdg_green0 & vdg_green0;
-    blue(2 downto 0)  <= vdg_blue & vdg_blue & vdg_blue;
-    vsync             <= vdg_vsync;
-    hsync             <= vdg_hsync;
-    blank             <= vdg_blank;
-    sid_audio_d       <= sid_audio_d_int;
-    sid_audio         <= sid_audio_int;
-    atom_audio        <= atom_audio_int;
-    mixed_audio       <= mixed_audio_int;
-
+    red         <= red_int;
+    green       <= green_int;
+    blue        <= blue_int;
+    vsync       <= vsync_int;
+    hsync       <= hsync_int;
+    blank       <= blank_int;
+    sid_audio_d <= sid_audio_d_int;
+    sid_audio   <= sid_audio_int;
+    atom_audio  <= atom_audio_int;
+    mixed_audio <= mixed_audio_int;
 
 --------------------------------------------------------
 -- HDMI
@@ -484,12 +497,12 @@ begin
         signal hdmi_blank : std_logic;
         signal hdmi_audio : std_logic_vector (15 downto 0);
     begin
-        hdmi_red   <= vdg_red & vdg_red & vdg_red & "00000";
-        hdmi_green <= vdg_green1 & vdg_green0 & vdg_green0 & "00000";
-        hdmi_blue  <= vdg_blue & vdg_blue & vdg_blue & "00000";
-        hdmi_blank <= vdg_blank;
-        hdmi_hsync <= vdg_hsync;
-        hdmi_vsync <= vdg_vsync;
+        hdmi_red   <= red_int   & "00000";
+        hdmi_green <= green_int & "00000";
+        hdmi_blue  <= blue_int  & "00000";
+        hdmi_blank <= blank_int;
+        hdmi_hsync <= hsync_int;
+        hdmi_vsync <= vsync_int;
         hdmi_audio <= std_logic_vector(mixed_audio_int);
 
         inst_hdmi : hdmi
@@ -955,6 +968,91 @@ begin
     end generate;
 
 ---------------------------------------------------------------------
+-- Palette
+---------------------------------------------------------------------
+
+    Inst_Palette: if (CImplPalette) generate
+
+        type palette_type is array (0 to 15) of std_logic_vector(5 downto 0);
+        signal palette : palette_type;
+        signal logical_colour  : std_logic_vector(3 downto 0);
+        signal physical_colour : std_logic_vector(5 downto 0);
+
+    begin
+
+        logical_colour <= vdg_red & vdg_green1 & vdg_green0 & vdg_blue;
+
+        process (clk_main)
+        begin
+            if rising_edge(clk_main) then
+                if RSTn = '0' then
+                    -- initializing like this mean the palette will be
+                    -- implemented with LUTs rather than as a block RAM
+                    palette(0)  <= "000000";
+                    palette(1)  <= "000011";
+                    palette(2)  <= "000100";
+                    palette(3)  <= "000111";
+                    palette(4)  <= "001000";
+                    palette(5)  <= "001011";
+                    palette(6)  <= "001100";
+                    palette(7)  <= "001111";
+                    palette(8)  <= "110000";
+                    palette(9)  <= "110011";
+                    palette(10) <= "110100";
+                    palette(11) <= "110111";
+                    palette(12) <= "111000";
+                    palette(13) <= "111011";
+                    palette(14) <= "111100";
+                    palette(15) <= "111111";
+                else
+                    -- write colour palette registers
+                    if cpu_clken = '1' and palette_enable = '1' and cpu_R_W_n = '0' then
+                        palette(conv_integer(cpu_addr(3 downto 0))) <= cpu_dout(7 downto 2);
+                    end if;
+                end if;
+            end if;
+        end process;
+
+        -- read colour palette registers
+        palette_data <= palette(conv_integer(cpu_addr(3 downto 0))) & "00";
+
+        -- Making this a synchronous process should improve the timing
+        -- and potentially make the pixels more defined
+        process (clk_vga)
+        begin
+            if rising_edge(clk_vga) then
+                if vdg_blank = '1' then
+                    physical_colour <= (others => '0');
+                else
+                    physical_colour <= palette(conv_integer(logical_colour));
+                end if;
+                -- Also register hsync/vsync so they are correctly
+                -- aligned with the colour changes
+                hsync_int <= vdg_hsync;
+                vsync_int <= vdg_vsync;
+                blank_int <= vdg_blank;
+            end if;
+        end process;
+
+        red_int   <= physical_colour(5 downto 4) & "0";
+        green_int <= physical_colour(3 downto 2) & "0";
+        blue_int  <= physical_colour(1 downto 0) & "0";
+
+    end generate;
+
+    Inst_NotPalette: if (not CImplPalette) generate
+
+        -- Simply pass through the VDG signals to the outputs
+        red_int   <= vdg_red    & vdg_red    & vdg_red;
+        green_int <= vdg_green1 & vdg_green0 & vdg_green0;
+        blue_int  <= vdg_blue   & vdg_blue   & vdg_blue;
+        hsync_int <= vdg_hsync;
+        vsync_int <= vdg_vsync;
+        blank_int <= vdg_blank;
+
+    end generate;
+
+---------------------------------------------------------------------
 -- Device enables
 ---------------------------------------------------------------------
 
@@ -969,6 +1067,7 @@ begin
         reg_enable        <= '0';
         uart_enable       <= '0';
         counter_enable    <= '0';
+        palette_enable    <= '0';
         ext_ramrom_enable <= '0';
         ext_bus_enable    <= '0';
 
@@ -996,6 +1095,12 @@ begin
                 elsif cpu_addr(11 downto 4)       = x"80" then -- 0xB80x 6522 VIA
                     if CImplVIA then
                         mc6522_enable <= '1';
+                    else
+                        ext_bus_enable <= '1';
+                    end if;
+                elsif cpu_addr(11 downto 4)       = x"D0" then -- 0xBD0x Palette
+                    if CImplPalette then
+                        palette_enable <= '1';
                     else
                         ext_bus_enable <= '1';
                     end if;
@@ -1052,6 +1157,7 @@ begin
         extern_data     when ext_ramrom_enable = '1'               else
         extern_data     when ext_bus_enable = '1'                  else
         p_counter_data  when counter_enable = '1' and CImplProfilingCounters else
+        palette_data    when palette_enable = '1' and CImplPalette else
         x"f1";          -- un-decoded locations
 
 --------------------------------------------------------
