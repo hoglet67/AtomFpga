@@ -973,10 +973,10 @@ begin
 
     Inst_Palette: if (CImplPalette) generate
 
-        type palette_type is array (0 to 15) of std_logic_vector(5 downto 0);
+        type palette_type is array (0 to 15) of std_logic_vector(7 downto 0);
         signal palette : palette_type;
         signal logical_colour  : std_logic_vector(3 downto 0);
-        signal physical_colour : std_logic_vector(5 downto 0);
+        signal physical_colour : std_logic_vector(7 downto 0);
 
     begin
 
@@ -988,33 +988,52 @@ begin
                 if RSTn = '0' then
                     -- initializing like this mean the palette will be
                     -- implemented with LUTs rather than as a block RAM
-                    palette(0)  <= "000000";
-                    palette(1)  <= "000011";
-                    palette(2)  <= "000100";
-                    palette(3)  <= "000111";
-                    palette(4)  <= "001000";
-                    palette(5)  <= "001011";
-                    palette(6)  <= "001100";
-                    palette(7)  <= "001111";
-                    palette(8)  <= "110000";
-                    palette(9)  <= "110011";
-                    palette(10) <= "110100";
-                    palette(11) <= "110111";
-                    palette(12) <= "111000";
-                    palette(13) <= "111011";
-                    palette(14) <= "111100";
-                    palette(15) <= "111111";
+                    --
+                    -- The default values map the logical colour
+                    -- direct to the phsical colour (i.e. an identity
+                    -- transform).
+                    --
+                    -- The mc6847 currently produced nine possible colours.
+                    --
+                    -- It can also produce:
+                    --   RRGGBB
+                    --   000100 - dark green text background
+                    --   010100 - dark orange text background
+                    -- but we don't the dark_backgnd option enabled.
+                    --
+                    -- A real 6847 also has seperate orange colours for:
+                    --   normal orange (semi graphics)
+                    --   bright orange (text)
+                    --
+                    --              21212100
+                    --              RRGGBBRG
+                    palette(0)  <= "00000000"; -- Black
+                    palette(1)  <= "00001100"; -- Blue
+                    palette(2)  <= "00010000";
+                    palette(3)  <= "00011100";
+                    palette(4)  <= "00100000";
+                    palette(5)  <= "00101100";
+                    palette(6)  <= "00110000"; -- Green
+                    palette(7)  <= "00111100"; -- Cyan
+                    palette(8)  <= "11000000"; -- Red
+                    palette(9)  <= "11001100"; -- Magenta
+                    palette(10) <= "11010000";
+                    palette(11) <= "11011100";
+                    palette(12) <= "11100000"; -- Orange
+                    palette(13) <= "11101100";
+                    palette(14) <= "11110000"; -- Yellow
+                    palette(15) <= "11111100"; -- White
                 else
                     -- write colour palette registers
                     if cpu_clken = '1' and palette_enable = '1' and cpu_R_W_n = '0' then
-                        palette(conv_integer(cpu_addr(3 downto 0))) <= cpu_dout(7 downto 2);
+                        palette(conv_integer(cpu_addr(3 downto 0))) <= cpu_dout;
                     end if;
                 end if;
             end if;
         end process;
 
         -- read colour palette registers
-        palette_data <= palette(conv_integer(cpu_addr(3 downto 0))) & "00";
+        palette_data <= palette(conv_integer(cpu_addr(3 downto 0)));
 
         -- Making this a synchronous process should improve the timing
         -- and potentially make the pixels more defined
@@ -1034,9 +1053,9 @@ begin
             end if;
         end process;
 
-        red_int   <= physical_colour(5 downto 4) & "0";
-        green_int <= physical_colour(3 downto 2) & "0";
-        blue_int  <= physical_colour(1 downto 0) & "0";
+        red_int   <= physical_colour(7 downto 6) & physical_colour(1);
+        green_int <= physical_colour(5 downto 4) & physical_colour(0);
+        blue_int  <= physical_colour(3 downto 2) & "0";
 
     end generate;
 
