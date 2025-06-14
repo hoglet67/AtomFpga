@@ -6,8 +6,8 @@ use ieee.numeric_std.all;
 entity AtomFpga_TangNano9K is
     generic (
         CImplCpu65c02      : boolean := false;
-        CImplDVIGowin      : boolean := false;
-        CImplDVIOpenSource : boolean := true;
+        CImplDVI           : boolean := false;
+        CImplHDMI          : boolean := true;
         CImplSDDOS         : boolean := false;
         CImplAtoMMC2       : boolean := true;
         CImplSID           : boolean := true;
@@ -81,6 +81,19 @@ architecture behavioral of AtomFpga_TangNano9K is
     signal reset           : std_logic;
     signal led1            : std_logic;
     signal led2            : std_logic;
+    signal config_counter  : std_logic_vector(20 downto 0) := (others => '0'); -- 16ms debounce
+    signal config_last     : std_logic := '0';
+
+    -- Signals used for HDMI video from the core
+    signal hdmi_audio_en   : std_logic;
+    signal hdmi_tmds_r     : std_logic_vector(9 downto 0);
+    signal hdmi_tmds_g     : std_logic_vector(9 downto 0);
+    signal hdmi_tmds_b     : std_logic_vector(9 downto 0);
+
+    -- Signals used for DVI video from this module
+    signal dvi_tmds_r     : std_logic_vector(9 downto 0);
+    signal dvi_tmds_g     : std_logic_vector(9 downto 0);
+    signal dvi_tmds_b     : std_logic_vector(9 downto 0);
 
     -- Signals used for VGA video from the core
     signal red             : std_logic_vector(2 downto 0);
@@ -396,6 +409,22 @@ begin
     -- On power up, wait for the flash bootstrap to complete before releasing the core
     hard_reset_n <= delayed_reset_n and not bootstrap_busy;
 
+    ConfigProcess : process (clock_main)
+    begin
+        if rising_edge(clock_main) then
+            if powerup_reset_n = '0' then
+                hdmi_audio_en <= '0';
+            elsif btn2_n = '0' then
+                config_counter <= (others => '1');
+            elsif config_counter(config_counter'high) = '1' then
+                config_counter <= config_counter - 1;
+            elsif config_last = '1' then
+                hdmi_audio_en <= not hdmi_audio_en;
+            end if;
+            config_last <= config_counter(config_counter'high);
+        end if;
+    end process;
+
     --------------------------------------------------------
     -- PSRAM
     --------------------------------------------------------
@@ -675,6 +704,7 @@ begin
     inst_AtomFpga_Core : entity work.AtomFpga_Core
     generic map (
         CImplCpu65c02           => CImplCpu65c02,
+        CImplHDMI               => CImplHDMI,
         CImplSDDOS              => CImplSDDOS,
         CImplAtoMMC2            => CImplAtoMMC2,
         CImplGraphicsExt        => true,
@@ -714,7 +744,12 @@ begin
         powerup_reset_n     => hard_reset_n,
         ext_reset_n         => ext_reset_n,
         int_reset_n         => open,
-        -- Video
+        -- HDMI Video
+        hdmi_audio_en       => hdmi_audio_en,
+        tmds_r              => hdmi_tmds_r,
+        tmds_g              => hdmi_tmds_g,
+        tmds_b              => hdmi_tmds_b,
+        -- VGA Video
         red                 => red,
         green               => green,
         blue                => blue,
@@ -757,48 +792,31 @@ begin
     );
 
     --------------------------------------------------------
-    -- DVI / HDMI output
+    -- DVI
     --------------------------------------------------------
 
-    rgb_r <= red   & "00000";
-    rgb_g <= green & "00000";
-    rgb_b <= blue  & "00000";
-    rgb_vs <= not vsync;
-    rgb_hs <= not hsync;
-    rgb_de <= not blank;
+    -- Encode vsync, hsync, blanking and rgb data to Transition-minimized differential signaling (TMDS) format.
 
-    -- This is Gowin's proprietaty (and encrypted) DVI encoder
-
-    dvi_gowin : if (CImplDVIGowin) generate
-        dvi_tx1 : DVI_TX_Top
-            port map (
-                I_rst_n => powerup_reset_n,
-                I_serial_clk => clock_hdmi,
-                I_rgb_clk => clock_vga,
-                I_rgb_vs => rgb_vs,
-                I_rgb_hs => rgb_hs,
-                I_rgb_de => rgb_de,
-                I_rgb_r => rgb_r,
-                I_rgb_g => rgb_g,
-                I_rgb_b => rgb_b,
-                O_tmds_clk_p => tmds_clk_p,
-                O_tmds_clk_n => tmds_clk_n,
-                O_tmds_data_p => tmds_d_p,
-                O_tmds_data_n => tmds_d_n
-                );
-    end generate;
 
     -- This is an opensource version from here:
     --     https://github.com/fcayci/vhdl-hdmi-out/tree/master
 
-    dvi_open_source : if (CImplDVIOpenSOurce) generate
-
-        -- TODO: The source for this could be made much smaller with some for/generate loops!
-
-        reset <= not powerup_reset_n;
+    dvi : if (CImplDVI) generate
+        signal ctrl         : std_logic_vector(1 downto 0);
+        signal rgb_r  : std_logic_vector(7 downto 0);
+        signal rgb_g  : std_logic_vector(7 downto 0);
+        signal rgb_b  : std_logic_vector(7 downto 0);
+        signal rgb_hs : std_logic;
+        signal rgb_vs : std_logic;
+        signal rgb_de : std_logic;
+    begin
+        rgb_r <= red   & "00000";
+        rgb_g <= green & "00000";
+        rgb_b <= blue  & "00000";
+        rgb_vs <= not vsync;
+        rgb_hs <= not hsync;
+        rgb_de <= not blank;
         ctrl  <= rgb_vs & rgb_hs;
-
-        -- Encode vsync, hsync, blanking and rgb data to Transition-minimized differential signaling (TMDS) format.
 
         tr : entity work.tmds_encoder(rtl)
             port map (
@@ -806,7 +824,7 @@ begin
                 en   => rgb_de,
                 ctrl => "00",
                 din  => rgb_r,
-                dout => encoded_r
+                dout => dvi_tmds_r
                 );
 
         tg : entity work.tmds_encoder(rtl)
@@ -815,7 +833,7 @@ begin
                 en   => rgb_de,
                 ctrl => "00",
                 din  => rgb_g,
-                dout => encoded_g
+                dout => dvi_tmds_g
                 );
 
         tb : entity work.tmds_encoder(rtl)
@@ -824,10 +842,27 @@ begin
                 en   => rgb_de,
                 ctrl => ctrl,
                 din  => rgb_b,
-                dout => encoded_b
+                dout => dvi_tmds_b
                 );
+    end generate;
 
-        --  Serialize the three 10-bit TMDS channels to three serialized 1-bit TMDS streams
+    --  Serialize the three 10-bit TMDS channels to three serialized 1-bit TMDS streams
+
+    hdmi_and_dvi: if CImplDVI or CImplHDMI generate
+        signal reset        : std_logic;
+        signal serialized_c : std_logic;
+        signal serialized_r : std_logic;
+        signal serialized_g : std_logic;
+        signal serialized_b : std_logic;
+        signal tmds_r       : std_logic_vector(9 downto 0);
+        signal tmds_g       : std_logic_vector(9 downto 0);
+        signal tmds_b       : std_logic_vector(9 downto 0);
+    begin
+
+        reset  <= '0'; --not powerup_reset_n;
+        tmds_r <= hdmi_tmds_r when CImplHDMI else dvi_tmds_r;
+        tmds_g <= hdmi_tmds_g when CImplHDMI else dvi_tmds_g;
+        tmds_b <= hdmi_tmds_b when CImplHDMI else dvi_tmds_b;
 
         ser_b : OSER10
             generic map (
@@ -839,16 +874,16 @@ begin
                 FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_b,
-                D0    => encoded_b(0),
-                D1    => encoded_b(1),
-                D2    => encoded_b(2),
-                D3    => encoded_b(3),
-                D4    => encoded_b(4),
-                D5    => encoded_b(5),
-                D6    => encoded_b(6),
-                D7    => encoded_b(7),
-                D8    => encoded_b(8),
-                D9    => encoded_b(9)
+                D0    => tmds_b(0),
+                D1    => tmds_b(1),
+                D2    => tmds_b(2),
+                D3    => tmds_b(3),
+                D4    => tmds_b(4),
+                D5    => tmds_b(5),
+                D6    => tmds_b(6),
+                D7    => tmds_b(7),
+                D8    => tmds_b(8),
+                D9    => tmds_b(9)
                 );
 
         ser_g : OSER10
@@ -861,16 +896,16 @@ begin
                 FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_g,
-                D0    => encoded_g(0),
-                D1    => encoded_g(1),
-                D2    => encoded_g(2),
-                D3    => encoded_g(3),
-                D4    => encoded_g(4),
-                D5    => encoded_g(5),
-                D6    => encoded_g(6),
-                D7    => encoded_g(7),
-                D8    => encoded_g(8),
-                D9    => encoded_g(9)
+                D0    => tmds_g(0),
+                D1    => tmds_g(1),
+                D2    => tmds_g(2),
+                D3    => tmds_g(3),
+                D4    => tmds_g(4),
+                D5    => tmds_g(5),
+                D6    => tmds_g(6),
+                D7    => tmds_g(7),
+                D8    => tmds_g(8),
+                D9    => tmds_g(9)
                 );
 
         ser_r : OSER10
@@ -883,16 +918,16 @@ begin
                 FCLK  => clock_hdmi,
                 RESET => reset,
                 Q     => serialized_r,
-                D0    => encoded_r(0),
-                D1    => encoded_r(1),
-                D2    => encoded_r(2),
-                D3    => encoded_r(3),
-                D4    => encoded_r(4),
-                D5    => encoded_r(5),
-                D6    => encoded_r(6),
-                D7    => encoded_r(7),
-                D8    => encoded_r(8),
-                D9    => encoded_r(9)
+                D0    => tmds_r(0),
+                D1    => tmds_r(1),
+                D2    => tmds_r(2),
+                D3    => tmds_r(3),
+                D4    => tmds_r(4),
+                D5    => tmds_r(5),
+                D6    => tmds_r(6),
+                D7    => tmds_r(7),
+                D8    => tmds_r(8),
+                D9    => tmds_r(9)
                 );
 
         ser_c : OSER10
@@ -948,6 +983,7 @@ begin
                 );
 
     end generate;
+
 
     -- Statemachine for debugging bootstrap failures
     --------------------------------------------------------

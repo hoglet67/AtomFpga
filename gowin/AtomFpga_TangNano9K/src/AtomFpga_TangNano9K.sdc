@@ -16,6 +16,9 @@ create_generated_clock -name clock_96 -source [get_ports {clock_27}] -master_clo
 set_clock_groups -asynchronous -group [get_clocks {clock_16}] -group [get_clocks {clock_25}]
 set_clock_groups -asynchronous -group [get_clocks {clock_25}] -group [get_clocks {clock_16}]
 
+// Ignore any timing paths from the SID to the video clock
+set_clock_groups -asynchronous -group [get_clocks {clock_32}] -group [get_clocks {clock_25}]
+
 // The PSRAM state machine is kicked off by a 0->1 of phi2 which is ~7 16MHz cycles after the CPU is "clocked"
 // 4/3 96MHz cycles is the smallest value that allows timing to be met
 // TODO: should we treat Phi2 as asynchronous and synchronise it?
