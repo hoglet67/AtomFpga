@@ -250,99 +250,99 @@
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="128"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="30"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/AtomGodilVideo.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/AtomGodilVideo.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="136"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="90"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/MC6847/CharRam.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/MC6847/CharRam.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="138"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="79"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/MC6847/CharRom.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/MC6847/CharRom.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="139"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="78"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/MINIUART/miniuart.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/MINIUART/miniuart.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="140"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="76"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/MINIUART/Rxunit.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/MINIUART/Rxunit.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="141"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="67"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/MINIUART/Txunit.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/MINIUART/Txunit.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="142"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="66"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/MINIUART/utils.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/MINIUART/utils.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="143"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="53"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/mouse/mouse_controller.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/mouse/mouse_controller.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="144"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="65"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/mouse/MouseRefComp.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/mouse/MouseRefComp.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="145"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="75"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/mouse/ps2interface.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/mouse/ps2interface.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="146"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="64"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/mouse/resolution_mouse_informer.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/mouse/resolution_mouse_informer.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="147"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="63"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/pointer/Pointer.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/pointer/Pointer.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="148"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="74"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/pointer/PointerRamBlack.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/pointer/PointerRamBlack.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="149"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="62"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/pointer/PointerRamWhite.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/pointer/PointerRamWhite.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="150"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="61"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/RAM/VideoRam.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/RAM/VideoRam.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="151"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="73"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/SID/sid_6581.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/SID/sid_6581.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="152"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="72"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/SID/sid_coeffs.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/SID/sid_coeffs.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="153"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="52"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/SID/sid_components.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/SID/sid_components.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="154"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="60"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/SID/sid_filters.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/SID/sid_filters.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="155"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="59"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/SID/sid_voice.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/SID/sid_voice.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="156"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="58"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/VGA80x40/ctrm.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/VGA80x40/ctrm.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="157"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="57"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/VGA80x40/losr.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/VGA80x40/losr.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="158"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="56"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/VGA80x40/vga80x40.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/VGA80x40/vga80x40.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="159"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="71"/>
     </file>
-    <file xil_pn:name="../src/common/AtomGodilVideo/MC6847/mc6847.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../AtomGodilVideo/src/MC6847/mc6847.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="160"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="77"/>
     </file>

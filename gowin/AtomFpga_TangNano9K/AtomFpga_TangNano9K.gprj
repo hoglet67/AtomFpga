@@ -15,29 +15,29 @@
         <File path="../../src/xilinx/spi_flash.vhd" type="file.vhdl" enable="1"/>
         <File path="../../src/common/AlanD/R65Cx2.vhd" type="file.vhdl" enable="1"/>
         <File path="../../src/common/AtomFpga_Core.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/AtomGodilVideo.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/MC6847/CharRam.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/MC6847/CharRom.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/MC6847/mc6847.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/MINIUART/Rxunit.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/MINIUART/Txunit.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/MINIUART/miniuart.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/MINIUART/utils.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/SID/sid_6581.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/SID/sid_coeffs.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/SID/sid_components.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/SID/sid_filters.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/SID/sid_voice.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/VGA80x40/ctrm.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/VGA80x40/losr.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/VGA80x40/vga80x40.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/mouse/MouseRefComp.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/mouse/mouse_controller.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/mouse/ps2interface.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/mouse/resolution_mouse_informer.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/pointer/Pointer.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/pointer/PointerRamBlack.vhd" type="file.vhdl" enable="1"/>
-        <File path="../../src/common/AtomGodilVideo/pointer/PointerRamWhite.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/AtomGodilVideo.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/MC6847/CharRam.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/MC6847/CharRom.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/MC6847/mc6847.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/MINIUART/Rxunit.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/MINIUART/Txunit.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/MINIUART/miniuart.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/MINIUART/utils.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/SID/sid_6581.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/SID/sid_coeffs.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/SID/sid_components.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/SID/sid_filters.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/SID/sid_voice.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/VGA80x40/ctrm.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/VGA80x40/losr.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/VGA80x40/vga80x40.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/mouse/MouseRefComp.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/mouse/mouse_controller.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/mouse/ps2interface.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/mouse/resolution_mouse_informer.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/pointer/Pointer.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/pointer/PointerRamBlack.vhd" type="file.vhdl" enable="1"/>
+        <File path="../../AtomGodilVideo/src/pointer/PointerRamWhite.vhd" type="file.vhdl" enable="1"/>
         <File path="../../src/common/AVR8/CommonPacks/avr_adr_pack.vhd" type="file.vhdl" enable="1"/>
         <File path="../../src/common/AVR8/CommonPacks/AVRuCPackage.vhd" type="file.vhdl" enable="1"/>
         <File path="../../src/common/AVR8/CommonPacks/spi_mod_comp_pack.vhd" type="file.vhdl" enable="1"/>
