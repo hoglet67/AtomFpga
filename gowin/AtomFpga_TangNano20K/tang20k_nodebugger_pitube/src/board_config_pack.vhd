@@ -7,6 +7,8 @@ package board_config_pack is
 
     constant G_CONFIG_TRACE    : boolean := false;
 
+    constant G_CORE_ID         : integer := -1;
+
 end board_config_pack;
 
 
