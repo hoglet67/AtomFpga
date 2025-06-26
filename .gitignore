@@ -18,6 +18,8 @@ altera/output_files/
 altera/AtomFpga_AlteraDE1.qws
 
 roms/tmp/
+roms/16K_avr.*
+roms/64K_avr.*
 
 src/xilinx/ipcore_dir/WatchEvents.asy
 src/xilinx/ipcore_dir/WatchEvents.gise
