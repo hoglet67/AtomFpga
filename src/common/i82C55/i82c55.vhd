@@ -39,7 +39,7 @@ begin
         if (RESET = '0') then
             r_porta  <= x"00";
             r_portb  <= x"00";
-            l_portc  <= x"0";
+            l_portc  <= x"F";
             h_portc  <= x"0";
             ctrl_reg <= x"00";
         elsif rising_edge(CLK) then
