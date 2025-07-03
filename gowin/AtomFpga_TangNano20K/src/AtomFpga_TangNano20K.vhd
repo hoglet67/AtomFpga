@@ -130,7 +130,7 @@ entity AtomFpga_TangNano20K is
         i2s_bclk        : out   std_logic;
         i2s_lrclk       : out   std_logic;
         i2s_din         : out   std_logic;
-        pa_en           : in    std_logic;
+        pa_en           : inout std_logic;
 
         -- 1-bit DAC Audio
         audiol          : out   std_logic;
@@ -418,6 +418,7 @@ architecture rtl of AtomFpga_TangNano20K is
 
     -- Multiboot
     signal reconfig        : std_logic;
+    signal pa_en_dout      : std_logic;
 
     -- LEDs
     signal multiboot_leds  : std_logic_vector(5 downto 0);
@@ -572,9 +573,11 @@ begin
             btn3            => key_conf,
             jumper          => jumper,
             led             => multiboot_leds,
+            pa_en_dout      => pa_en_dout,
             reconfig        => reconfig
             );
 
+    pa_en      <= '0' when pa_en_dout = '0' else 'Z';
     reconfig_n <= '0' when reconfig = '1' else 'Z';
 
     --------------------------------------------------------
