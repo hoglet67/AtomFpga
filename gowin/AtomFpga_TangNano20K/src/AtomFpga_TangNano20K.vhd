@@ -425,6 +425,12 @@ architecture rtl of AtomFpga_TangNano20K is
     signal normal_leds     : std_logic_vector(5 downto 0);
     signal monitor_leds    : std_logic_vector(5 downto 0);
 
+    -- Serial
+    signal avr_tx          : std_logic;
+    signal avr_rx          : std_logic;
+    signal serial_tx       : std_logic;
+    signal serial_rx       : std_logic;
+
 begin
 
     --------------------------------------------------------
@@ -545,7 +551,7 @@ begin
     begin
         if rising_edge(clock_main) then
             if powerup_reset_n = '0' then
-                hdmi_audio_en <= jumper(4) or jumper(5);
+                hdmi_audio_en <= jumper(4);
             elsif btn2 = '1' then
                 config_counter <= (others => '1');
             elsif config_counter(config_counter'high) = '1' then
@@ -597,7 +603,7 @@ begin
         CImplVGA80x40           => true,
         CImplHWScrolling        => true,
         CImplMouse              => true,
-        CImplUart               => false,    -- Need a way of switching UART vs AVR
+        CImplUart               => true,
         CImplDoubleVideo        => true,
         CImplRamRomNone         => false,
         CImplRamRomPhill        => false,
@@ -664,10 +670,10 @@ begin
         SDCLK               => tf_sclk,
         SDMOSI              => tf_mosi,
         -- Serial
-        uart_RxD            => '1',
-        uart_TxD            => open,
-        avr_RxD             => uart_rx,
-        avr_TxD             => uart_tx,
+        uart_RxD            => serial_rx,
+        uart_TxD            => serial_tx,
+        avr_RxD             => avr_rx,
+        avr_TxD             => avr_tx,
         -- Cassette
         cas_in              => '0',
         cas_out             => open,
@@ -1283,5 +1289,9 @@ begin
 
     audiol <= sid_audio;
     audior <= atom_audio;
+
+    uart_tx   <= avr_tx  when CImplDebugger and jumper(5) = '1' else serial_tx;
+    serial_rx <= '0'     when CImplDebugger and jumper(5) = '1' else uart_rx;
+    avr_rx    <= uart_rx when CImplDebugger and jumper(5) = '1' else '1';
 
 end architecture;
