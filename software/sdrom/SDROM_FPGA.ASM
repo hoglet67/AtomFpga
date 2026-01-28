@@ -12,7 +12,7 @@
 
 INCLUDE_VIA equ FALSE
 INCLUDE_SDHC equ TRUE
-SPI_PORT equ $BC00
+SPI_PORT equ $B400
 
 start_asm
              include math-lib.inc
