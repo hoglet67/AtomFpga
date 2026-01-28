@@ -10,7 +10,7 @@
 ;    232 -    463    DISK IMAGE 0001
 ;   ..        ..           ..
 ;   ..        ..           ..
-; 104432 - 204631    DISK IMAGE 1022   
+; 104432 - 204631    DISK IMAGE 1022
 ;
 ;------------------------------------------------------
 ; DISKTABLE (16 bytes)
@@ -84,7 +84,7 @@ sd_sector_r             LDA sector
                         LDA sector+2
                         STA dum_hi
 
-.IF debug 
+.IF debug
                         STA stack1
                         STX stack2
                         STY stack3
@@ -112,7 +112,7 @@ sd_sector_r             LDA sector
 
 read_dir                ASL dum_lo       ; adres = $3000 + sect * 512
 
-                        CLC        
+                        CLC
                         LDA dum_lo
                         ADC #>sdbase
                         STA adres_hi
@@ -181,7 +181,7 @@ sd_sector_w             LDA sector
                         LDA sector+2
                         STA dum_hi
 
-.IF debug 
+.IF debug
                         STA stack1
                         STX stack2
                         STY stack3
@@ -207,7 +207,7 @@ sd_sector_w             LDA sector
 
                         ASL dum_lo       ; adres = $3000 + sect * 512
 
-                        CLC        
+                        CLC
                         LDA dum_lo
                         ADC #>sdbase
                         STA adres_hi

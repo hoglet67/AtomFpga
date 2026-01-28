@@ -3,8 +3,8 @@
 ; v01.07 !!!!!!!!!!! FINAL VERSION FOR SDROM v1 !!!!!!!!!!!!!!!!!!
 ; v02.00 !!!!!!!!!!! FINAL VERSION FOR SDROM v2 !!!!!!!!!!!!!!!!!!
 ; v02.10 !!!!!!!!!!! FINAL VERSION FOR SDROM v2.1 !!!!!!!!!!!!!!!!
-; v02.20 !!!!!!!!!!! FINAL VERSION FOR SDROM v2.2 !!!!!!!!!!!!!!!! 
-; v02.30 !!!!!!!!!!! #Exxx VERSION FOR SDROM v2.3 !!!!!!!!!!!!!!!! 
+; v02.20 !!!!!!!!!!! FINAL VERSION FOR SDROM v2.2 !!!!!!!!!!!!!!!!
+; v02.30 !!!!!!!!!!! #Exxx VERSION FOR SDROM v2.3 !!!!!!!!!!!!!!!!
 ;=================================================================
 
 ;=================================================================
@@ -77,7 +77,7 @@ FKIDX		equ $3CA
    bvs initialise
 
    ; don't initialise the firmware
-   ; the E000 build 
+   ; the E000 build
    jmp   $c2b2             ; set #2900 text space and enter command handler
 
 initialise:
@@ -131,7 +131,7 @@ osrdchcode:
    cld
    stx   $e4
    sty   $e5
-	
+
    ldx   FKIDX
    lda   fakekeys,x
    cmp	#$0d
@@ -153,7 +153,7 @@ osrdchcode_unhook:
    sta   RDCVEC
    lda   #$fe
    sta   RDCVEC+1
-   
+
    lda 	#$0d
    pha
    jmp 	$fe5c
@@ -257,7 +257,7 @@ star_com5       STY $9A
                 LDA #$0D
                 STA ($5),Y
 
-                RTS 
+                RTS
 
 ;=================================================================
 ; COMMAND TABLE
@@ -411,7 +411,7 @@ cat3            jsr $FFF4
                 jsr prt16dec
 
 cat4            ldy #$00
-                jsr cat7 
+                jsr cat7
                 bcc cat14
 cat5            jsr LE109              ; Y=Y-8
                 lda $2008,Y
@@ -547,7 +547,7 @@ delete          JSR chk_name           ; Check legal name
 
                 JSR chk_disk_wp        ; Check disk protected
 
-                LDY $9A     
+                LDY $9A
                 JSR file_del           ; Delete file from catalog
 
                 JSR catalog_w          ; Save catalog from $2000
@@ -568,7 +568,7 @@ delete1         JSR prttxt             ; Error, file was protected
 
 dir             JSR drive              ; Check if <drvno> given
                 JMP catalog_r          ; If changed, read catalog
-  
+
 ;-----------------------------------------------------------------
 ; *DRIVE <drvno>
 ;
@@ -612,7 +612,7 @@ info            JSR chk_name            ; Check legal name
 infall          JSR catalog_r          ; Read catalog into $2000
                 LDY #0
                 STY $9A
-                
+
 infall1         JSR file_info1          ; Print file info
                 LDY $9A
                 JSR LE100              ; Pointer to next file
@@ -637,7 +637,7 @@ infall1         JSR file_info1          ; Print file info
 load            JSR read_filename      ; Copy filename into $140
 
                 LDX #$9C               ; Read loadaddress at $9C
-                JSR read_opt_addr      
+                JSR read_opt_addr
                 BEQ load1              ; If no loadaddress, jump
                 LDA #$FF               ; Mark loadaddress given
                 STA $9E
@@ -691,7 +691,7 @@ lodvec1         LDA catbuf+$108,Y      ; Copy fileinfo to $9C
                 JSR file_info          ; Print file info
 
 lodvec2         LDA backup_qual        ; Restore qual
-                STA qual                
+                STA qual
                 RTS
 
 ;-----------------------------------------------------------------
@@ -706,7 +706,7 @@ lodvec2         LDA backup_qual        ; Restore qual
 ;-----------------------------------------------------------------
 
 loadfile        JSR calc_startsector   ; Calculate start of file
-                
+
                 BIT RWTMP              ; Check if startsec is odd
                 BMI loadfile1
                 JMP loadfile2
@@ -735,7 +735,7 @@ loadfile6       DEC RWLEN
                 INY
                 BNE loadfile5
 
-                INC RWPTR+1            ; Mempointer + 256 
+                INC RWPTR+1            ; Mempointer + 256
 
                 DEX                    ; Check if 512 bytes read
                 BNE loadfile4
@@ -787,7 +787,7 @@ lock            SEC                    ; Set lockflag
 ;-----------------------------------------------------------------
 
 mon             LDX #0                 ; Monitorflag=true
-mon2            
+mon2
                 JSR chk_end_command    ; Check end of command
                 STX mon_flag           ; Set Monitorflag
 
@@ -885,7 +885,7 @@ SAVVEC          JSR name_check         ; Check legal name
                 JSR catalog_r          ; Read catalog into $2000
                 JSR chk_disk_wp        ; Check disk protected
                 JSR lookup1            ; Find name in catalog
-                BCC savvec1            
+                BCC savvec1
                 JSR file_del           ; Delete file from catalog
 
 savvec1         LDA $A0                ; Save startadres
@@ -952,7 +952,7 @@ savvec8         LDA $A5,X
                 INX
                 CPX #8
                 BNE savvec8
- 
+
 savvec9         LDA $9B,X              ; Save addresses
                 DEY
                 STA catbuf+$108,Y
@@ -1046,7 +1046,7 @@ savefile1       JSR savefile8          ; Read sector in $2300-$24FF
 savefile2       LDA RWLEN              ; Check if end is odd
                 CMP #1
                 BNE savefile3
- 
+
                 JSR savefile8          ; Read sector in $2300-$24FF
                 JSR savefile9
 
@@ -1069,7 +1069,7 @@ savefile4       JSR write_256bytes     ; Write RWPTR(256)
                 BNE savefile5
                 INC sector+1
                 BNE savefile5
-                INC sector+2                
+                INC sector+2
 savefile5       JMP savefile2
 
 savefile6       CPX #2                 ; Check if end is odd
@@ -1085,7 +1085,7 @@ savefile8       TXA
                 PHA
 
                 LDA RWPTR              ; Save RWPTR
-                STA RWTMP+1 
+                STA RWTMP+1
                 LDA RWPTR+1
                 STA RWTMP+2
 
@@ -1095,7 +1095,7 @@ savefile8       TXA
                 PLA
                 TAX
                 RTS
-                
+
 savefile9       LDA RWTMP+2            ; Restore RWPTR
                 STA RWPTR+1
                 LDA RWTMP+1
@@ -1137,7 +1137,7 @@ set             LDY $3                 ; Load commandpointer
 
 title           JSR read_filename      ; Copy filename into $140
                 JSR catalog_r          ; Read catalog into $2000
-               
+
                 LDX #$FF               ; Check string length<=13
 title1          INX
                 LDA $140,X
@@ -1151,10 +1151,10 @@ title2          JSR prttxt             ; Error, NAME
                 .db 'NAME?'
                 NOP
                 BRK
- 
+
 title3          LDA cur_drive          ; Get current disknr
                 JSR drive2disk
-    
+
 title4          JSR status_disk_r      ; Read status into $2300
                 JSR chk_disk_wp        ; Check disk protected
 
@@ -1290,7 +1290,7 @@ exec_file1
 ;
 ; Input:  Y = pointer just after command
 ;
-; Output: $100 contains parameter string 
+; Output: $100 contains parameter string
 ;-----------------------------------------------------------------
 
 copy_parm       JSR skip_space         ; Skip spaces
@@ -1379,7 +1379,7 @@ name_check5     JMP title2             ; Error, NAME?
 
 name_lookup     JSR lookup1            ; Find filename in catalog
                 BCS name_check4
-                
+
                 JSR prttxt
                 .db 'FILE?'
                 NOP
@@ -1563,7 +1563,7 @@ file_del2       JMP delete1
 ;     *COS                  , Init COS
 ;     *DOS                  , Init DOS
 ;     *DIN <drvnr>,<dsknr>  , Link disk image <dsknr> to drive <drvnr>
-;     *DCAT <from>,<to>     , List formatted disk images from to               
+;     *DCAT <from>,<to>     , List formatted disk images from to
 ;     *DDISKS               , List linked drives and disk images
 ;     *DPROT <dsknr>        , Protect disk <dsknr>
 ;     *DUNPROT <dsknr>      , Unprotect disk <dsknr>
@@ -1588,7 +1588,7 @@ sddos_stamp     .db 'SDDOS   '
 sddos           JSR sd_init            ; Hardware init SD card
 
                 JSR bootsector_r       ; Read bootsector in sectbuf
-                
+
                 LDY #7                 ; Check format SD-card
 sddos1          LDA sectbuf+8,Y
                 CMP sddos_stamp,Y
@@ -1682,7 +1682,7 @@ disk3           equ workspace+6
 din             JSR get_drivenr                 ; Read drivenr
                 JSR get_disknr                  ; Read disknr
                 JSR chk_end_command
-                
+
 din1            LDX #$FF                        ; NODISK if disk in use
                 _BNE16 disknr,disk0,din2        ; Disk in drive0?
                 STX disk0
@@ -1777,7 +1777,7 @@ dcat3           LDX disk_from                   ; Load statussector
                 LDA filter
                 BEQ dcat4
 
-                LDY #0 
+                LDY #0
                 LDA (pointer),Y
                 CMP filter
                 BNE dcat5
@@ -1789,7 +1789,7 @@ dcat4           LDX disk_from                   ; Print disknr+name
 
                 INC disk_count                  ; Increment disk counter
                 BNE dcat5
-                INC disk_count+1  
+                INC disk_count+1
 
 dcat5           INC disk_from                   ; Next disk
                 BNE dcat6
@@ -1848,7 +1848,7 @@ ddisks2         JSR prttxt
                 .db '   -'                     ; Print '-' = NODISK
                 NOP
                 JSR newline
-       
+
 ddisks3         INC drivenr                    ; Next drive
                 LDA drivenr
                 CMP #4
@@ -1866,7 +1866,7 @@ ddisks3         INC drivenr                    ; Next drive
 
 dprot           JSR get_disknr                  ; Read disknr
                 JSR chk_end_command
-                
+
                 JSR status_disk_r               ; Read status into $2300
                 JSR chk_disk_valid
 
@@ -1887,7 +1887,7 @@ dprot           JSR get_disknr                  ; Read disknr
 
 dunprot         JSR get_disknr                  ; Read disknr
                 JSR chk_end_command
-                
+
                 JSR status_disk_r               ; Read status into $2300
                 JSR chk_disk_valid
 
@@ -1972,7 +1972,7 @@ dfree4          _BLE16I free_disk,1022,dfree1   ; Check end
 
 dkill           JSR get_disknr                  ; Read disknr
                 JSR chk_end_command
-                
+
                 JSR status_disk_r               ; Read status into $2300
                 JSR chk_disk_valid
                 JSR chk_wp
@@ -1985,7 +1985,7 @@ dkill           JSR get_disknr                  ; Read disknr
                 PHA
                 JSR prtchr
                 PLA
-                CMP #'Y'              
+                CMP #'Y'
                 BEQ dkill1
                 JMP newline
 
@@ -2001,7 +2001,7 @@ dkill1          JSR newline
 ; DRESTORE <dno>
 ;
 ;
-;   Mark SD-diskimage <dno> as formatted without erasing the 
+;   Mark SD-diskimage <dno> as formatted without erasing the
 ;   diskcatalog
 ;
 ;    <dno> 0-1022
@@ -2009,7 +2009,7 @@ dkill1          JSR newline
 
 drestore        JSR get_disknr                  ; Read disk_from
                 JSR chk_end_command
-                
+
 drestore1       JSR status_disk_r               ; Read status into $2300
 
                 LDY #$F                         ; Protect disk
@@ -2022,7 +2022,7 @@ drestore1       JSR status_disk_r               ; Read status into $2300
 ;-----------------------------------------------------------------
 ; DNEW (<drv>)
 ;
-; 
+;
 ;   Finds the first unformatted SD-diskimage and install it in
 ;   drive <drv>
 ;
@@ -2033,7 +2033,7 @@ dsk_count       equ work
 
 dnew            JSR drive                       ; Check for drivenr
                 JSR chk_end_command
-                
+
                 LDA #0                          ; Reset disk counter
                 STA dsk_count
                 STA dsk_count+1
@@ -2093,7 +2093,7 @@ dnew4           JMP newline
 
 dform           JSR get_disknr                  ; Read disknumber
                 JSR chk_end_command
-                
+
                 JSR status_disk_r               ; Read status into $2300
                 JSR chk_disk_valid
                 JSR chk_wp
@@ -2106,7 +2106,7 @@ dform           JSR get_disknr                  ; Read disknumber
                 PHA
                 JSR prtchr
                 PLA
-                CMP #'Y'              
+                CMP #'Y'
                 BEQ dform2
                 JMP newline
 
@@ -2147,7 +2147,7 @@ dform4          LDA catbuf-8+$100,X
                 BNE dform4
 
                 JSR status_disk_w               ; Write status from $2300
-   
+
                 JMP diskchange                  ; Set diskchangeflag
 
 ;-----------------------------------------------------------------
@@ -2162,7 +2162,7 @@ dform4          LDA catbuf-8+$100,X
 donboot         JSR get_drivenr                 ; Read drivenr
                 JSR get_disknr                  ; Read disknr
                 JSR chk_end_command
-                
+
                 JSR bootsector_r                ; Read disktable
 
                 LDA drivenr                     ; Set drivenr
@@ -2174,7 +2174,7 @@ donboot         JSR get_drivenr                 ; Read drivenr
                 STA sectbuf+1,Y
 
                 JMP bootsector_w                ; Save disktable
- 
+
 ;-----------------------------------------------------------------
 ; DHELP
 ;
@@ -2291,7 +2291,7 @@ statussector_r  JSR calc_statsector
 status_disk_r   LDX disknr                      ; Convert diskno->sector
                 LDY disknr+1
                 JMP statussector_r              ; read status into $2300
- 
+
 ;-----------------------------------------------------------------
 ; RWPTR  = $2300
 ;
@@ -2302,7 +2302,7 @@ statussector_w  JSR calc_statsector
 status_disk_w   LDX disknr                      ; Convert diskno->sector
                 LDY disknr+1
                 JMP statussector_w              ; read status into $2300
- 
+
 ;-----------------------------------------------------------------
 ; RWPTR  = $2000
 ;
@@ -2340,7 +2340,7 @@ catalog_r5      JSR calc_catsector              ; Calculate startsector cat
                 JSR sd_sector_r
 
                 LDA cur_drive                   ; Clear diskchangeflag
-                ORA #changebit 
+                ORA #changebit
                 STA cur_drive
 
 catalog_r6      LDA cur_status
@@ -2354,7 +2354,7 @@ catalog_w       JSR calc_catsector              ; Calculate startsector cat
                 JSR sd_sector_w
 
                 LDA cur_drive                   ; Clear diskchangeflag
-                ORA #changebit 
+                ORA #changebit
                 STA cur_drive
 
                 RTS
@@ -2366,7 +2366,7 @@ catalog_w       JSR calc_catsector              ; Calculate startsector cat
 ;-----------------------------------------------------------------
 ; calc_startsector
 ;
-;   Calculate startsector 
+;   Calculate startsector
 ;    = Startsector SD-diskimage + 0,5 x Startsector File AtomDOS
 ;   Bit 7 of RWTMP is set if Startsector File AtomDOS is odd
 ;-----------------------------------------------------------------
@@ -2439,7 +2439,7 @@ calc_stat2      LSR sector+1
                 STA pointer
                 LDA pointer+1
                 ADC #>sectbuf
-                STA pointer+1 
+                STA pointer+1
                 RTS
 
 ;-----------------------------------------------------------------
@@ -2517,7 +2517,7 @@ add_cur_sector	CLC                            ; sector = sector + tmp_sector
 
 get_drivenr     JSR read_num                    ; Read parameter
                 STA drivenr                     ; Error if drivenr>3
-                CMP #4       
+                CMP #4
                 BCS get_drivenr1
                 LDA drivenr
                 RTS
@@ -2589,7 +2589,7 @@ prt16dec        LDA columnwidth                 ; Save @
 prt16disk       ldx disknr
                 ldy disknr+1
                 jmp prt16dec
-                
+
 
 ;-----------------------------------------------------------------
 ; DRIVE2DISK, Read disknr in drive A
@@ -2615,7 +2615,7 @@ drive2disk      ASL A
 ;-----------------------------------------------------------------
 
 print_line      JSR prt16dec                    ; Print disknr
-                
+
                 LDA #' '                        ; Print ' '
                 JSR prtchr
 
@@ -2627,7 +2627,7 @@ print_line1     LDA (pointer),Y
 print_line2     JSR prtchr
                 INY
                 CPY #13
-                BNE print_line1      
+                BNE print_line1
 
                 LDA #' '                        ; Print ' '
                 JSR prtchr
@@ -2652,7 +2652,7 @@ chk_name1       JSR name_check         ; Check legal name
                 RTS
 
 ;-----------------------------------------------------------------
-; Check for end of command, #0D 
+; Check for end of command, #0D
 ;-----------------------------------------------------------------
 
 chk_end_command LDY $3

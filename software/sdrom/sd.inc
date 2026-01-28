@@ -18,7 +18,7 @@
 ;    232 -    463    DISK IMAGE 0001
 ;   ..        ..           ..
 ;   ..        ..           ..
-; 104432 - 204631    DISK IMAGE 1022   
+; 104432 - 204631    DISK IMAGE 1022
 ;
 ;------------------------------------------------------
 ; DISKTABLE (16 bytes)
@@ -104,7 +104,7 @@ sd_init
            sta XFERV+1
 .ENDIF
            lda #$80                         ; interface type PL8
-           sta IFTYPE 
+           sta IFTYPE
            jsr init_card                    ; carry set if card reset OK
 
            bcs di_detected
@@ -115,25 +115,25 @@ forcevia:
            sta XFERV
            lda #>xferbyte_via
            sta XFERV+1
-    
+
            lda #$40                         ; interface type VIA
-           sta IFTYPE 
-              
+           sta IFTYPE
+
            jsr wakemmc_via                  ; initialisation sequence for VIA type interface
            jsr init_card
            bcs di_detected
-             
+
            lda #<iferr                      ; no interface detected
            sta XFERV
            lda #>iferr
            sta XFERV+1
 .ENDIF
-            
+
            lda #0
            sta IFTYPE
-             
+
            jmp iferr
-           
+
 di_detected:
            rts
 
@@ -166,7 +166,7 @@ rx1        jsr OSXFERFF
            dex
            bne rx1
            jmp read_end
-          
+
 ;-----------------------------------------------------------------
 ; SD_sector_W
 ;
@@ -196,11 +196,11 @@ wx1        lda (RWPTR),y
 
 read_start
            jsr sectortocmdbuf
-            
+
            lda #$40+$11               ; do command $11 - read sector
            jsr sendcommand
            bne notreadyerror
-             
+
            lda #$fe
            jmp awaitvalue             ; fails with response error
 
@@ -210,7 +210,7 @@ read_start
 
 read_end   jsr OSXFERFF
            jsr OSXFERFF
-            
+
            jmp deselectcard
 
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
@@ -219,13 +219,13 @@ read_end   jsr OSXFERFF
 
 write_start
            jsr sectortocmdbuf
-            
+
            lda #$40+$18               ; do command $18 - write sector
            jsr sendcommand
            beq bw_isready
 
            jmp notreadyerror
-bw_isready             
+bw_isready
            lda #$fe
            jmp OSXFER
 
@@ -239,10 +239,10 @@ notreadyerror:
 ; write_end
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 
-write_end             
+write_end
            jsr OSXFERFF
            jsr OSXFERFF
-            
+
            jsr OSXFERFF
 
            lda #$FF
@@ -285,31 +285,31 @@ xferbyte_pl8:
 xferbyte_via:
            stx XBTEMP
            sty XBTEMP+1
-            
+
            ldy #8
-            
+
 xb_xferbit:
            pha
-            
+
            and #MOSI         ; present data with CS, CLK low
            sta VIA           ; it's necessary to write this before the clock rises
            ora #CLK          ; bring clock high
            sta VIA
-             
+
            ldx VIA           ; read data
-             
+
            eor #CLK          ; bring clock low
            sta VIA
-             
+
            txa               ; rx'd data into carry
            ror a
-             
+
            pla
            rol a             ; 7<-next bit, 0<-rx'd data
-            
+
            dey
            bne xb_xferbit
-             
+
            ldy XBTEMP+1
            ldx XBTEMP
            rts
@@ -334,7 +334,7 @@ init_card:
            sta $34,x
            sta $43,x
 
-; send CMD0             
+; send CMD0
            lda #$40
            jsr sendcommand
            cmp #1                  ; expect response 'card gone idle'
@@ -346,7 +346,7 @@ init_card:
 ; After the card enters idle state with a CMD0, send a CMD8 with
 ; argument of 0x000001AA and correct CRC prior to initialization
 ; process.
- 
+
 ; send CMD8
            lda #$01
            sta $25,x
@@ -367,7 +367,7 @@ init_card:
 ; If accepted, R7 response (R1(0x01) + 32-bit return value) will be
 ; returned. The lower 12 bits in the return value 0x1AA means that the
 ; card is SDC version 2 and it can work at voltage range of 2.7 to 3.6
-; volts. If not the case, the card should be rejected. 
+; volts. If not the case, the card should be rejected.
 
            jsr OSXFERFF
            jsr OSXFERFF
@@ -402,21 +402,21 @@ send_acmd41:
            dec RWTEMP
            bne send_acmd41
            beq ic_noresponse
-           
+
 
 card_type_sd:
 
 .ENDIF ; INCLUDE_SDHC
-             
+
 ; reset card - try ACMD1 first
            lda #$40+41
            jsr sendcommand
            beq ic_initaccepted
-             
+
 ; try CMD1
            lda #0
            sta RWTEMP
-             
+
 ic_sendcmd1:
            lda #$40+1
            jsr sendcommand
@@ -427,7 +427,7 @@ ic_sendcmd1:
 ic_noresponse:
            clc
            rts
-            
+
 .IFTRUE INCLUDE_SDHC
 ; After the initialization completed, read OCR register with CMD58 and
 ; check CCS flag (bit 30). When it is set, the card is a high-capacity
@@ -468,20 +468,20 @@ ic_initaccepted:
 wakemmc_via:
           lda #CS+CLK+MOSI
           sta VIA              ; clk=high, cs=high, mosi=high
-            
+
           lda #$fe
           sta VIA+2            ; ddrb = %1111-1110. bit 0 input, rest output
 
           lda #CS+CLK+MOSI
           ldx #CS+MOSI
           ldy #88
-             
+
 wm_clockit:
           sta VIA
           stx VIA
           dey
           bne wm_clockit
-             
+
           rts
 .ENDIF
 
@@ -504,10 +504,10 @@ sendcommand:
 .ENDIF
 sendcommand_with_crc:
             pha
-             
+
             lda IFTYPE
             beq sc_goforth
-             
+
             jsr selectcard
             jsr OSXFERFF      ; shoot a blank
             pla
@@ -527,23 +527,23 @@ sendcommand_with_crc:
             lda #$95         ; dummy checksum, only required for cmd0.
 .ENDIF
             jsr OSXFER
-             
+
 ; wait to receive a byte with bit 7 clear
-             
+
             ldy #0
-             
+
 sc_wn:
             dey
             beq sc_ou
-             
+
             jsr OSXFERFF
             and #$ff
             bmi sc_wn
-             
+
 sc_ou:
             cmp #0
             rts
-             
+
 sc_goforth:
             jmp iferr         ; error0329
 
@@ -554,18 +554,18 @@ sc_goforth:
 selectcard:
             lda #MOSI            ; select card, set MOSI high
             bne cd_setstate      ; always
-             
+
 ;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~;~~
 ;
 ; deselect card
 ;
 deselectcard:
            lda #MOSI+CS
-             
+
 cd_setstate:
 .IFTRUE INCLUDE_VIA
            bit IFTYPE
-           bmi sc_pl8             
+           bmi sc_pl8
            sta VIA
            ldx #0
            dex
@@ -591,20 +591,20 @@ awaitvalue:
            ldx #$10
            ldy #0
            sta RWTEMP
-             
+
 av_await:
            dey
            bne av_await2:
            dex
            beq responseerror
-av_await2:           
-            
+av_await2:
+
            jsr OSXFERFF
            cmp RWTEMP
            bne av_await
-            
+
            rts
-            
+
 responseerror:
            jsr prttxt                 ; bail if we just can't get it
 .IFTRUE INCLUDE_SDHC
@@ -661,4 +661,3 @@ OSXFER:
 .ELSE
             jmp xferbyte_pl8
 .ENDIF
-

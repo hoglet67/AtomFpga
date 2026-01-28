@@ -911,7 +911,7 @@ _ADD16I	.MACRO VLA,NUM,RES
 		 STA RES+1
 .MACEND
 
-; Add a 32 bit memory var VLA together with a 
+; Add a 32 bit memory var VLA together with a
 ; 16 bit memory var VLB and store the result in
 ; another 32 bit memory location.
 ; RES may be the same as VLA.
@@ -1192,7 +1192,7 @@ _NEXT#		_ASL16 VLB,VLB
 ;
 ; On exit: A = ??, X = $FF, Y is unchanged.
 ;
-           
+
 _MUL16X	.MACRO VLA,VLB,RES
 		LDA #$00		; clear p2 and p3 of product
 		STA RES+2
@@ -1241,7 +1241,7 @@ _NEXT#		_ASL32 VLB,VLB
 ;
 ; On exit: A = ??, X = $FF, Y is unchanged.
 ;
-           
+
 _MUL16I	.MACRO VLA,NUM,RES
 		LDA #$00		; clear p2 and p3 of product
 		STA RES+2
@@ -1265,13 +1265,13 @@ align#	ROR A			; rotate four-byte product right
 		BNE nxtbt#		; loop until 16 bits are done
 .MACEND
 
-; Calculate the 32 bit product of a 32 bits number at 
+; Calculate the 32 bit product of a 32 bits number at
 ; location VLA with a 16 bits integer NUM.
 ; The number at location VLA is destroyed.
 ;
 ; On exit: A = ??, X = $FF, Y is unchanged.
 ;
-           
+
 _MUL32I	.MACRO VLA,NUM,RES
 		LDA #$00		; clear p2 and p3 of product
 		STA RES+2
@@ -1297,13 +1297,13 @@ align#	ROR A			; rotate four-byte product right
 		BNE nxtbt#		; loop until 16 bits are done
 .MACEND
 
-; Calculate the 32 bit product of a 32 bits number at 
+; Calculate the 32 bit product of a 32 bits number at
 ; location VLA with a 16 bits number at location VLB.
 ; The number at location VLA is destroyed.
 ;
 ; On exit: A = ??, X = $FF, Y is unchanged.
 ;
-           
+
 _MUL32X	.MACRO VLA,VLB,RES
 		LDA #$00		; clear p2 and p3 of product
 		STA RES+2
@@ -1416,7 +1416,7 @@ _NEXT#	EQU *
 ; Divide the 32 bit number at location VLA
 ; by the 32 bit number at location VLB
 ; leaving the 32 bit quotient at VLA and
-; the 32 bit remainder in REM. 
+; the 32 bit remainder in REM.
 ;
 ; On exit: A = ??, X = $FF, Y is unchanged.
 ;
@@ -1489,7 +1489,7 @@ _CMP16	.MACRO VLA,VLB
 _DONE#		CLC
 .MACEND
 
-; Compares 16 bit value in memory VLA and a 
+; Compares 16 bit value in memory VLA and a
 ; 16 bit constant NUM . The carry is set if
 ; VLA=NUM else the carry is cleared on return.
 ;
@@ -2114,4 +2114,3 @@ _BZR32	.MACRO  VLA,LAB
 		ORA VLA
 		BEQ LAB
 .MACEND
-
