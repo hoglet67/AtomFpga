@@ -98,6 +98,8 @@ do
     echo "Building $build"
     echo "SAVE \"$build.rom\",start_asm, eind_asm" >> $build.ASM
     beebasm -v -i $build.ASM > ../$build.log
+    ls -l $build.rom
+    md5sum $build.rom
     mv $build.rom ..
 done
 
