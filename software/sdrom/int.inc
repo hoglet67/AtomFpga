@@ -2371,10 +2371,10 @@ catalog_w       JSR calc_catsector              ; Calculate startsector cat
 ;   Bit 7 of RWTMP is set if Startsector File AtomDOS is odd
 ;-----------------------------------------------------------------
 
+; This version is limited to 40 track disks, which is all SDDOS cares about
 calc_startsector
                 LDA cur_drive          ; Check if disk in drive
                 JSR drive2disk
-
                 JSR calc_catsector
 
                 LDA $A2                ; MSB AtomDOS start sector (max #18F)
@@ -2392,6 +2392,31 @@ calc_startsector
                 BNE calc1
                 INC sector+2
 calc1           RTS
+
+; This version also works with 80 track disks, which is out of scope for SDDOS
+;calc_startsector
+;                LDA cur_drive          ; Check if disk in drive
+;                JSR drive2disk
+;                JSR calc_catsector
+;
+;                LDA $A2                ; MSB AtomDOS start sector (max #31F)
+;                AND #&03               ; Mask of significant bits
+;                LSR A                  ; A = MSB DIV 2
+;                PHA                    ; Save for later addition
+;                LDA $A3                ; LSB AtomDOS start sector
+;                ROR A                  ; A = LSB DIV 2
+;
+;                ROR RWTMP              ; Set bit7 to skip first 256 bytes
+;
+;                CLC                    ; Add LSB DIV 2 into 24-bit SD sector
+;                ADC sector
+;                STA sector
+;                PLA                    ; Pop MSB DIV 2
+;                ADC sector+1           ; Add MSB DIV 2 into 24-bit SD sector
+;                STA sector+1
+;                BCC calc1
+;                INC sector+2
+;calc1           RTS
 
 ;-----------------------------------------------------------------
 ; calc_statsector
