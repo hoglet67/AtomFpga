@@ -2377,26 +2377,21 @@ calc_startsector
 
                 JSR calc_catsector
 
-                LDA $A3
-                LSR A
+                LDA $A2                ; MSB AtomDOS start sector (max #18F)
+                LSR A                  ; C = MSB bit 0
+                LDA $A3                ; LSB AtomDOS start sector
+                ROR A                  ; A = start sector DIV 2 (max #C7)
+
                 ROR RWTMP              ; Set bit7 to skip first 256 bytes
 
-                CLC
+                CLC                    ; Add start sector DIV 2 into 24-bit SD sector
                 ADC sector
                 STA sector
-
-                LDA $A2
-                AND #$F
-                BEQ calc1
-                ADC #$80
-                STA sector
-calc1           LDA sector+1
-                ADC #0
-                STA sector+1
-                LDA sector+2
-                ADC #0
-                STA sector+2
-                RTS
+                BCC calc1
+                INC sector+1
+                BNE calc1
+                INC sector+2
+calc1           RTS
 
 ;-----------------------------------------------------------------
 ; calc_statsector
