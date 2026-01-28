@@ -65,59 +65,59 @@ prtchr          equ $FFF4
 newline         equ $FFED
 
 RDCVEC          equ $20a
-FKIDX		equ $3CA
+FKIDX           equ $3CA
 
 ;=================================================================
 ; BOOT ROUTINE
 ;=================================================================
 
-   ; test ctrl - if pressed, don't initialise
-   ;
-   bit $b001
-   bvs initialise
+; test ctrl - if pressed, don't initialise
+;
+                BIT $b001
+                BVS initialise
 
-   ; don't initialise the firmware
-   ; the E000 build
-   jmp   $c2b2             ; set #2900 text space and enter command handler
+; don't initialise the firmware
+; the E000 build
+                JMP $c2b2              ; set #2900 text space and enter command handler
 
 initialise:
-   tya
-   pha
-   txa
-   pha
+                TYA
+                PHA
+                TXA
+                PHA
 
-   ldx   #0
-   stx   FKIDX            ; fake key index for OSRDCH patch, just piggybacking
+                LDX #0
+                STX FKIDX              ; fake key index for OSRDCH patch, just piggybacking
 
-   lda   #43              ;'+'
-   sta   $800b
+                LDA #43                ;'+'
+                STA $800b
 
 shorttitle:
-   lda   version,x
-   and   #$bf
-   sta   $800d,x
-   inx
-   cmp   #$20
-   bne   shorttitle
+                LDA version,x
+                AND #$bf
+                STA $800d,x
+                INX
+                CMP #$20
+                BNE shorttitle
 
-   jsr   sddos
+                JSR sddos
 
-   bit $b001
-   bmi unpatched
+                BIT $b001
+                BMI unpatched
 
-patchosrdch:		; Shift key pressed, start *MENU
-   lda   #<osrdchcode
-   sta   RDCVEC
-   lda   #>osrdchcode
-   sta   RDCVEC+1
+patchosrdch:
+                LDA #<osrdchcode       ; Shift key pressed, start *MENU
+                STA RDCVEC
+                LDA #>osrdchcode
+                STA RDCVEC+1
 
 unpatched:
-   pla
-   tax
-   pla
-   tay
+                PLA
+                TAX
+                PLA
+                TAY
 
-   jmp   $c2b2             ; set #2900 text space and enter command handler
+                JMP $c2b2              ; set #2900 text space and enter command handler
 
 ; patched os input function
 ;
@@ -127,40 +127,40 @@ unpatched:
 ; b> when no shift-key is detected
 ;
 osrdchcode:
-   php
-   cld
-   stx   $e4
-   sty   $e5
+                PHP
+                CLD
+                STX $e4
+                STY $e5
 
-   ldx   FKIDX
-   lda   fakekeys,x
-   cmp	#$0d
-   beq   unpatch
+                LDX FKIDX
+                LDA fakekeys,x
+                CMP #$0d
+                BEQ unpatch
 
-   inx
-   stx   FKIDX
+                INX
+                STX FKIDX
 
-   ldx   $e4
-   ldy   $e5
-   plp
-   rts
+                LDX $e4
+                LDY $e5
+                PLP
+                RTS
 
 unpatch:
-   ; restore OSRDCH, continue on to read a char
+; restore OSRDCH, continue on to read a char
 
 osrdchcode_unhook:
-   lda   #$94
-   sta   RDCVEC
-   lda   #$fe
-   sta   RDCVEC+1
+                LDA #$94
+                STA RDCVEC
+                LDA #$fe
+                STA RDCVEC+1
 
-   lda 	#$0d
-   pha
-   jmp 	$fe5c
+                LDA #$0d
+                PHA
+                JMP $fe5c
 
 fakekeys:
-   .byte "*MENU"
-   .byte $0d,0
+                .byte "*MENU"
+                .byte $0d,0
 
 ;=================================================================
 ; COMMAND INTERPRETER
@@ -203,7 +203,7 @@ comint6         JMP ($0052)
 ; STAR-COMMAND INTERPRETER
 ;=================================================================
 
-star_com        LDX #$FF                ; Set up pointers
+star_com        LDX #$FF               ; Set up pointers
                 CLD
 star_com1       LDY #0
                 JSR skip_space
@@ -373,34 +373,34 @@ sddos_tab
 
 cat             JSR dir                ; Read catalog
 
-cat1            ldx #$00               ; Print title
-                stx $B6
-cat2            lda $2000,X
-                cpx #$08
-                bcc cat3
-                lda $20F8,X
-cat3            jsr $FFF4
-                inx
-                cpx #$0D
-                bne cat2
+cat1            LDX #$00               ; Print title
+                STX $B6
+cat2            LDA $2000,X
+                CPX #$08
+                BCC cat3
+                LDA $20F8,X
+cat3            JSR $FFF4
+                INX
+                CPX #$0D
+                BNE cat2
 
-                jsr prttxt             ; Print 'DR:'
+                JSR prttxt             ; Print 'DR:'
                 .byte ' DR:'
-                nop
+                NOP
 
-                lda cur_drive          ; Print drivenr
-                jsr $F80B
+                LDA cur_drive          ; Print drivenr
+                JSR $F80B
 
-                jsr prttxt             ; Print 'Q:'
+                JSR prttxt             ; Print 'Q:'
                 .byte ' Q:'
-                nop
+                NOP
 
-                lda qual               ; Print qual
-                jsr $FFF4
+                LDA qual               ; Print qual
+                JSR $FFF4
 
-                jsr prttxt             ; Print 'DSK:'
+                JSR prttxt             ; Print 'DSK:'
                 .byte ' DSK:'
-                nop
+                NOP
 
                 LDA cur_drive          ; Print disknr
                 ASL A
@@ -410,125 +410,125 @@ cat3            jsr $FFF4
                 TAY
                 jsr prt16dec
 
-cat4            ldy #$00
-                jsr cat7
-                bcc cat14
-cat5            jsr LE109              ; Y=Y-8
-                lda $2008,Y
-                and #$7F
-                sta $2008,Y
-                tya
-                bne cat5
-                jmp newline            ; Jump to next line
+cat4            LDY #$00
+                JSR cat7
+                BCC cat14
+cat5            JSR LE109              ; Y=Y-8
+                LDA $2008,Y
+                AND #$7F
+                STA $2008,Y
+                TYA
+                BNE cat5
+                JMP newline            ; Jump to next line
 
-cat6            jsr LE100              ; Y=Y+8
+cat6            JSR LE100              ; Y=Y+8
 
-cat7            cpy $2105              ; Check all files print?
-                bcs cat8
-                lda $2008,Y
-                bmi cat6
+cat7            CPY $2105              ; Check all files print?
+                BCS cat8
+                LDA $2008,Y
+                BMI cat6
 
-cat8            rts                    ; End of routine
+cat8            RTS                    ; End of routine
 
-cat9            ldy $B8                ; A4 B8
-                beq cat10              ; F0 05
-                jsr newline            ; 20 ED FF
-                ldy #$FF               ; A0 FF
-cat10:          iny                    ; C8
-                sty $B8                ; 84 B8
-                jsr LE0F1              ; 20 F1 E0
-cat11:          lda #'#'               ; A9 23
-                ldy $B7                ; A4 B7
-                ldx $200F,Y            ; BE 0F 20
-                bmi cat12              ; 30 02
-                lda #' '
-cat12:          jsr prtchr             ; Print space or #
-                ldx #$00               ; A2 00
-cat13:          lda $AE,X              ; B5 AE
-                jsr $FFF4              ; 20 F4 FF
-                inx                    ; E8
-                cpx #$07               ; E0 07
-                bne cat13              ; D0 F6
-                beq cat4               ; F0 AF
+cat9            LDY $B8                ; A4 B8
+                BEQ cat10              ; F0 05
+                JSR newline            ; 20 ED FF
+                LDY #$FF               ; A0 FF
+cat10:          INY                    ; C8
+                STY $B8                ; 84 B8
+                JSR LE0F1              ; 20 F1 E0
+cat11:          LDA #'#'               ; A9 23
+                LDY $B7                ; A4 B7
+                LDX $200F,Y            ; BE 0F 20
+                BMI cat12              ; 30 02
+                LDA #' '
+cat12:          JSR prtchr             ; Print space or #
+                LDX #$00               ; A2 00
+cat13:          LDA $AE,X              ; B5 AE
+                JSR $FFF4              ; 20 F4 FF
+                INX                    ; E8
+                CPX #$07               ; E0 07
+                BNE cat13              ; D0 F6
+                BEQ cat4               ; F0 AF
 
-cat14:          sty $B7                ; 84 B7
-                ldx #$00               ; A2 00
-cat15:          lda $2008,Y            ; B9 08 20
-                and #$7F               ; 29 7F
-                sta $AE,X              ; 95 AE
-                iny                    ; C8
-                inx                    ; E8
-                cpx #$08               ; E0 08
-                bne cat15              ; D0 F3
+cat14:          STY $B7                ; 84 B7
+                LDX #$00               ; A2 00
+cat15:          LDA $2008,Y            ; B9 08 20
+                AND #$7F               ; 29 7F
+                STA $AE,X              ; 95 AE
+                INY                    ; C8
+                INX                    ; E8
+                CPX #$08               ; E0 08
+                BNE cat15              ; D0 F3
 
-cat16:          jsr cat7               ; 20 88 E2
-                bcs cat18              ; B0 1D
-                ldx #$06               ; A2 06
-                sec                    ; 38
-cat17:          lda $200E,Y            ; B9 0E 20
-                sbc $AE,X              ; F5 AE
-                dey                    ; 88
-                dex                    ; CA
-                bpl cat17              ; 10 F7
-                jsr LE101              ; 20 01 E1
-                lda $200F,Y            ; B9 0F 20
-                and #$7F               ; 29 7F
-                sbc $B5                ; E5 B5
-                bcc cat14              ; 90 D2
-                jsr LE100              ; 20 00 E1
-                bcs cat16              ; B0 DE
-cat18:          ldy $B7                ; A4 B7
-                lda $2008,Y            ; B9 08 20
-                ora #$80               ; 09 80
-                sta $2008,Y            ; 99 08 20
-                lda $B5                ; A5 B5
-                cmp $B6                ; C5 B6
-                beq cat9               ; F0 92
-                sta $B6                ; 85 B6
+cat16:          JSR cat7               ; 20 88 E2
+                BCS cat18              ; B0 1D
+                LDX #$06               ; A2 06
+                SEC                    ; 38
+cat17:          LDA $200E,Y            ; B9 0E 20
+                SBC $AE,X              ; F5 AE
+                DEY                    ; 88
+                DEX                    ; CA
+                BPL cat17              ; 10 F7
+                JSR LE101              ; 20 01 E1
+                LDA $200F,Y            ; B9 0F 20
+                AND #$7F               ; 29 7F
+                SBC $B5                ; E5 B5
+                BCC cat14              ; 90 D2
+                JSR LE100              ; 20 00 E1
+                BCS cat16              ; B0 DE
+cat18:          LDY $B7                ; A4 B7
+                LDA $2008,Y            ; B9 08 20
+                ORA #$80               ; 09 80
+                STA $2008,Y            ; 99 08 20
+                LDA $B5                ; A5 B5
+                CMP $B6                ; C5 B6
+                BEQ cat9               ; F0 92
+                STA $B6                ; 85 B6
 
-                jsr newline            ; 20 ED FF
+                JSR newline            ; 20 ED FF
 
-                lda $B5                ; A5 B5
-                jsr $FFF4              ; 20 F4 FF
+                LDA $B5                ; A5 B5
+                JSR $FFF4              ; 20 F4 FF
 
-                lda #':'               ; Print ':'
-                jsr $FFF4
+                LDA #':'               ; Print ':'
+                JSR $FFF4
 
-                ldy #$04               ; Print 4 spaces
-                jsr LE0F3
+                LDY #$04               ; Print 4 spaces
+                JSR LE0F3
 
                 sty $B8                ; Forced jump
                 beq cat11
 
-cat19:          lda $210E,Y            ; B9 0E 21
-                jsr LE0FB              ; Multiply with 8
-                sta $A2                ; 85 A2
-                clc                    ; 18
-                lda #$FF               ; A9 FF
-                adc $210C,Y            ; 79 0C 21
-                lda $210F,Y            ; B9 0F 21
-                adc $210D,Y            ; 79 0D 21
-                sta $A3                ; 85 A3
-                lda $210E,Y            ; B9 0E 21
-                and #$0F               ; 29 0F
-                adc $A2                ; 65 A2
-                sta $A2                ; 85 A2
-cat20:          sec                    ; 38
-                lda $2107,Y            ; B9 07 21
-                sbc $A3                ; E5 A3
-                pha                    ; 48
-                lda $2106,Y            ; B9 06 21
-                and #$0F               ; 29 0F
+cat19:          LDA $210E,Y            ; B9 0E 21
+                JSR LE0FB              ; Multiply with 8
+                STA $A2                ; 85 A2
+                CLC                    ; 18
+                LDA #$FF               ; A9 FF
+                ADC $210C,Y            ; 79 0C 21
+                LDA $210F,Y            ; B9 0F 21
+                ADC $210D,Y            ; 79 0D 21
+                STA $A3                ; 85 A3
+                LDA $210E,Y            ; B9 0E 21
+                AND #$0F               ; 29 0F
+                ADC $A2                ; 65 A2
+                STA $A2                ; 85 A2
+cat20:          SEC                    ; 38
+                LDA $2107,Y            ; B9 07 21
+                SBC $A3                ; E5 A3
+                PHA                    ; 48
+                LDA $2106,Y            ; B9 06 21
+                AND #$0F               ; 29 0F
 
-                sbc $A2                ; E5 A2
-                tax                    ; AA
-                lda #$00               ; A9 00
-                cmp $A0                ; C5 A0
-                pla                    ; 68
-                sbc $A1                ; E5 A1
-                txa                    ; 8A
-                sbc #$00               ; E9 00
-                rts                    ; 60
+                SBC $A2                ; E5 A2
+                TAX                    ; AA
+                LDA #$00               ; A9 00
+                CMP $A0                ; C5 A0
+                PLA                    ; 68
+                SBC $A1                ; E5 A1
+                TXA                    ; 8A
+                SBC #$00               ; E9 00
+                RTS                    ; 60
 
 ;-----------------------------------------------------------------
 ; *DELETE <filename>
@@ -2182,7 +2182,7 @@ donboot         JSR get_drivenr                 ; Read drivenr
 ;-----------------------------------------------------------------
 
 dhelp
-           JSR chk_end_command
+                JSR chk_end_command
                 JSR newline
                 JSR prttxt                      ; Print header
 version
@@ -2324,7 +2324,7 @@ catalog_r3      JSR status_disk_r       ; Read status into $2300
 
                 LDY #$F                         ; Load disk status
                 LDA (pointer),Y
-		STA cur_status
+                STA cur_status
 
                 CMP #$F0                        ; Check disk format
                 BNE catalog_r4
@@ -2453,9 +2453,9 @@ calc_stat2      LSR sector+1
 ;-----------------------------------------------------------------
 
 calc_catsector  LDA #0                          ; Sector=0
-		STA sector
-		STA sector+1
-		STA sector+2
+                STA sector
+                STA sector+1
+                STA sector+2
 
                 STA tmp_sector+2                ; tmp_sector=disknr
                 LDA disknr+1
@@ -2463,46 +2463,46 @@ calc_catsector  LDA #0                          ; Sector=0
                 LDA disknr
                 STA tmp_sector
 
-		JSR mul8_tmp_sector             ; sector = 200 * tmp_sector
-		JSR add_cur_sector
-		JSR mul8_tmp_sector
-		JSR add_cur_sector
-		JSR mul2_tmp_sector
-		JSR add_cur_sector
+                JSR mul8_tmp_sector             ; sector = 200 * tmp_sector
+                JSR add_cur_sector
+                JSR mul8_tmp_sector
+                JSR add_cur_sector
+                JSR mul2_tmp_sector
+                JSR add_cur_sector
 
-		CLC                             ; sector = sector + 32
-		LDA #32
-		ADC sector
-		STA sector
-		LDA #0
-		ADC sector+1
-		STA sector+1
-		LDA #0
-		ADC sector+2
-		STA sector+2
+                CLC                             ; sector = sector + 32
+                LDA #32
+                ADC sector
+                STA sector
+                LDA #0
+                ADC sector+1
+                STA sector+1
+                LDA #0
+                ADC sector+2
+                STA sector+2
 
-mul8_tmp_sector	LDX #3                         ; tmp_sector = tmp_sector * 8
-mul8_loop	JSR mul2_tmp_sector
-		DEX
-		BNE mul8_loop
-		RTS
+mul8_tmp_sector LDX #3                         ; tmp_sector = tmp_sector * 8
+mul8_loop       JSR mul2_tmp_sector
+                DEX
+                BNE mul8_loop
+                RTS
 
-mul2_tmp_sector	ASL tmp_sector                 ; tmp_sector = tmp_sector * 2
-		ROL tmp_sector+1
-		ROL tmp_sector+2
-		RTS
+mul2_tmp_sector ASL tmp_sector                 ; tmp_sector = tmp_sector * 2
+                ROL tmp_sector+1
+                ROL tmp_sector+2
+                RTS
 
-add_cur_sector	CLC                            ; sector = sector + tmp_sector
-		LDA tmp_sector
-		ADC sector
-		STA sector
-		LDA tmp_sector+1
-		ADC sector+1
-		STA sector+1
-		LDA tmp_sector+2
-		ADC sector+2
-		STA sector+2
-		RTS
+add_cur_sector  CLC                            ; sector = sector + tmp_sector
+                LDA tmp_sector
+                ADC sector
+                STA sector
+                LDA tmp_sector+1
+                ADC sector+1
+                STA sector+1
+                LDA tmp_sector+2
+                ADC sector+2
+                STA sector+2
+                RTS
 
 ;=================================================================
 ; GENERAL SUBROUTINES
@@ -2586,9 +2586,9 @@ prt16dec        LDA columnwidth                 ; Save @
                 STA columnwidth
                 RTS
 
-prt16disk       ldx disknr
-                ldy disknr+1
-                jmp prt16dec
+prt16disk       LDX disknr
+                LDY disknr+1
+                JMP prt16dec
 
 
 ;-----------------------------------------------------------------
