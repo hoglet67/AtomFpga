@@ -251,6 +251,7 @@ architecture BEHAVIORAL of AtomFpga_Core is
     signal i8255_rd          : std_logic;
 
     signal ps2dataout        : std_logic_vector(5 downto 0);
+    signal js1dataout        : std_logic_vector(5 downto 0);
     signal key_shift         : std_logic;
     signal key_ctrl          : std_logic;
     signal key_repeat        : std_logic;
@@ -570,9 +571,12 @@ begin
     vdg_an_g      <= i8255_pa_data(4)          when RSTn='1' else '0';
     kbd_pa        <= i8255_pa_data(3 downto 0);
 
+    -- Support "Row 0" joystick in parallel with the keyboard
+    js1dataout <= "1" & Joystick1(0) & Joystick1(3) & Joystick1(1) & Joystick1(2) & Joystick1(5) when kbd_pa = "0000" else "111111";
+
     -- Port B
     --   bits 7..0 (input) read the keyboard matrix
-    i8255_pb_idata <= (key_shift & key_ctrl & ps2dataout) and (kbd_pb);
+    i8255_pb_idata <= (key_shift & key_ctrl & (ps2dataout and js1dataout)) and (kbd_pb);
 
 
     -- Port C
