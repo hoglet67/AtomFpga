@@ -411,10 +411,7 @@ architecture rtl of AtomFpga_TangNano20K is
     -- Joystick / Config Shift Register
     signal joystick1       : std_logic_vector(4 downto 0) := (others => '1');
     signal joystick2       : std_logic_vector(4 downto 0) := (others => '1');
-    signal jumper          : std_logic_vector(5 downto 0) := (others => '0');
-    signal last_phi2       : std_logic := '0';
-    signal sr_counter      : unsigned(3 downto 0) := (others => '0');
-    signal sr_mirror       : std_logic_vector(15 downto 0) := (others => '0');
+    signal jumper          : std_logic_vector(7 downto 0) := (others => '0');
 
     -- Multiboot
     signal reconfig        : std_logic;
@@ -577,7 +574,7 @@ begin
             btn1            => btn1,
             btn2            => btn2,
             btn3            => key_conf,
-            jumper          => jumper,
+            jumper          => jumper(5 downto 0),
             led             => multiboot_leds,
             pa_en_dout      => pa_en_dout,
             reconfig        => reconfig
@@ -1051,6 +1048,16 @@ begin
             FLASH_SO       => flash_so
         );
 
+    process(clock_main)
+        variable last_phi2 : std_logic;
+    begin
+        if rising_edge(clock_main) then
+            mem_strobe  <= phi2 and not last_phi2; -- on the rising edge (middle of the cyle)
+            mem_refresh <= last_phi2 and not phi2; -- on the falling edge
+            last_phi2   := phi2;
+        end if;
+    end process;
+
     --------------------------------------------------------
     -- VGA outputs (using high speed 1-bit DAC)
     --------------------------------------------------------
@@ -1247,29 +1254,19 @@ begin
     -- External shift register for joysticks / config links
     --------------------------------------------------------
 
-    process(clock_main)
-    begin
-        if rising_edge(clock_main) then
-            -- external 74LV165A clocked on rising edge, so work here on falling edge
-            if phi2 = '0' and last_phi2 = '1' then
-                if sr_counter = "1111" then
-                    js_load_n <= '0';
-                else
-                    js_load_n <= '1';
-                end if;
-                if sr_counter = "0000" then
-                    joystick1 <= sr_mirror(12 downto 8);
-                    joystick2 <= sr_mirror(4 downto 0);
-                    jumper    <= sr_mirror(7 downto 5) & sr_mirror(15 downto 13);
-                end if;
-                sr_mirror  <= sr_mirror(14 downto 0) & js_data;
-                sr_counter <= sr_counter + 1;
-            end if;
-            mem_strobe  <= phi2 and not last_phi2; -- on the rising edge (middle of the cyle)
-            mem_refresh <= last_phi2 and not phi2; -- on the falling edge
-            last_phi2   <= phi2;
-        end if;
-    end process;
+    sr : entity work.shift_register
+        port map (
+            clock         => clock_main,
+            js_clk        => phi2,
+            js_data       => js_data,
+            js_load_n     => js_load_n,
+            fire1_n       => open,
+            fire2_n       => open,
+            lpstb_n       => open,
+            joystick1     => joystick1,
+            joystick2     => joystick2,
+            jumper        => jumper
+        );
 
     --------------------------------------------------------
     -- Outputs/signals whose function depends on the Includes

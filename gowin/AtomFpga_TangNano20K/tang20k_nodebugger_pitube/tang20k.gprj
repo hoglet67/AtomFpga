@@ -117,6 +117,7 @@
         <File path="../src/spi_flash.vhd" type="file.vhdl" enable="1"/>
         <File path="../src/mem_tang_20k.vhd" type="file.vhdl" enable="1"/>
         <File path="../src/sdramctl.vhd" type="file.vhdl" enable="1"/>
+        <File path="../src/shift_register.vhd" type="file.vhdl" enable="1"/>
         <File path="../src/i2s_simple.vhd" type="file.vhdl" enable="1"/>
         <File path="../src/spdif_serializer.vhd" type="file.vhdl" enable="1"/>
         <File path="../src/dac1_oser.vhd" type="file.vhdl" enable="1"/>
