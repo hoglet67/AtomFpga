@@ -35,7 +35,7 @@ cat akernel_patched.rom >> ${ROM}
 
 cat abasic.rom >> ${ROM}
 cat afloat_patched.rom >> ${ROM}
-cat ../software/sdrom/SDROM_FPGA.rom >> ${ROM}
+cat SDROM_FPGA.rom >> ${ROM}
 cat akernel_patched.rom >> ${ROM}
 
 cat blank.rom >> ${ROM}
