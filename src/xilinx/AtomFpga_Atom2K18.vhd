@@ -178,6 +178,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     constant CImplLEDs              : boolean := true;
     constant CImplProfilingCounters : boolean := not CImplMakeSpace1;
     constant CImplRTC               : boolean := not CImplMakeSpace1;
+    constant CImplDAC               : boolean := not CImplMakeSpace1;
     constant CImplSAM               : boolean := true;
     constant CImplPAM               : boolean := true;
     constant CImplPalette           : boolean := true;
@@ -250,6 +251,7 @@ architecture behavioral of AtomFpga_Atom2K18 is
     -- Internal devices
     signal intern_led      : std_logic;
     signal intern_rtc      : std_logic;
+    signal intern_dac      : std_logic;
     signal intern_pam_reg0 : std_logic; -- enable for #BFF8
     signal intern_pam_reg1 : std_logic; -- enable for #BFF9
     signal intern_sam_reg  : std_logic; -- enable for #BFF2
@@ -333,6 +335,11 @@ architecture behavioral of AtomFpga_Atom2K18 is
     signal rtc_cnt         : std_logic_vector(21 downto 0);
     signal rtc_irq_n       : std_logic := '1';
     signal rtc_data        : std_logic_vector(7 downto 0);
+
+    -- DAC
+    signal dac_r           : std_logic_vector(dacwidth - 1 downto 0) := (others => '0');
+    signal dac_l           : std_logic_vector(dacwidth - 1 downto 0) := (others => '0');
+    signal dac_data        : std_logic_vector(7 downto 0);
 
     -- Interrupt logic
     signal irq_n           : std_logic := '1';
@@ -637,6 +644,7 @@ begin
                    extern_din               when phi2 = '1' and extern_ce = '0' and extern_bus = '0' and debug_mode = '1'                  else
                    led_data                 when phi2 = '1' and intern_led = '1'                     and debug_mode = '1' and CImplLEDs    else
                    rtc_data                 when phi2 = '1' and intern_rtc = '1'                     and debug_mode = '1' and CImplRTC     else
+                   dac_data                 when phi2 = '1' and intern_dac = '1'                     and debug_mode = '1' and CImplDAC     else
                    palette_data             when phi2 = '1' and intern_palette = '1'                 and debug_mode = '1' and CImplPalette else
                    config_data              when phi2 = '1' and intern_config = '1'                  and debug_mode = '1' and CImplConfig  else
                    sam_status               when phi2 = '1' and intern_sam_reg = '1'                 and debug_mode = '1' and CImplSAM     else
@@ -655,6 +663,7 @@ begin
     -- data back into the Atom Core
     extern_dout <= led_data                when                       intern_led = '1' and CImplLEDs    else
                    rtc_data                when                       intern_rtc = '1' and CImplRTC     else
+                   dac_data                when                       intern_dac = '1' and CImplDAC     else
                    palette_data            when                   intern_palette = '1' and CImplPalette else
                    config_data             when                    intern_config = '1' and CImplConfig  else
                    sam_status              when                   intern_sam_reg = '1' and CImplSAM     else
@@ -781,12 +790,13 @@ begin
     -- Internal device chip selects
     ------------------------------------------------
 
-    intern_led      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE"  and CImplLEDs    else '0';
+    intern_palette  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BD0"  and CImplPalette else '0';
+    intern_dac      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFC"  and CImplDAC     else '0';
     intern_rtc      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFD"  and CImplRTC     else '0';
+    intern_led      <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BFE"  and CImplLEDs    else '0';
     intern_sam_reg  <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF2" and CImplSAM     else '0';
     intern_pam_reg0 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF8" and CImplPAM     else '0';
     intern_pam_reg1 <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFF9" and CImplPAM     else '0';
-    intern_palette  <= '1' when extern_bus = '1' and extern_a(15 downto 4) = x"BD0"  and CImplPalette else '0';
     intern_config   <= '1' when extern_bus = '1' and extern_a(15 downto 0) = x"BFFB" and CImplConfig  else '0';
 
     ------------------------------------------------
@@ -825,7 +835,7 @@ begin
     -- The tube is on the near side of the data buffers, so exclude
     -- The LED and RTC registers are internal to this module, so exclude
     remote_access <= '1' when extern_bus = '1' and extern_tube = '0' and extern_sam_rd = '0' and extern_sam_wr = '0' and extern_pam = '0' and
-                              intern_led = '0' and intern_rtc = '0' and intern_palette = '0' and intern_config = '0' and intern_sam_reg = '0' and
+                              intern_led = '0' and intern_rtc = '0' and intern_dac = '0' and intern_palette = '0' and intern_config = '0' and intern_sam_reg = '0' and
                               intern_pam_reg0 = '0' and intern_pam_reg1 = '0' else '0';
 
     -- In normal mode, enable the data buffers only for remote accesses.
@@ -862,6 +872,11 @@ begin
         else
             l := l + x"8000";
             r := r + x"8000";
+        end if;
+        -- Internal DAC registers are 16-bit signed
+        if CImplDAC then
+            l := l + dac_l;
+            r := r + dac_r;
         end if;
         -- Currently the left and right channels are identical
         audio_l <= l;
@@ -1161,6 +1176,58 @@ begin
     not_rtc_block: if not CImplRTC generate
         rtc_data  <= x"00";
         rtc_irq_n <= '1';
+    end generate;
+
+    --------------------------------------------------------
+    -- RTC Real Time Clock
+    --------------------------------------------------------
+
+    dac_block: if CImplDAC generate
+        process (clock_32)
+        begin
+            if rising_edge(clock_32) then
+                if reset_n = '0' then
+                    dac_l <= x"0000";
+                    dac_r <= x"0000";
+                else
+                    if intern_DAC = '1' and rnw = '0' and phi2 = '1' then
+                        -- DAC addresses:
+                        -- BFE0 reserved
+                        -- BFE1 reserved
+                        -- BFE2  left channel  (lsb)
+                        -- BFE3  left channel  (msb)
+                        -- BFE4 right channel  (lsb)
+                        -- BFE5 right channel  (msb)
+                        -- BFE6  both channels (lsb)
+                        -- BFE7  both channels (msb)
+                        if extern_a(1) = '1' then
+                            if extern_a(0) = '1' then
+                                dac_l(15 downto 8) <= extern_din;
+                            else
+                                dac_l(7 downto 0) <= extern_din;
+                            end if;
+                        end if;
+                        if extern_a(2) = '1' then
+                            if extern_a(0) = '1' then
+                                dac_r(15 downto 8) <= extern_din;
+                            else
+                                dac_r(7 downto 0) <= extern_din;
+                            end if;
+                        end if;
+
+                    end if;
+                end if;
+            end if;
+        end process;
+        dac_data <= dac_l(7  downto 0) when extern_a(2 downto 0) = "010" else
+                    dac_l(15 downto 8) when extern_a(2 downto 0) = "011" else
+                    dac_r(7  downto 0) when extern_a(2 downto 0) = "100" else
+                    dac_r(15 downto 8) when extern_a(2 downto 0) = "101" else
+                    x"00";
+    end generate;
+
+    not_dac_block: if not CImplDAC generate
+        dac_data  <= x"00";
     end generate;
 
     --------------------------------------------------------
