@@ -572,7 +572,7 @@ begin
     kbd_pa        <= i8255_pa_data(3 downto 0);
 
     -- Support "Row 0" joystick in parallel with the keyboard
-    js1dataout <= "1" & Joystick1(0) & Joystick1(3) & Joystick1(1) & Joystick1(2) & Joystick1(5) when kbd_pa = "0000" else "111111";
+    js1dataout <= "1" & Joystick1(0) & Joystick1(3) & Joystick1(1) & Joystick1(2) & Joystick1(5) when i8255_pa_data = "0000" else "111111";
 
     -- Port B
     --   bits 7..0 (input) read the keyboard matrix
