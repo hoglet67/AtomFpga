@@ -581,7 +581,7 @@ begin
             );
 
     pa_en      <= '0' when pa_en_dout = '0' else 'Z';
-    reconfig_n <= '0' when reconfig = '1' else 'Z';
+    reconfig_n <= '0' when reconfig = '1' and G_CORE_ID >= 0 else 'Z';
 
     --------------------------------------------------------
     -- Atom FPGA Core
