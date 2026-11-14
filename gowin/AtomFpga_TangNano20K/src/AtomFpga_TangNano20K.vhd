@@ -351,7 +351,7 @@ architecture rtl of AtomFpga_TangNano20K is
     signal ext_reset_n     : std_logic;
     signal reset_counter   : std_logic_vector(ResetCounterSize - 1 downto 0) := (others => '0'); -- 32ms
     signal powerup_reset_n : std_logic := '0';
-    signal hard_reset_n    : std_logic;
+    signal hard_reset_n    : std_logic := '0';
     signal reset_n         : std_logic;
     signal led1            : std_logic;
     signal led2            : std_logic;
