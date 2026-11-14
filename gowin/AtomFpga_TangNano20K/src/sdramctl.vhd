@@ -1,17 +1,17 @@
 -- MIT License
--- 
+--
 -- Copyright (c) 2024 dominicbeesley
--- 
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), to deal
 -- in the Software without restriction, including without limitation the rights
 -- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 -- copies of the Software, and to permit persons to whom the Software is
 -- furnished to do so, subject to the following conditions:
--- 
+--
 -- The above copyright notice and this permission notice shall be included in all
 -- copies or substantial portions of the Software.
--- 
+--
 -- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 -- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 -- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -37,29 +37,29 @@ entity sdramctl is
 		CLOCKSPEED 	: natural;
 		T_CAS_EXTRA : natural 	:= 0;	-- this needs to be 1 for > ~90 MHz
 
-		
+
 		-- SDRAM geometry
 		LANEBITS		: natural 	:= 1;	-- number of byte lanes bits, if 0 don't connect sdram_DQM_o
 		BANKBITS    : natural 	:= 2;	-- number of bits, if none set to 0 and don't connect sdram_BS_o
 		ROWBITS     : positive 	:= 13;
 		COLBITS		: positive 	:= 9;
 
-		-- SDRAM speed 
+		-- SDRAM speed
 		trp 			: time := 15 ns;  -- precharge
 		trcd 			: time := 15 ns;	-- active to read/write
 		trc 			: time := 60 ns;	-- active to active time
 		trfsh			: time := 1.8 us;	-- the refresh control signal will be blocked if it occurs more frequently than this
 		trfc  		: time := 63 ns 	-- refresh cycle time
-		
+
 
 		);
 	port (
-		Clk		:  in		std_logic; 
+		Clk		:  in		std_logic;
 
 		-- sdram interface
 		sdram_DQ_io			:	inout std_logic_vector((2**LANEBITS)*8-1 downto 0);
-		sdram_A_o			:	out	std_logic_vector(maximum(COLBITS, ROWBITS)-1 downto 0); 
-		sdram_BS_o			:  out 	std_logic_vector(maximum(BANKBITS-1, 0) downto 0); 
+		sdram_A_o			:	out	std_logic_vector(maximum(COLBITS, ROWBITS)-1 downto 0);
+		sdram_BS_o			:  out 	std_logic_vector(maximum(BANKBITS-1, 0) downto 0);
 		sdram_CKE_o			:	out	std_logic;
 		sdram_nCS_o			:	out	std_logic;
 		sdram_nRAS_o		:	out	std_logic;
@@ -88,8 +88,8 @@ end sdramctl;
 
 architecture rtl of sdramctl is
 
-	constant tck 	: time := 1 sec / CLOCKSPEED;	
-	
+	constant tck 	: time := 1 sec / CLOCKSPEED;
+
 	function CLOCKS(t:time) return integer is
 	variable r:integer;
 	begin
@@ -138,7 +138,7 @@ architecture rtl of sdramctl is
 
 	-- r_powerup_ctr is 1 bit wider and wrap-around indicates finished
 	constant PCTR_MAX : natural := 200 * (CLOCKSPEED / 1000000);
-	signal r_powerup_ctr : unsigned(numbits(PCTR_MAX) downto 0) 
+	signal r_powerup_ctr : unsigned(numbits(PCTR_MAX) downto 0)
 										:= "0" & to_unsigned(PCTR_MAX, numbits(PCTR_MAX));
 
 	type t_state_main is (
@@ -212,12 +212,12 @@ begin
 		begin
 			r_cycle <= (0 => '1', others => '0');
 		end RESET_CYCLE;
-	
+
 		procedure RESET_RFSH is
 		begin
 			r_rfshctr <= to_unsigned(T_RFSH-1, r_rfshctr'length);
 		end RESET_RFSH;
-	
+
 		function DQM(
 			A : std_logic_vector
 			) return std_logic_vector is
@@ -273,12 +273,12 @@ begin
 			end if;
 
 			r_cmd <= cmd_nop;
-			
+
 			sdram_DQM_o <= (others => '1');
 			sdram_DQ_io <= (others => 'Z');
 			ctl_ack_o <= '0';
 
-			case r_state_main is 
+			case r_state_main is
 				when powerup | reset =>
 					if r_powerup_ctr(r_powerup_ctr'high) = '1' then
 						r_state_main <= config_pre;
@@ -287,14 +287,14 @@ begin
 					end if;
 				when config_pre =>
 					if r_cycle(0) = '1' then
-						r_cmd <= cmd_precharge;					
+						r_cmd <= cmd_precharge;
 						sdram_A_o(10) <= '1';								-- all banks get same mode setting
 						sdram_BS_o <= (others => '0');					-- don't care
 					end if;
 					if r_cycle(T_RP) = '1' then
 						r_config_ar_ct <= (others => '0');
 					r_state_main <= config_ar_before;
-					RESET_CYCLE;				
+					RESET_CYCLE;
 					end if;
 				when config_ar_before =>
 					if r_cycle(0) = '1' then
@@ -304,7 +304,7 @@ begin
 						r_config_ar_ct <= r_config_ar_ct + 1;
 					end if;
 					if r_cycle(T_RC) = '1' then
-						RESET_CYCLE;				
+						RESET_CYCLE;
 						if r_config_ar_ct(r_config_ar_ct'high) = '1' then
 						r_state_main <= config_mode;
 						end if;
@@ -329,7 +329,7 @@ begin
 						r_config_ar_ct <= r_config_ar_ct + 1;
 					end if;
 					if r_cycle(T_RC) = '1' then
-						RESET_CYCLE;				
+						RESET_CYCLE;
 						if r_config_ar_ct(r_config_ar_ct'high) = '1' then
 							r_state_main <= run;
 							r_run_state <= start;
@@ -345,7 +345,7 @@ begin
 							if ctl_cyc_i = '1' then
 								r_A_latched <= ctl_A_i;
 								r_cmd <= cmd_bankact;
-								sdram_BS_o <= ctl_A_i(B_BANK_HI downto B_BANK_LO);	
+								sdram_BS_o <= ctl_A_i(B_BANK_HI downto B_BANK_LO);
 								sdram_A_o <= (others => '0');
 								sdram_A_o(ROWBITS-1 downto 0)  <= ctl_A_i(B_ROW_HI downto B_ROW_LO);
 								if ctl_manrfsh_i = '1' then
@@ -354,15 +354,15 @@ begin
 									r_run_state <= read;
 								else
 									r_run_state <= write;
-									r_D_wr_latched <= ctl_D_wr_i;								
+									r_D_wr_latched <= ctl_D_wr_i;
 									ctl_ack_o <= '1';
-								end if;						
+								end if;
 							elsif r_rfshctr(r_rfshctr'high) = '1' and ctl_rfsh_i = '1' then
 								r_cmd <= cmd_autorefresh;
 								sdram_A_o(10) <= '1';
 								sdram_BS_o <= (others => '0');
-								RESET_RFSH;		
-								r_run_state <= refresh_auto;					
+								RESET_RFSH;
+								r_run_state <= refresh_auto;
 							end if;
 						when read =>
 							if r_cycle(TIX_RW_CMD) = '1' then
@@ -402,7 +402,7 @@ begin
 								RESET_CYCLE;
 								r_run_state <= idle;
 							end if;
-						when others => 
+						when others =>
 
 					end case;
 
@@ -428,8 +428,7 @@ begin
 			if r_powerup_ctr(r_powerup_ctr'high) = '0' then
 				r_powerup_ctr <= r_powerup_ctr - 1;
 			end if;
-		end if;		
+		end if;
 	end process;
 
 end rtl;
-
