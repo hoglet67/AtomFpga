@@ -51,23 +51,23 @@ entity AtomFpga_Core is
         clk_vga          : in    std_logic;        -- nominally 25.175MHz VGA clock
         clk_main         : in    std_logic;        -- clock for the main system
         clk_avr          : in    std_logic;        -- clock for the AtoMMC AVR
-        clk_avr_debug    : in    std_logic := '0'; -- clock for the Debugger AVR (only needed if CImplDebugger true)
+        clk_avr_debug    : in    std_logic; -- clock for the Debugger AVR (only needed if CImplDebugger true)
         clk_dac          : in    std_logic;        -- fast clock for the 1-bit DAC
         clk_32M00        : in    std_logic;        -- fixed clock, used for SID and casette
         -- Keyboard/mouse
         kbd_pa           : out   std_logic_vector(3 downto 0);
-        kbd_pb           : in    std_logic_vector(7 downto 0) := (others => '1');
-        kbd_pc           : in    std_logic_vector(6 downto 6) := (others => '1');
+        kbd_pb           : in    std_logic_vector(7 downto 0);
+        kbd_pc           : in    std_logic_vector(6 downto 6);
         ps2_clk          : in    std_logic;
         ps2_data         : in    std_logic;
         ps2_mouse_clk    : inout std_logic;
         ps2_mouse_data   : inout std_logic;
         -- Resets
-        powerup_reset_n  : in    std_logic := '1'; -- power up reset only (optional)
-        ext_reset_n      : in    std_logic := '1'; -- external bus reset (optional)
+        powerup_reset_n  : in    std_logic; -- power up reset only (optional)
+        ext_reset_n      : in    std_logic; -- external bus reset (optional)
         int_reset_n      : out   std_logic;        -- internal bus reset (e.g. PS/2 break)
         -- HDMI Video
-        hdmi_audio_en    : in    std_logic := '0';
+        hdmi_audio_en    : in    std_logic;
         tmds_r           : out   std_logic_vector(9 downto 0);
         tmds_g           : out   std_logic_vector(9 downto 0);
         tmds_b           : out   std_logic_vector(9 downto 0);
@@ -83,10 +83,10 @@ entity AtomFpga_Core is
         sync             : out   std_logic;
         rnw              : out   std_logic;
         addr             : out   std_logic_vector(15 downto 0);
-        rdy              : in    std_logic := '1';
-        so               : in    std_logic := '1';
-        irq_n            : in    std_logic := '1';
-        nmi_n            : in    std_logic := '1';
+        rdy              : in    std_logic;
+        so               : in    std_logic;
+        irq_n            : in    std_logic;
+        nmi_n            : in    std_logic;
         -- External Bus/Ram/Rom interface
         ExternBus        : out   std_logic;
         ExternCE         : out   std_logic;
@@ -110,14 +110,14 @@ entity AtomFpga_Core is
         avr_RxD          : in    std_logic;
         avr_TxD          : out   std_logic;
         -- Cassette
-        cas_in           : in    std_logic := '0';
+        cas_in           : in    std_logic;
         cas_out          : out   std_logic;
         -- Misc
         LED1             : out   std_logic;
         LED2             : out   std_logic;
         charSet          : in    std_logic;
-        Joystick1        : in    std_logic_vector (7 downto 0) := (others => '1');
-        Joystick2        : in    std_logic_vector (7 downto 0) := (others => '1')
+        Joystick1        : in    std_logic_vector (7 downto 0);
+        Joystick2        : in    std_logic_vector (7 downto 0)
         );
 end AtomFpga_Core;
 

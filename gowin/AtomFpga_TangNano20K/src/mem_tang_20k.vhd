@@ -199,6 +199,7 @@ begin
         sdram_DQM_o  => O_sdram_dqm,
 
         ctl_rfsh_i   => ctl_rfsh_i ,
+        ctl_manrfsh_i=> '0',
         ctl_reset_i  => ctl_reset_i,
         ctl_stall_o  => i_sdram_busy,
         ctl_cyc_i    => ctl_cyc_i,

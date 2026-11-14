@@ -37,10 +37,10 @@ entity spi_flash is
     );
     port (
         -- internal interface
-        flash_clk   : in  std_logic := '0';
-        flash_clken : in  std_logic := '0';
-        flash_init  : in  std_logic := '0';
-        flash_addr  : in  std_logic_vector (23 downto 0) := (others => '0');
+        flash_clk   : in  std_logic;
+        flash_clken : in  std_logic;
+        flash_init  : in  std_logic;
+        flash_addr  : in  std_logic_vector (23 downto 0);
         flash_data  : out std_logic_vector ( 7 downto 0) := (others => '0');
         flash_done  : out std_logic := '1';
         -- external interface

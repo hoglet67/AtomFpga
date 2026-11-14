@@ -71,8 +71,8 @@ entity sdramctl is
 
 		-- Address laid out as bank, row, column, byte lanes from high to low
 
-		ctl_rfsh_i			:	in		std_logic	:= '0';		-- do an auto-refresh if one is pending (>trfsh since last)
-		ctl_manrfsh_i		:  in    std_logic   := '0';		-- do a "manual" refresh by opening the specified bank/row and then pre-charging
+		ctl_rfsh_i			:	in		std_logic;		-- do an auto-refresh if one is pending (>trfsh since last)
+		ctl_manrfsh_i		:  in    std_logic;		-- do a "manual" refresh by opening the specified bank/row and then pre-charging
 		ctl_reset_i			:	in		std_logic;
 
 		ctl_stall_o			:	out	std_logic;

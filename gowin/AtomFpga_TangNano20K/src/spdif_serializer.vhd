@@ -14,7 +14,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity spdif_serializer is
     Port (
         clk          : in  std_logic;
-        clken        : in  std_logic := '1';
+        clken        : in  std_logic;
         auxAudioBits : in  std_logic_vector (3 downto 0);
         sample       : in  std_logic_vector (19 downto 0);
         load         : in  std_logic;

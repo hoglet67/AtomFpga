@@ -650,6 +650,10 @@ begin
         phi2                => phi2,
         sync                => sync,
         rnw                 => rnw,
+        rdy                 => '1',
+        so                  => '1',
+        irq_n               => '1',
+        nmi_n               => '1',
         -- External Bus/Ram/Rom interface
         ExternBus           => ExternBus,
         ExternCE            => ExternCE,
